@@ -1,3 +1,9 @@
 data
 .venv
 .*
+*.json
+
+# Python cache (catches __pycache__ at any directory level)
+**/__pycache__/
+*.py[cod]
+*$py.class

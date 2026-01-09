@@ -1,0 +1,114 @@
+/Users/raph/lib/python3.9/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+INFO:main:Using Ollama for embeddings: http://localhost:11434 with model 'mxbai-embed-large:latest'
+INFO:main:✓ Ollama model 'mxbai-embed-large:latest' is available
+INFO:__main__:Running RecursiveJsonSplitter size comparison on 10000 files (out of 132842 total)
+INFO:__main__:Found 10000 files to process
+INFO:__main__:================================================================================
+INFO:__main__:
+================================================================================
+INFO:__main__:Testing: max_chunk_size=500, min_chunk_size=100
+INFO:__main__:================================================================================
+INFO:__main__:Clearing caches between tests...
+INFO:__main__:  Round 1: Collected 0 objects
+INFO:__main__:  Total garbage collected: 0 objects
+INFO:__main__:  ✓ Cache clearing complete - ready for next test
+INFO:__main__:  Processed 1000/10000 files...
+INFO:__main__:  Processed 2000/10000 files...
+INFO:__main__:  Processed 3000/10000 files...
+INFO:__main__:  Processed 4000/10000 files...
+INFO:__main__:  Processed 5000/10000 files...
+INFO:__main__:  Processed 6000/10000 files...
+INFO:__main__:  Processed 7000/10000 files...
+INFO:__main__:  Processed 8000/10000 files...
+INFO:__main__:  Processed 9000/10000 files...
+INFO:__main__:  Processed 10000/10000 files...
+INFO:__main__:
+Results for max500_min100:
+INFO:__main__:  Total chunks: 742,699
+INFO:__main__:  Avg chunk size: 822.8 chars
+INFO:__main__:  Avg chunk tokens: 47.0 tokens
+INFO:__main__:  Median chunk tokens: 45.0 tokens
+INFO:__main__:  Min chunk size: 192 chars
+INFO:__main__:  Max chunk size: 3345 chars
+INFO:__main__:  Processing time: 14.70 seconds
+INFO:__main__:
+================================================================================
+INFO:__main__:Testing: max_chunk_size=750, min_chunk_size=100
+INFO:__main__:================================================================================
+INFO:__main__:Clearing caches between tests...
+INFO:__main__:  Round 1: Collected 0 objects
+INFO:__main__:  Total garbage collected: 0 objects
+INFO:__main__:  ✓ Cache clearing complete - ready for next test
+INFO:__main__:  Processed 1000/10000 files...
+INFO:__main__:  Processed 2000/10000 files...
+INFO:__main__:  Processed 3000/10000 files...
+INFO:__main__:  Processed 4000/10000 files...
+INFO:__main__:  Processed 5000/10000 files...
+INFO:__main__:  Processed 6000/10000 files...
+INFO:__main__:  Processed 7000/10000 files...
+INFO:__main__:  Processed 8000/10000 files...
+INFO:__main__:  Processed 9000/10000 files...
+INFO:__main__:  Processed 10000/10000 files...
+INFO:__main__:
+Results for max750_min100:
+INFO:__main__:  Total chunks: 742,699
+INFO:__main__:  Avg chunk size: 822.8 chars
+INFO:__main__:  Avg chunk tokens: 47.0 tokens
+INFO:__main__:  Median chunk tokens: 45.0 tokens
+INFO:__main__:  Min chunk size: 192 chars
+INFO:__main__:  Max chunk size: 3345 chars
+INFO:__main__:  Processing time: 14.57 seconds
+INFO:__main__:
+================================================================================
+INFO:__main__:Testing: max_chunk_size=1000, min_chunk_size=100
+INFO:__main__:================================================================================
+INFO:__main__:Clearing caches between tests...
+INFO:__main__:  Round 1: Collected 0 objects
+INFO:__main__:  Total garbage collected: 0 objects
+INFO:__main__:  ✓ Cache clearing complete - ready for next test
+INFO:__main__:  Processed 1000/10000 files...
+INFO:__main__:  Processed 2000/10000 files...
+INFO:__main__:  Processed 3000/10000 files...
+INFO:__main__:  Processed 4000/10000 files...
+INFO:__main__:  Processed 5000/10000 files...
+INFO:__main__:  Processed 6000/10000 files...
+INFO:__main__:  Processed 7000/10000 files...
+INFO:__main__:  Processed 8000/10000 files...
+INFO:__main__:  Processed 9000/10000 files...
+INFO:__main__:  Processed 10000/10000 files...
+INFO:__main__:
+Results for max1000_min100:
+INFO:__main__:  Total chunks: 742,699
+INFO:__main__:  Avg chunk size: 822.8 chars
+INFO:__main__:  Avg chunk tokens: 47.0 tokens
+INFO:__main__:  Median chunk tokens: 45.0 tokens
+INFO:__main__:  Min chunk size: 192 chars
+INFO:__main__:  Max chunk size: 3345 chars
+INFO:__main__:  Processing time: 14.90 seconds
+INFO:__main__:
+================================================================================
+INFO:__main__:COMPARISON SUMMARY
+INFO:__main__:================================================================================
+INFO:__main__:Files processed: 10000
+INFO:__main__:
+MAX500_MIN100 (max=500, min=100):
+INFO:__main__:  Total chunks: 742,699
+INFO:__main__:  Avg chunk tokens: 47.0 tokens
+INFO:__main__:  Median chunk tokens: 45.0 tokens
+INFO:__main__:  Processing time: 14.70 seconds
+INFO:__main__:
+MAX750_MIN100 (max=750, min=100):
+INFO:__main__:  Total chunks: 742,699
+INFO:__main__:  Avg chunk tokens: 47.0 tokens
+INFO:__main__:  Median chunk tokens: 45.0 tokens
+INFO:__main__:  Processing time: 14.57 seconds
+INFO:__main__:
+MAX1000_MIN100 (max=1000, min=100):
+INFO:__main__:  Total chunks: 742,699
+INFO:__main__:  Avg chunk tokens: 47.0 tokens
+INFO:__main__:  Median chunk tokens: 45.0 tokens
+INFO:__main__:  Processing time: 14.90 seconds
+INFO:__main__:
+Results written to: /Users/raph/Documents/hc_ai/POC/recursive_json_size_comparison.json
+INFO:__main__:================================================================================

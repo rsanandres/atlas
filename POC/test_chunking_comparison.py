@@ -1078,8 +1078,8 @@ def process_file_parent_child_hierarchical_children(file_path: str) -> Dict:
     return stats
 
 
-def process_file_recursive_json(file_path: str) -> Dict:
-    """Process a file using LangChain's RecursiveJsonSplitter."""
+def process_file_recursive_json(file_path: str, max_chunk_size: int = 1000, min_chunk_size: int = 100) -> Dict:
+    """Process a file using LangChain's RecursiveJsonSplitter with configurable chunk sizes."""
     bundle = load_fhir_bundle(file_path)
     if not bundle:
         return None
@@ -1096,12 +1096,14 @@ def process_file_recursive_json(file_path: str) -> Dict:
         "total_chunk_tokens": 0,
         "avg_chunk_size": 0,
         "avg_chunk_tokens": 0,
+        "median_chunk_tokens": 0,  # Add median calculation
         "min_chunk_size": float('inf'),
         "max_chunk_size": 0,
         "min_chunk_tokens": float('inf'),
         "max_chunk_tokens": 0,
         "chunks_per_resource": [],
-        "processing_time": 0
+        "processing_time": 0,
+        "all_chunk_tokens": []  # Store all token counts for median calculation
     }
     
     if not LANGCHAIN_AVAILABLE or RecursiveJsonSplitter is None:
@@ -1110,10 +1112,10 @@ def process_file_recursive_json(file_path: str) -> Dict:
     
     start_time = time.time()
     
-    # Create JSON splitter
+    # Create JSON splitter with configurable sizes
     json_splitter = RecursiveJsonSplitter(
-        max_chunk_size=1000,
-        min_chunk_size=100
+        max_chunk_size=max_chunk_size,
+        min_chunk_size=min_chunk_size
     )
     
     for resource in resources:
@@ -1163,6 +1165,7 @@ def process_file_recursive_json(file_path: str) -> Dict:
             stats["total_chunks"] += len(chunks)
             stats["total_chunk_chars"] += sum(chunk_sizes)
             stats["total_chunk_tokens"] += sum(chunk_tokens)
+            stats["all_chunk_tokens"].extend(chunk_tokens)  # Store for median calculation
             stats["min_chunk_size"] = min(stats["min_chunk_size"], min(chunk_sizes))
             stats["max_chunk_size"] = max(stats["max_chunk_size"], max(chunk_sizes))
             stats["min_chunk_tokens"] = min(stats["min_chunk_tokens"], min(chunk_tokens))
@@ -1179,9 +1182,20 @@ def process_file_recursive_json(file_path: str) -> Dict:
     if stats["total_chunks"] > 0:
         stats["avg_chunk_size"] = stats["total_chunk_chars"] / stats["total_chunks"]
         stats["avg_chunk_tokens"] = stats["total_chunk_tokens"] / stats["total_chunks"]
+        # Calculate median tokens
+        sorted_tokens = sorted(stats["all_chunk_tokens"])
+        n = len(sorted_tokens)
+        if n % 2 == 0:
+            stats["median_chunk_tokens"] = (sorted_tokens[n//2 - 1] + sorted_tokens[n//2]) / 2
+        else:
+            stats["median_chunk_tokens"] = sorted_tokens[n//2]
     else:
         stats["min_chunk_size"] = 0
         stats["min_chunk_tokens"] = 0
+        stats["median_chunk_tokens"] = 0
+    
+    # Remove all_chunk_tokens from final stats to save space
+    del stats["all_chunk_tokens"]
     
     return stats
 
@@ -1624,6 +1638,155 @@ def process_file_bundle_parent_individual_children(file_path: str) -> Dict:
                 "avg_child_size": sum(counts["sizes"]) / len(counts["sizes"]) if counts["sizes"] else 0,
                 "avg_child_tokens": sum(counts["tokens"]) / len(counts["tokens"]) if counts["tokens"] else 0
             })
+    
+    stats["processing_time"] = time.time() - start_time
+    
+    if stats["total_chunks"] > 0:
+        stats["avg_chunk_size"] = stats["total_chunk_chars"] / stats["total_chunks"]
+        stats["avg_chunk_tokens"] = stats["total_chunk_tokens"] / stats["total_chunks"]
+    if stats["parent_chunks"] > 0:
+        stats["avg_parent_size"] = stats["parent_chunk_chars"] / stats["parent_chunks"]
+        stats["avg_parent_tokens"] = stats["parent_chunk_tokens"] / stats["parent_chunks"]
+    if stats["child_chunks"] > 0:
+        stats["avg_child_size"] = stats["child_chunk_chars"] / stats["child_chunks"]
+        stats["avg_child_tokens"] = stats["child_chunk_tokens"] / stats["child_chunks"]
+    else:
+        stats["min_chunk_size"] = 0
+        stats["min_chunk_tokens"] = 0
+    
+    return stats
+
+
+def process_file_bundle_parent_recursive_json_children(file_path: str, max_chunk_size: int = 1000, min_chunk_size: int = 800) -> Dict:
+    """
+    Process a file where:
+    - Parent = entire FHIR bundle (all resources combined)
+    - Children = recursive JSON chunks from individual resources using RecursiveJsonSplitter
+    """
+    bundle = load_fhir_bundle(file_path)
+    if not bundle:
+        return None
+    
+    resources = extract_resources_from_bundle(bundle)
+    patient_id = extract_patient_id(resources)
+    
+    stats = {
+        "file": os.path.basename(file_path),
+        "patient_id": patient_id,
+        "total_resources": len(resources),
+        "total_chunks": 0,
+        "parent_chunks": 0,
+        "child_chunks": 0,
+        "total_chunk_chars": 0,
+        "parent_chunk_chars": 0,
+        "child_chunk_chars": 0,
+        "total_chunk_tokens": 0,
+        "parent_chunk_tokens": 0,
+        "child_chunk_tokens": 0,
+        "avg_chunk_size": 0,
+        "avg_parent_size": 0,
+        "avg_child_size": 0,
+        "avg_chunk_tokens": 0,
+        "avg_parent_tokens": 0,
+        "avg_child_tokens": 0,
+        "min_chunk_size": float('inf'),
+        "max_chunk_size": 0,
+        "min_chunk_tokens": float('inf'),
+        "max_chunk_tokens": 0,
+        "chunks_per_resource": [],
+        "processing_time": 0
+    }
+    
+    if not LANGCHAIN_AVAILABLE or RecursiveJsonSplitter is None:
+        logger.warning("LangChain RecursiveJsonSplitter not available")
+        return stats
+    
+    if not resources:
+        return stats
+    
+    start_time = time.time()
+    
+    # Create JSON splitter for children
+    json_splitter = RecursiveJsonSplitter(
+        max_chunk_size=max_chunk_size,
+        min_chunk_size=min_chunk_size
+    )
+    
+    # Build parent document: combine ALL resources into one text
+    parent_parts = []
+    all_children = []
+    
+    for resource in resources:
+        resource_obj = resource.get("resource", {})
+        if not resource_obj:
+            continue
+        
+        # Extract content for parent
+        content = extract_content_from_resource(resource)
+        if content:
+            parent_parts.append(content)
+        
+        # Create child chunks using RecursiveJsonSplitter on the JSON
+        try:
+            resource_json = json.dumps(resource_obj, ensure_ascii=False)
+            
+            # Only split if JSON is large enough
+            if len(resource_json) < json_splitter.min_chunk_size:
+                # Too small, use as single chunk
+                child_chunks = [resource_json]
+            else:
+                try:
+                    chunks = json_splitter.split_text(resource_json)
+                    # Convert chunks to strings (handle Document objects if returned)
+                    child_chunks = []
+                    for chunk in chunks:
+                        if hasattr(chunk, 'page_content'):
+                            child_chunks.append(str(chunk.page_content))
+                        elif isinstance(chunk, str):
+                            child_chunks.append(chunk)
+                        elif isinstance(chunk, dict):
+                            child_chunks.append(json.dumps(chunk, ensure_ascii=False))
+                        else:
+                            child_chunks.append(str(chunk))
+                except (IndexError, ValueError, KeyError) as split_error:
+                    # If splitting fails, use whole JSON as one chunk
+                    logger.debug(f"JSON splitter failed for resource {resource.get('id', 'unknown')}: {split_error}")
+                    child_chunks = [resource_json]
+            
+            all_children.extend(child_chunks)
+            
+        except Exception as e:
+            logger.warning(f"Could not process resource {resource.get('id', 'unknown')}: {e}")
+            continue
+    
+    # Create parent: entire file content
+    parent_text = "\n\n".join(parent_parts)
+    all_parents = [parent_text] if parent_text else []
+    
+    if all_parents or all_children:
+        parent_sizes = [len(p) for p in all_parents]
+        child_sizes = [len(c) for c in all_children]
+        parent_tokens = [count_tokens(p) for p in all_parents]
+        child_tokens = [count_tokens(c) for c in all_children]
+        all_sizes = parent_sizes + child_sizes
+        all_tokens = parent_tokens + child_tokens
+        
+        stats["total_chunks"] = len(all_parents) + len(all_children)
+        stats["parent_chunks"] = len(all_parents)
+        stats["child_chunks"] = len(all_children)
+        stats["total_chunk_chars"] = sum(all_sizes)
+        stats["parent_chunk_chars"] = sum(parent_sizes)
+        stats["child_chunk_chars"] = sum(child_sizes)
+        stats["total_chunk_tokens"] = sum(all_tokens)
+        stats["parent_chunk_tokens"] = sum(parent_tokens)
+        stats["child_chunk_tokens"] = sum(child_tokens)
+        
+        if all_sizes:
+            stats["min_chunk_size"] = min(all_sizes)
+            stats["max_chunk_size"] = max(all_sizes)
+        if all_tokens:
+            stats["min_chunk_tokens"] = min(all_tokens)
+            stats["max_chunk_tokens"] = max(all_tokens)
     
     stats["processing_time"] = time.time() - start_time
     
@@ -2239,14 +2402,358 @@ def run_comparison_test(data_dir: str, num_files: int = 1000, output_file: str =
     logger.info("="*80)
 
 
+def run_recursive_json_size_comparison(data_dir: str, num_files: int = 10000, output_file: str = "recursive_json_size_comparison.json"):
+    """
+    Test RecursiveJsonSplitter with different max_chunk_size and min_chunk_size values.
+    
+    Original tests:
+    - max_chunk_size=500, min_chunk_size=100
+    - max_chunk_size=750, min_chunk_size=100
+    - max_chunk_size=1000, min_chunk_size=100
+    
+    Additional tests:
+    - max_chunk_size=500, min_chunk_size=300
+    - max_chunk_size=750, min_chunk_size=500
+    - max_chunk_size=1000, min_chunk_size=750
+    - max_chunk_size=1000, min_chunk_size=500
+    """
+    import statistics
+    
+    # Get list of JSON files
+    data_path = Path(data_dir)
+    json_files = list(data_path.glob("*.json"))[:num_files]
+    
+    if not json_files:
+        logger.error(f"No JSON files found in {data_dir}")
+        return
+    
+    logger.info(f"Found {len(json_files)} files to process")
+    logger.info("="*80)
+    
+    # Test configurations
+    configs = [
+        # Original tests
+        {"max_chunk_size": 500, "min_chunk_size": 100, "name": "max500_min100"},
+        {"max_chunk_size": 750, "min_chunk_size": 100, "name": "max750_min100"},
+        {"max_chunk_size": 1000, "min_chunk_size": 100, "name": "max1000_min100"},
+        # New tests with different min/max combinations
+        {"max_chunk_size": 500, "min_chunk_size": 300, "name": "max500_min300"},
+        {"max_chunk_size": 750, "min_chunk_size": 500, "name": "max750_min500"},
+        {"max_chunk_size": 1000, "min_chunk_size": 750, "name": "max1000_min750"},
+        {"max_chunk_size": 1000, "min_chunk_size": 500, "name": "max1000_min500"}
+    ]
+    
+    all_results = {}
+    
+    for config in configs:
+        logger.info(f"\n{'='*80}")
+        logger.info(f"Testing: max_chunk_size={config['max_chunk_size']}, min_chunk_size={config['min_chunk_size']}")
+        logger.info(f"{'='*80}")
+        
+        clear_caches()
+        
+        results = []
+        start_time = time.time()
+        
+        for i, file_path in enumerate(json_files, 1):
+            if i % 1000 == 0:
+                logger.info(f"  Processed {i}/{len(json_files)} files...")
+            
+            stats = process_file_recursive_json(
+                str(file_path),
+                max_chunk_size=config["max_chunk_size"],
+                min_chunk_size=config["min_chunk_size"]
+            )
+            if stats:
+                results.append(stats)
+        
+        total_time = time.time() - start_time
+        
+        # Aggregate statistics
+        if results:
+            all_chunk_tokens = []
+            for r in results:
+                # Reconstruct all chunk tokens from individual results for median calculation
+                # We'll calculate median from per-file medians (approximation)
+                # Or we can collect all tokens if we modify the function
+                pass
+            
+            # Calculate aggregate stats
+            agg = {
+                "config": config,
+                "total_files": len(results),
+                "total_resources": sum(r["total_resources"] for r in results),
+                "total_chunks": sum(r["total_chunks"] for r in results),
+                "total_chunk_chars": sum(r["total_chunk_chars"] for r in results),
+                "total_chunk_tokens": sum(r.get("total_chunk_tokens", 0) for r in results),
+                "avg_chunks_per_file": sum(r["total_chunks"] for r in results) / len(results),
+                "avg_chunk_size": 0,
+                "avg_chunk_tokens": 0,
+                "median_chunk_tokens": 0,  # Will calculate from all chunks
+                "min_chunk_size": min(r["min_chunk_size"] for r in results if r["min_chunk_size"] != float('inf')),
+                "max_chunk_size": max(r["max_chunk_size"] for r in results),
+                "min_chunk_tokens": min(r.get("min_chunk_tokens", float('inf')) for r in results if r.get("min_chunk_tokens", float('inf')) != float('inf')),
+                "max_chunk_tokens": max(r.get("max_chunk_tokens", 0) for r in results),
+                "total_processing_time": sum(r["processing_time"] for r in results),
+                "avg_processing_time_per_file": sum(r["processing_time"] for r in results) / len(results),
+                "total_wall_time": total_time
+            }
+            
+            if agg["total_chunks"] > 0:
+                agg["avg_chunk_size"] = agg["total_chunk_chars"] / agg["total_chunks"]
+                agg["avg_chunk_tokens"] = agg["total_chunk_tokens"] / agg["total_chunks"]
+            
+            # Calculate true median by collecting all token counts from chunks_per_resource
+            # This gives us a better approximation than median of medians
+            all_token_counts = []
+            for r in results:
+                # Collect token counts from chunks_per_resource (more granular than file-level)
+                for resource_info in r.get("chunks_per_resource", []):
+                    chunk_count = resource_info.get("chunk_count", 0)
+                    avg_tokens = resource_info.get("avg_chunk_tokens", 0)
+                    if chunk_count > 0 and avg_tokens > 0:
+                        # Use average tokens for each chunk in this resource
+                        # This is an approximation but better than median of medians
+                        all_token_counts.extend([avg_tokens] * chunk_count)
+            
+            # Calculate true median from all collected token counts
+            if all_token_counts:
+                sorted_tokens = sorted(all_token_counts)
+                n = len(sorted_tokens)
+                if n % 2 == 0:
+                    agg["median_chunk_tokens"] = (sorted_tokens[n//2 - 1] + sorted_tokens[n//2]) / 2
+                else:
+                    agg["median_chunk_tokens"] = sorted_tokens[n//2]
+            else:
+                # Fallback: calculate median of file-level medians
+                file_medians = [r.get("median_chunk_tokens", 0) for r in results if r.get("median_chunk_tokens", 0) > 0]
+                if file_medians:
+                    agg["median_chunk_tokens"] = statistics.median(file_medians)
+            
+            all_results[config["name"]] = {
+                "aggregate_stats": agg,
+                "total_processing_time": total_time,
+                "individual_results": results
+            }
+            
+            logger.info(f"\nResults for {config['name']}:")
+            logger.info(f"  Total chunks: {agg['total_chunks']:,}")
+            logger.info(f"  Avg chunk size: {agg['avg_chunk_size']:.1f} chars")
+            logger.info(f"  Avg chunk tokens: {agg['avg_chunk_tokens']:.1f} tokens")
+            logger.info(f"  Median chunk tokens: {agg['median_chunk_tokens']:.1f} tokens")
+            logger.info(f"  Min chunk size: {agg['min_chunk_size']} chars")
+            logger.info(f"  Max chunk size: {agg['max_chunk_size']} chars")
+            logger.info(f"  Processing time: {total_time:.2f} seconds")
+        else:
+            all_results[config["name"]] = {
+                "aggregate_stats": {},
+                "total_processing_time": total_time,
+                "individual_results": []
+            }
+    
+    # Write results
+    output_path = Path(__file__).parent / output_file
+    with open(output_path, 'w', encoding='utf-8') as f:
+        json.dump(all_results, f, indent=2, ensure_ascii=False)
+    
+    logger.info(f"\n{'='*80}")
+    logger.info("COMPARISON SUMMARY")
+    logger.info("="*80)
+    logger.info(f"Files processed: {len(json_files)}")
+    
+    for config in configs:
+        name = config["name"]
+        if name in all_results and all_results[name]["aggregate_stats"]:
+            agg = all_results[name]["aggregate_stats"]
+            logger.info(f"\n{name.upper()} (max={config['max_chunk_size']}, min={config['min_chunk_size']}):")
+            logger.info(f"  Total chunks: {agg.get('total_chunks', 0):,}")
+            logger.info(f"  Avg chunk tokens: {agg.get('avg_chunk_tokens', 0):.1f} tokens")
+            logger.info(f"  Median chunk tokens: {agg.get('median_chunk_tokens', 0):.1f} tokens")
+            logger.info(f"  Processing time: {agg.get('total_wall_time', 0):.2f} seconds")
+    
+    logger.info(f"\nResults written to: {output_path}")
+    logger.info("="*80)
+
+
+def run_bundle_parent_json_children_test(data_dir: str, num_files: int = 10000, output_file: str = "bundle_parent_json_children_results.json"):
+    """
+    Test bundle-as-parent with recursive JSON children chunking.
+    
+    Compares different min_chunk_size values:
+    - min_chunk_size=100, max_chunk_size=1000
+    - min_chunk_size=500, max_chunk_size=1000
+    - min_chunk_size=800, max_chunk_size=1000
+    
+    Strategy:
+    - Parent = entire FHIR bundle (all resources combined)
+    - Children = recursive JSON chunks with different min/max sizes
+    """
+    # Get list of JSON files
+    data_path = Path(data_dir)
+    json_files = list(data_path.glob("*.json"))[:num_files]
+    
+    if not json_files:
+        logger.error(f"No JSON files found in {data_dir}")
+        return
+    
+    logger.info(f"Found {len(json_files)} files to process")
+    logger.info("="*80)
+    
+    # Test configurations
+    configs = [
+        {"max_chunk_size": 1000, "min_chunk_size": 100, "name": "max1000_min100"},
+        {"max_chunk_size": 1000, "min_chunk_size": 500, "name": "max1000_min500"},
+        {"max_chunk_size": 1000, "min_chunk_size": 800, "name": "max1000_min800"}
+    ]
+    
+    all_results = {}
+    
+    for config in configs:
+        logger.info(f"\n{'='*80}")
+        logger.info(f"Testing: Bundle-as-Parent with RecursiveJSON Children")
+        logger.info(f"  Parent: Entire FHIR bundle (all resources combined)")
+        logger.info(f"  Children: Recursive JSON chunks (max={config['max_chunk_size']}, min={config['min_chunk_size']})")
+        logger.info(f"{'='*80}")
+        
+        clear_caches()
+        
+        results = []
+        start_time = time.time()
+        
+        for i, file_path in enumerate(json_files, 1):
+            if i % 1000 == 0:
+                logger.info(f"  Processed {i}/{len(json_files)} files...")
+            
+            stats = process_file_bundle_parent_recursive_json_children(
+                str(file_path),
+                max_chunk_size=config["max_chunk_size"],
+                min_chunk_size=config["min_chunk_size"]
+            )
+            if stats:
+                results.append(stats)
+        
+        total_time = time.time() - start_time
+        
+        # Aggregate statistics for this configuration
+        if results:
+            agg = {
+                "config": config,
+                "total_files": len(results),
+                "total_resources": sum(r["total_resources"] for r in results),
+                "total_chunks": sum(r["total_chunks"] for r in results),
+                "parent_chunks": sum(r["parent_chunks"] for r in results),
+                "child_chunks": sum(r["child_chunks"] for r in results),
+                "total_chunk_chars": sum(r["total_chunk_chars"] for r in results),
+                "parent_chunk_chars": sum(r["parent_chunk_chars"] for r in results),
+                "child_chunk_chars": sum(r["child_chunk_chars"] for r in results),
+                "total_chunk_tokens": sum(r.get("total_chunk_tokens", 0) for r in results),
+                "parent_chunk_tokens": sum(r.get("parent_chunk_tokens", 0) for r in results),
+                "child_chunk_tokens": sum(r.get("child_chunk_tokens", 0) for r in results),
+                "avg_chunks_per_file": sum(r["total_chunks"] for r in results) / len(results),
+                "avg_parents_per_file": sum(r["parent_chunks"] for r in results) / len(results),
+                "avg_children_per_file": sum(r["child_chunks"] for r in results) / len(results),
+                "avg_chunk_size": 0,
+                "avg_parent_size": 0,
+                "avg_child_size": 0,
+                "avg_chunk_tokens": 0,
+                "avg_parent_tokens": 0,
+                "avg_child_tokens": 0,
+                "min_chunk_size": min(r["min_chunk_size"] for r in results if r["min_chunk_size"] != float('inf')),
+                "max_chunk_size": max(r["max_chunk_size"] for r in results),
+                "min_chunk_tokens": min(r.get("min_chunk_tokens", float('inf')) for r in results if r.get("min_chunk_tokens", float('inf')) != float('inf')),
+                "max_chunk_tokens": max(r.get("max_chunk_tokens", 0) for r in results),
+                "total_processing_time": sum(r["processing_time"] for r in results),
+                "avg_processing_time_per_file": sum(r["processing_time"] for r in results) / len(results),
+                "total_wall_time": total_time
+            }
+            
+            if agg["total_chunks"] > 0:
+                agg["avg_chunk_size"] = agg["total_chunk_chars"] / agg["total_chunks"]
+                agg["avg_chunk_tokens"] = agg["total_chunk_tokens"] / agg["total_chunks"]
+            if agg["parent_chunks"] > 0:
+                agg["avg_parent_size"] = agg["parent_chunk_chars"] / agg["parent_chunks"]
+                agg["avg_parent_tokens"] = agg["parent_chunk_tokens"] / agg["parent_chunks"]
+            if agg["child_chunks"] > 0:
+                agg["avg_child_size"] = agg["child_chunk_chars"] / agg["child_chunks"]
+                agg["avg_child_tokens"] = agg["child_chunk_tokens"] / agg["child_chunks"]
+            
+            all_results[config["name"]] = {
+                "aggregate_stats": agg,
+                "total_processing_time": total_time,
+                "individual_results": results
+            }
+            
+            logger.info(f"\nResults for {config['name']}:")
+            logger.info(f"  Total files: {agg['total_files']:,}")
+            logger.info(f"  Total resources: {agg['total_resources']:,}")
+            logger.info(f"  Total chunks: {agg['total_chunks']:,}")
+            logger.info(f"    - Parent chunks: {agg['parent_chunks']:,} (avg {agg['avg_parents_per_file']:.1f} per file)")
+            logger.info(f"    - Child chunks: {agg['child_chunks']:,} (avg {agg['avg_children_per_file']:.1f} per file)")
+            logger.info(f"  Avg parent size: {agg['avg_parent_size']:.1f} chars ({agg['avg_parent_tokens']:.1f} tokens)")
+            logger.info(f"  Avg child size: {agg['avg_child_size']:.1f} chars ({agg['avg_child_tokens']:.1f} tokens)")
+            logger.info(f"  Min chunk size: {agg['min_chunk_size']} chars")
+            logger.info(f"  Max chunk size: {agg['max_chunk_size']} chars")
+            logger.info(f"  Processing time: {total_time:.2f} seconds")
+        else:
+            all_results[config["name"]] = {
+                "aggregate_stats": {},
+                "total_processing_time": total_time,
+                "individual_results": []
+            }
+    
+    # Write results
+    output_path = Path(__file__).parent / output_file
+    with open(output_path, 'w', encoding='utf-8') as f:
+        json.dump(all_results, f, indent=2, ensure_ascii=False)
+    
+    logger.info(f"\n{'='*80}")
+    logger.info("COMPARISON SUMMARY")
+    logger.info("="*80)
+    logger.info(f"Files processed: {len(json_files)}")
+    
+    for config in configs:
+        name = config["name"]
+        if name in all_results and all_results[name]["aggregate_stats"]:
+            agg = all_results[name]["aggregate_stats"]
+            logger.info(f"\n{name.upper()} (max={config['max_chunk_size']}, min={config['min_chunk_size']}):")
+            logger.info(f"  Total chunks: {agg.get('total_chunks', 0):,}")
+            logger.info(f"    - Parent chunks: {agg.get('parent_chunks', 0):,}")
+            logger.info(f"    - Child chunks: {agg.get('child_chunks', 0):,}")
+            logger.info(f"  Avg child size: {agg.get('avg_child_size', 0):.1f} chars ({agg.get('avg_child_tokens', 0):.1f} tokens)")
+            logger.info(f"  Avg children per file: {agg.get('avg_children_per_file', 0):.1f}")
+            logger.info(f"  Processing time: {agg.get('total_wall_time', 0):.2f} seconds")
+    
+    logger.info(f"\nResults written to: {output_path}")
+    logger.info("="*80)
+    
+    return all_results
+
+
 if __name__ == "__main__":
     import argparse
     
-    parser = argparse.ArgumentParser(description="Compare semantic vs parent-child chunking")
+    parser = argparse.ArgumentParser(description="Compare chunking methods")
     parser.add_argument("--data-dir", type=str, default="../data/fhir", help="Directory containing FHIR JSON files")
     parser.add_argument("--num-files", type=int, default=1000, help="Number of files to process")
     parser.add_argument("--output", type=str, default="chunking_comparison_results.json", help="Output file name")
+    parser.add_argument("--test", type=str, choices=["comparison", "recursive_json_sizes", "bundle_parent_json_children"], default="comparison",
+                       help="Test to run: 'comparison' for full comparison, 'recursive_json_sizes' for RecursiveJsonSplitter size tests, 'bundle_parent_json_children' for bundle parent with JSON children")
     
     args = parser.parse_args()
     
-    run_comparison_test(args.data_dir, args.num_files, args.output)
+    if args.test == "recursive_json_sizes":
+        # Use 10,000 files or all files, whichever is smaller
+        data_path = Path(args.data_dir)
+        total_files = len(list(data_path.glob("*.json")))
+        num_files = min(10000, total_files)
+        logger.info(f"Running RecursiveJsonSplitter size comparison on {num_files} files (out of {total_files} total)")
+        run_recursive_json_size_comparison(args.data_dir, num_files, "recursive_json_size_comparison.json")
+    elif args.test == "bundle_parent_json_children":
+        # Test bundle-as-parent with recursive JSON children
+        data_path = Path(args.data_dir)
+        total_files = len(list(data_path.glob("*.json")))
+        num_files = min(args.num_files, total_files)
+        logger.info(f"Running Bundle-Parent with RecursiveJSON children on {num_files} files (out of {total_files} total)")
+        run_bundle_parent_json_children_test(args.data_dir, num_files, "bundle_parent_json_children_results.json")
+    else:
+        run_comparison_test(args.data_dir, args.num_files, args.output)
