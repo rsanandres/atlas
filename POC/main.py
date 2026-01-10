@@ -64,12 +64,13 @@ else:
 
 # Try to import LangChain text splitters
 try:
-    from langchain_text_splitters import RecursiveCharacterTextSplitter
+    from langchain_text_splitters import RecursiveCharacterTextSplitter, RecursiveJsonSplitter
     LANGCHAIN_AVAILABLE = True
 except ImportError as e:
     logger.warning(f"Could not import LangChain: {e}. Using fallback chunking method.")
     LANGCHAIN_AVAILABLE = False
     RecursiveCharacterTextSplitter = None
+    RecursiveJsonSplitter = None
 
 # Download NLTK data if not already present
 try:
@@ -85,6 +86,8 @@ class ClinicalNote(BaseModel):
     resourceType: str
     content: str = Field(min_length=1)  # Ensure content is not empty
     patientId: str = Field(default="unknown", alias="patientId")
+    resourceJson: str = Field(default="", alias="resourceJson")  # Optional: original JSON for RecursiveJsonSplitter
+    sourceFile: str = Field(default="", alias="sourceFile")  # Source file path
 
 def semantic_chunking(text: str, threshold: float = 0.7):
     """
@@ -169,6 +172,88 @@ def semantic_chunking(text: str, threshold: float = 0.7):
         return sentences
     
     return chunks
+
+
+def recursive_json_chunking(
+    json_text: str,
+    max_chunk_size: int = 1000,
+    min_chunk_size: int = 500
+):
+    """
+    Chunk JSON text using RecursiveJsonSplitter.
+    
+    Args:
+        json_text: JSON string to chunk
+        max_chunk_size: Maximum size of chunks
+        min_chunk_size: Minimum size of chunks
+    
+    Returns:
+        List of chunk dictionaries
+    """
+    if not json_text or len(json_text.strip()) == 0:
+        logger.warning("Empty JSON text provided to recursive_json_chunking")
+        return []
+    
+    if not LANGCHAIN_AVAILABLE or RecursiveJsonSplitter is None:
+        logger.warning("RecursiveJsonSplitter not available, falling back to simple text splitting")
+        # Fallback: simple splitting
+        chunks = []
+        for i in range(0, len(json_text), max_chunk_size):
+            chunk_text = json_text[i:i+max_chunk_size]
+            if chunk_text.strip():
+                chunks.append({
+                    "chunk_id": f"chunk_{i // max_chunk_size}",
+                    "chunk_type": "chunk",
+                    "text": chunk_text,
+                    "chunk_size": len(chunk_text),
+                    "chunk_index": i // max_chunk_size
+                })
+        return chunks
+    
+    try:
+        # Create RecursiveJsonSplitter
+        json_splitter = RecursiveJsonSplitter(
+            max_chunk_size=max_chunk_size,
+            min_chunk_size=min_chunk_size
+        )
+        
+        # Split the JSON
+        split_chunks = json_splitter.split_text(json_text)
+        
+        # Convert to our chunk format
+        chunks = []
+        for i, chunk in enumerate(split_chunks):
+            # Handle different return types from RecursiveJsonSplitter
+            if hasattr(chunk, 'page_content'):
+                chunk_text = str(chunk.page_content)
+            elif isinstance(chunk, str):
+                chunk_text = chunk
+            elif isinstance(chunk, dict):
+                import json as json_lib
+                chunk_text = json_lib.dumps(chunk, ensure_ascii=False)
+            else:
+                chunk_text = str(chunk)
+            
+            if chunk_text.strip():
+                chunks.append({
+                    "chunk_id": f"chunk_{i}",
+                    "chunk_type": "chunk",
+                    "text": chunk_text,
+                    "chunk_size": len(chunk_text),
+                    "chunk_index": i
+                })
+        
+        return chunks
+    except Exception as e:
+        logger.error(f"Error in recursive_json_chunking: {e}")
+        # Fallback: return as single chunk
+        return [{
+            "chunk_id": "chunk_0",
+            "chunk_type": "chunk",
+            "text": json_text,
+            "chunk_size": len(json_text),
+            "chunk_index": 0
+        }]
 
 
 def parent_child_chunking(
@@ -385,11 +470,64 @@ def get_chunk_embedding(chunk_text: str):
     embeddings = get_embeddings([chunk_text])
     return embeddings[0] if embeddings and len(embeddings) > 0 else None
 
+def extract_resource_metadata(resource_json: str) -> dict:
+    """
+    Extract common metadata fields from FHIR resource JSON.
+    
+    Extracts:
+    - effectiveDate/date: When the data was recorded (varies by resource type)
+    - status: Status of the resource (varies by resource type)
+    - lastUpdated: Last update timestamp from meta field
+    
+    Returns:
+        Dictionary with extracted metadata fields (may be empty if extraction fails)
+    """
+    metadata = {}
+    if not resource_json or not resource_json.strip():
+        return metadata
+    
+    try:
+        import json
+        resource = json.loads(resource_json)
+        
+        # Extract effective date (varies by resource type)
+        if "effectiveDateTime" in resource:
+            metadata["effectiveDate"] = resource["effectiveDateTime"]
+        elif "effectivePeriod" in resource and isinstance(resource["effectivePeriod"], dict):
+            if "start" in resource["effectivePeriod"]:
+                metadata["effectiveDate"] = resource["effectivePeriod"]["start"]
+        elif "date" in resource:
+            metadata["effectiveDate"] = resource["date"]
+        elif "onsetDateTime" in resource:
+            metadata["effectiveDate"] = resource["onsetDateTime"]
+        elif "performedDateTime" in resource:
+            metadata["effectiveDate"] = resource["performedDateTime"]
+        elif "authoredOn" in resource:
+            metadata["effectiveDate"] = resource["authoredOn"]
+        elif "birthDate" in resource:
+            metadata["effectiveDate"] = resource["birthDate"]
+        
+        # Extract status if available (varies by resource type)
+        if "status" in resource:
+            metadata["status"] = resource["status"]
+        elif "clinicalStatus" in resource:
+            metadata["status"] = resource["clinicalStatus"]
+        
+        # Extract lastUpdated from meta field
+        if "meta" in resource and isinstance(resource["meta"], dict):
+            if "lastUpdated" in resource["meta"]:
+                metadata["lastUpdated"] = resource["meta"]["lastUpdated"]
+            
+    except Exception as e:
+        logger.debug(f"Could not extract metadata from JSON: {e}")
+    
+    return metadata
+
 def process_and_store(note: ClinicalNote):
     """
-    Process and store a clinical note with parent-child chunking.
+    Process and store a clinical note with RecursiveJsonSplitter chunking.
     
-    Uses hybrid LangChain + semantic chunking approach.
+    Uses RecursiveJsonSplitter with max_chunk_size=1000 and min_chunk_size=500.
     """
     try:
         logger.info(f"\n{'='*80}")
@@ -399,26 +537,60 @@ def process_and_store(note: ClinicalNote):
         logger.info(f"  Content Length: {len(note.content)} chars")
         logger.info(f"{'='*80}")
         
-        # Use parent-child chunking
-        chunk_hierarchy = parent_child_chunking(
-            note.content,
-            parent_chunk_size=2000,
-            child_chunk_size=500,
-            parent_overlap=200,
-            child_overlap=50,
-            use_semantic_for_children=True,
-            semantic_threshold=0.7
-        )
+        # Use RecursiveJsonSplitter if JSON is available, otherwise use RecursiveCharacterTextSplitter
+        if note.resourceJson and note.resourceJson.strip():
+            logger.info(f"  Using RecursiveJsonSplitter on JSON resource")
+            json_to_chunk = note.resourceJson
+            chunk_hierarchy = recursive_json_chunking(
+                json_to_chunk,
+                max_chunk_size=1000,
+                min_chunk_size=500
+            )
+        else:
+            logger.warning(f"  No JSON resource provided, using RecursiveCharacterTextSplitter on content")
+            # Fallback to RecursiveCharacterTextSplitter when JSON is not available
+            if LANGCHAIN_AVAILABLE and RecursiveCharacterTextSplitter:
+                text_splitter = RecursiveCharacterTextSplitter(
+                    chunk_size=1000,
+                    chunk_overlap=100,
+                    separators=["\n\n", "\n", ". ", " ", ""],
+                    length_function=len
+                )
+                split_chunks = text_splitter.split_text(note.content)
+                chunk_hierarchy = []
+                for i, chunk_text in enumerate(split_chunks):
+                    if chunk_text.strip():
+                        chunk_hierarchy.append({
+                            "chunk_id": f"chunk_{i}",
+                            "chunk_type": "chunk",
+                            "text": chunk_text,
+                            "chunk_size": len(chunk_text),
+                            "chunk_index": i
+                        })
+            else:
+                # Final fallback: simple splitting
+                chunk_hierarchy = []
+                for i in range(0, len(note.content), 1000):
+                    chunk_text = note.content[i:i+1000]
+                    if chunk_text.strip():
+                        chunk_hierarchy.append({
+                            "chunk_id": f"chunk_{i // 1000}",
+                            "chunk_type": "chunk",
+                            "text": chunk_text,
+                            "chunk_size": len(chunk_text),
+                            "chunk_index": i // 1000
+                        })
         
         if not chunk_hierarchy:
             logger.warning(f"No chunks created for {note.id}")
             return
         
-        # Separate parents and children
-        parents = [c for c in chunk_hierarchy if c["chunk_type"] == "parent"]
-        children = [c for c in chunk_hierarchy if c["chunk_type"] == "child"]
+        chunking_method = "RecursiveJsonSplitter" if (note.resourceJson and note.resourceJson.strip()) else "RecursiveCharacterTextSplitter"
+        logger.info(f"\nCreated {len(chunk_hierarchy)} chunks using {chunking_method}\n")
         
-        logger.info(f"\nCreated {len(parents)} parent chunks and {len(children)} child chunks\n")
+        # Extract metadata from resource JSON if available
+        resource_metadata = extract_resource_metadata(note.resourceJson) if note.resourceJson else {}
+        total_chunks = len(chunk_hierarchy)
         
         # Display and process each chunk
         for chunk in chunk_hierarchy:
@@ -433,33 +605,48 @@ def process_and_store(note: ClinicalNote):
             else:
                 embedding_info = "Embedding: Not available"
             
-            # Build metadata with parent-child info
+            # Build metadata
             metadata = {
+                # Core identifiers
                 "patientId": note.patientId,
                 "resourceId": note.id,
                 "resourceType": note.resourceType,
                 "fullUrl": note.fullUrl,
+                "sourceFile": note.sourceFile,
+                
+                # Chunk identifiers
                 "chunkId": f"{note.id}_{chunk_id}",
-                "chunkType": chunk_type,
-                "parentId": f"{note.id}_{chunk['parent_id']}" if chunk.get("parent_id") else None,
-                "childIds": [f"{note.id}_{cid}" for cid in chunk.get("child_ids", [])],
+                "chunkIndex": chunk["chunk_index"],
+                "totalChunks": total_chunks,
+                
+                # Chunk properties
                 "chunkSize": chunk["chunk_size"],
-                "chunkIndex": chunk["chunk_index"]
             }
+            
+            # Add extracted metadata from resource JSON if available
+            if "effectiveDate" in resource_metadata:
+                metadata["effectiveDate"] = resource_metadata["effectiveDate"]
+            if "status" in resource_metadata:
+                metadata["status"] = resource_metadata["status"]
+            if "lastUpdated" in resource_metadata:
+                metadata["lastUpdated"] = resource_metadata["lastUpdated"]
             
             # Display chunk details
             logger.info(f"\n{'═'*80}")
-            logger.info(f"{chunk_type.upper()} CHUNK: {chunk_id}")
+            logger.info(f"CHUNK: {chunk_id}")
             logger.info(f"{'═'*80}")
             logger.info(f"Chunk ID:      {note.id}_{chunk_id}")
-            logger.info(f"Chunk Type:    {chunk_type}")
-            if chunk.get("parent_id"):
-                logger.info(f"Parent ID:     {note.id}_{chunk['parent_id']}")
-            if chunk.get("child_ids"):
-                logger.info(f"Child IDs:     {[f'{note.id}_{cid}' for cid in chunk['child_ids']]}")
             logger.info(f"Patient ID:    {note.patientId}")
             logger.info(f"Resource ID:   {note.id}")
             logger.info(f"Resource Type: {note.resourceType}")
+            logger.info(f"Source File:   {note.sourceFile}")
+            logger.info(f"Chunk Index:   {chunk['chunk_index']} of {total_chunks}")
+            if "effectiveDate" in metadata:
+                logger.info(f"Effective Date: {metadata['effectiveDate']}")
+            if "status" in metadata:
+                logger.info(f"Status:         {metadata['status']}")
+            if "lastUpdated" in metadata:
+                logger.info(f"Last Updated:   {metadata['lastUpdated']}")
             logger.info(f"{embedding_info}")
             logger.info(f"Metadata:      {metadata}")
             logger.info(f"\n{'─'*80}")
@@ -488,8 +675,7 @@ def process_and_store(note: ClinicalNote):
             # )
         
         logger.info(f"\n✓ Completed processing {note.id}")
-        logger.info(f"  - {len(parents)} parent chunks")
-        logger.info(f"  - {len(children)} child chunks")
+        logger.info(f"  - {len(chunk_hierarchy)} chunks")
         logger.info(f"{'='*80}\n")
         
     except Exception as e:

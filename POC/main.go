@@ -75,12 +75,23 @@ func processFile(filePath string) {
 			continue
 		}
 
+		// Serialize the original resource JSON
+		resourceJSONBytes, err := json.Marshal(entry.Resource)
+		resourceJSON := ""
+		if err == nil {
+			resourceJSON = string(resourceJSONBytes)
+		} else {
+			log.Printf("  Entry %d (%s): Warning - could not serialize resource JSON: %v", i, resourceType, err)
+		}
+
 		flatData := map[string]string{
 			"id":           id,
 			"fullUrl":      entry.FullURL,
 			"resourceType": resourceType,
 			"content":      content,
-			"patientId":    patientID, // Add patient ID to all resources
+			"patientId":    patientID,    // Add patient ID to all resources
+			"resourceJson": resourceJSON, // Add original JSON for RecursiveJsonSplitter
+			"sourceFile":   filePath,     // Add source file path
 		}
 
 		sendToPipeline(flatData)
