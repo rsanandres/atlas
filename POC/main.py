@@ -19,28 +19,58 @@ except ImportError as e:
     SKLEARN_AVAILABLE = False
     cosine_similarity = None
 
-# Configuration for embeddings
+# ============================================================================
+# EMBEDDING PROVIDER CONFIGURATION
+# ============================================================================
+# TODO: When migrating to Amazon Bedrock, update EMBEDDING_PROVIDER to "bedrock"
+# Supported providers: "ollama" (current, cheaper), "bedrock" (future, production), "nomic" (fallback)
 import os
 import requests
+import json
+
+EMBEDDING_PROVIDER = os.getenv("EMBEDDING_PROVIDER", "ollama").lower()
+
+# Ollama Configuration (Current - Cheaper LLM)
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 OLLAMA_MODEL = os.getenv("OLLAMA_EMBED_MODEL", "mxbai-embed-large:latest")
-USE_OLLAMA = os.getenv("USE_OLLAMA", "true").lower() == "true"
+USE_OLLAMA = EMBEDDING_PROVIDER == "ollama"
 
-# Try to import nomic API (fallback if Ollama not used)
+# Nomic API Configuration (Fallback)
 NOMIC_API_AVAILABLE = False
-if not USE_OLLAMA:
+if EMBEDDING_PROVIDER == "nomic":
     try:
         from nomic import embed
         NOMIC_API_AVAILABLE = True
     except (ImportError, TypeError) as e:
         logger.warning(f"Could not import nomic API: {e}")
 
+# Amazon Bedrock Configuration (Future Migration)
+# TODO: Implement Bedrock embedding support
+BEDROCK_REGION = os.getenv("AWS_REGION", "us-east-1")
+BEDROCK_MODEL_ID = os.getenv("BEDROCK_EMBED_MODEL", "amazon.titan-embed-text-v1")  # Example model
+BEDROCK_AVAILABLE = False
+bedrock_runtime = None
+if EMBEDDING_PROVIDER == "bedrock":
+    try:
+        import boto3
+        # TODO: Initialize Bedrock client when implementing
+        # bedrock_runtime = boto3.client('bedrock-runtime', region_name=BEDROCK_REGION)
+        BEDROCK_AVAILABLE = True
+        logger.info(f"Bedrock embedding provider configured (not yet implemented)")
+    except ImportError as e:
+        logger.warning(f"Could not import boto3 for Bedrock: {e}")
+
 # Determine if embeddings are available
-EMBEDDINGS_AVAILABLE = USE_OLLAMA or NOMIC_API_AVAILABLE
+EMBEDDINGS_AVAILABLE = USE_OLLAMA or NOMIC_API_AVAILABLE or BEDROCK_AVAILABLE
 
 # Log embedding configuration at startup
-if USE_OLLAMA:
-    logger.info(f"Using Ollama for embeddings: {OLLAMA_BASE_URL} with model '{OLLAMA_MODEL}'")
+logger.info("="*80)
+logger.info("EMBEDDING CONFIGURATION")
+logger.info("="*80)
+logger.info(f"Provider: {EMBEDDING_PROVIDER.upper()}")
+if EMBEDDING_PROVIDER == "ollama":
+    logger.info(f"  Ollama URL: {OLLAMA_BASE_URL}")
+    logger.info(f"  Model: {OLLAMA_MODEL}")
     # Test Ollama connection
     try:
         response = requests.get(f"{OLLAMA_BASE_URL}/api/tags", timeout=5)
@@ -48,19 +78,24 @@ if USE_OLLAMA:
             models = response.json().get("models", [])
             model_names = [m.get("name", "") for m in models]
             if OLLAMA_MODEL in model_names:
-                logger.info(f"✓ Ollama model '{OLLAMA_MODEL}' is available")
+                logger.info(f"  ✓ Model '{OLLAMA_MODEL}' is available")
             else:
-                logger.warning(f"⚠ Ollama model '{OLLAMA_MODEL}' not found. Available models: {model_names}")
+                logger.warning(f"  ⚠ Model '{OLLAMA_MODEL}' not found. Available models: {model_names}")
                 logger.warning(f"  You may need to run: ollama pull {OLLAMA_MODEL}")
         else:
-            logger.warning(f"⚠ Could not connect to Ollama (status {response.status_code})")
+            logger.warning(f"  ⚠ Could not connect to Ollama (status {response.status_code})")
     except Exception as e:
-        logger.warning(f"⚠ Could not connect to Ollama: {e}")
+        logger.warning(f"  ⚠ Could not connect to Ollama: {e}")
         logger.warning("  Make sure Ollama is running: ollama serve")
-elif NOMIC_API_AVAILABLE:
-    logger.info("Using Nomic API for embeddings")
+elif EMBEDDING_PROVIDER == "bedrock":
+    logger.info(f"  Region: {BEDROCK_REGION}")
+    logger.info(f"  Model: {BEDROCK_MODEL_ID}")
+    logger.warning("  ⚠ Bedrock embeddings not yet implemented")
+elif EMBEDDING_PROVIDER == "nomic":
+    logger.info("  Using Nomic API for embeddings")
 else:
-    logger.warning("No embedding service available - will use fallback chunking")
+    logger.warning("  ⚠ Unknown embedding provider or no embedding service available")
+logger.info("="*80)
 
 # Try to import LangChain text splitters
 try:
@@ -411,55 +446,124 @@ async def ingest_note(note: ClinicalNote, background_tasks: BackgroundTasks):
 
 def get_embeddings(texts: list) -> list:
     """
-    Get embeddings for a list of texts using Ollama or Nomic API.
+    Get embeddings for a list of texts using the configured embedding provider.
+    
+    EMBEDDING PROVIDER SWITCH POINT:
+    - Current: Ollama (cheaper LLM)
+    - Future: Amazon Bedrock (production)
+    
+    To switch providers, set EMBEDDING_PROVIDER environment variable:
+    - "ollama" (default, current)
+    - "bedrock" (future)
+    - "nomic" (fallback)
     
     Args:
         texts: List of text strings to embed
     
     Returns:
-        List of embedding vectors
+        List of embedding vectors, or None if embedding fails
     """
     if not EMBEDDINGS_AVAILABLE:
         return None
     
-    if USE_OLLAMA:
-        # Use Ollama API
-        try:
-            embeddings = []
-            # Ollama can handle batch requests, but we'll do one at a time for reliability
-            for text in texts:
-                response = requests.post(
-                    f"{OLLAMA_BASE_URL}/api/embeddings",
-                    json={
-                        "model": OLLAMA_MODEL,
-                        "prompt": text
-                    },
-                    timeout=30
-                )
-                response.raise_for_status()
-                result = response.json()
-                if "embedding" in result:
-                    embeddings.append(result["embedding"])
-                else:
-                    logger.warning(f"Unexpected response format from Ollama: {result}")
-                    return None
-            
-            return embeddings
-        except requests.exceptions.RequestException as e:
-            logger.error(f"Error calling Ollama API: {e}")
-            return None
+    # ========================================================================
+    # EMBEDDING PROVIDER ROUTING
+    # ========================================================================
+    if EMBEDDING_PROVIDER == "ollama":
+        return _get_embeddings_ollama(texts)
+    elif EMBEDDING_PROVIDER == "nomic":
+        return _get_embeddings_nomic(texts)
+    elif EMBEDDING_PROVIDER == "bedrock":
+        return _get_embeddings_bedrock(texts)
     else:
-        # Use Nomic API
-        try:
-            output = embed.text(
-                texts=texts,
-                model='nomic-embed-text-v1.5',
-                task_type='search_document'
+        logger.error(f"Unknown embedding provider: {EMBEDDING_PROVIDER}")
+        return None
+
+
+def _get_embeddings_ollama(texts: list) -> list:
+    """
+    Get embeddings using Ollama API (Current - Cheaper LLM).
+    
+    TODO: When migrating to Bedrock, this function can be kept
+    as a fallback option or removed if no longer needed.
+    """
+    try:
+        embeddings = []
+        # Ollama can handle batch requests, but we'll do one at a time for reliability
+        for text in texts:
+            response = requests.post(
+                f"{OLLAMA_BASE_URL}/api/embeddings",
+                json={
+                    "model": OLLAMA_MODEL,
+                    "prompt": text
+                },
+                timeout=30
             )
-            return output['embeddings'] if output.get('embeddings') else None
-        except Exception as e:
-            logger.error(f"Error calling Nomic API: {e}")
-            return None
+            response.raise_for_status()
+            result = response.json()
+            if "embedding" in result:
+                embeddings.append(result["embedding"])
+            else:
+                logger.warning(f"Unexpected response format from Ollama: {result}")
+                return None
+        
+        return embeddings
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error calling Ollama API: {e}")
+        return None
+
+
+def _get_embeddings_nomic(texts: list) -> list:
+    """
+    Get embeddings using Nomic API (Fallback).
+    """
+    try:
+        output = embed.text(
+            texts=texts,
+            model='nomic-embed-text-v1.5',
+            task_type='search_document'
+        )
+        return output['embeddings'] if output.get('embeddings') else None
+    except Exception as e:
+        logger.error(f"Error calling Nomic API: {e}")
+        return None
+
+
+def _get_embeddings_bedrock(texts: list) -> list:
+    """
+    Get embeddings using Amazon Bedrock (Future - Production).
+    
+    TODO: Implement Bedrock embedding calls
+    TODO: Handle Bedrock-specific error cases
+    TODO: Implement batching if Bedrock supports it
+    
+    Expected Bedrock API format:
+    - Model: amazon.titan-embed-text-v1 or similar
+    - Input: text strings
+    - Output: embedding vectors
+    
+    Reference: https://docs.aws.amazon.com/bedrock/latest/userguide/embeddings.html
+    """
+    # TODO: Implement Bedrock embedding
+    logger.error("Bedrock embeddings not yet implemented")
+    return None
+    # Example implementation structure (uncomment and implement when ready):
+    # try:
+    #     embeddings = []
+    #     for text in texts:
+    #         body = json.dumps({"inputText": text})
+    #         response = bedrock_runtime.invoke_model(
+    #             modelId=BEDROCK_MODEL_ID,
+    #             body=body,
+    #             contentType="application/json",
+    #             accept="application/json"
+    #         )
+    #         result = json.loads(response['body'].read())
+    #         embeddings.append(result['embedding'])
+    #     return embeddings
+    # except Exception as e:
+    #     logger.error(f"Error calling Bedrock API: {e}")
+    #     return None
 
 
 def get_chunk_embedding(chunk_text: str):
@@ -598,7 +702,14 @@ def process_and_store(note: ClinicalNote):
             chunk_text = chunk["text"]
             chunk_type = chunk["chunk_type"]
             
-            # Get embedding
+            # ============================================================================
+            # EMBEDDING GENERATION
+            # ============================================================================
+            # This is where embeddings are generated for each chunk.
+            # The embedding provider is determined by EMBEDDING_PROVIDER env var.
+            # Current: Ollama (cheaper LLM)
+            # Future: Amazon Bedrock (set EMBEDDING_PROVIDER=bedrock)
+            # ============================================================================
             embedding = get_chunk_embedding(chunk_text)
             if embedding:
                 embedding_info = f"Embedding: {len(embedding)} dimensions"

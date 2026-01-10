@@ -154,20 +154,14 @@ The system intelligently extracts dates based on resource type:
 ### 1. JSON Structure Preservation
 FHIR resources have complex nested structures with relationships between resources. `RecursiveJsonSplitter` maintains this structure, ensuring chunks contain complete, valid JSON objects rather than arbitrary text splits.
 
-### 2. Size Optimization
-The 500-1000 character range balances:
-- **Context**: Large enough to contain meaningful medical information
-- **Precision**: Small enough for targeted retrieval
-- **Efficiency**: Optimal for embedding models and vector databases
-
-### 3. Metadata Richness
+### 2. Rich Metadata
 Comprehensive metadata enables:
 - **Filtering**: By patient, resource type, date, status
 - **Tracing**: Back to original source files
 - **Context**: Understanding chunk position within resource
 - **Temporal Queries**: Filtering by date ranges
 
-### 4. Two-Stage Processing
+### 3. Two-Stage Processing
 - **Go**: Efficient file parsing and resource extraction
 - **Python**: Rich ecosystem for NLP, chunking, and embeddings
 - **Separation**: Each tool used for its strengths
