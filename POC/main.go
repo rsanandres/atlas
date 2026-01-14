@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -23,11 +24,32 @@ type Entry struct {
 }
 
 func main() {
-	// Process a single file for testing
-	filePath := "../data/fhir/Abbott509_Aaron203_44.json"
+	// Process all JSON files in a folder
+	dataDir := "../data/fhir"
 
-	fmt.Printf("Processing: %s\n", filePath)
-	processFile(filePath)
+	fmt.Printf("Processing all JSON files in: %s\n", dataDir)
+
+	// Get all JSON files
+	files, err := filepath.Glob(filepath.Join(dataDir, "*.json"))
+	if err != nil {
+		log.Fatalf("Error reading directory: %v", err)
+	}
+
+	if len(files) == 0 {
+		log.Printf("No JSON files found in %s", dataDir)
+		return
+	}
+
+	fmt.Printf("Found %d JSON files\n\n", len(files))
+
+	// Process each file
+	for i, filePath := range files {
+		fmt.Printf("[%d/%d] Processing: %s\n", i+1, len(files), filepath.Base(filePath))
+		processFile(filePath)
+		fmt.Println() // Empty line between files
+	}
+
+	fmt.Printf("\n✓ Completed processing %d files\n", len(files))
 }
 
 func processFile(filePath string) {

@@ -7,3 +7,9 @@ data
 **/__pycache__/
 *.py[cod]
 *$py.class
+
+# Postgres data
+/postgres/postgres_data
+
+# db
+*.db

@@ -9,4 +9,5 @@ services:
       - POSTGRES_DB=${DB_NAME}
       - POSTGRES_USER=${DB_USER}
     volumes:
-      - ./postgres_data:/var/lib/postgresql/data # This saves your data even if you delete the container
+      - ./postgres_data:/var/lib/postgresql # This saves your data even if you delete the container
+    command: postgres -c 'max_connections=500'
