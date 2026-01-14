@@ -3,6 +3,7 @@ import sys
 import uuid
 import asyncio
 import json
+import urllib.request
 import time
 from dataclasses import dataclass
 from datetime import datetime
@@ -33,14 +34,17 @@ from postgres.queue_storage import (
     clear_error_logs,
 )
 
-# Search for .env file
-load_dotenv()
+# Search for .env file (repo root)
+ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+load_dotenv(dotenv_path=os.path.join(ROOT_DIR, ".env"))
 
 POSTGRES_USER = os.environ.get("DB_USER")
 POSTGRES_PASSWORD = os.environ.get("DB_PASSWORD")
 POSTGRES_HOST = os.environ.get("DB_HOST", "localhost")
 POSTGRES_PORT = os.environ.get("DB_PORT", "5432")
 POSTGRES_DB = os.environ.get("DB_NAME")
+
+RERANKER_SERVICE_URL = os.environ.get("RERANKER_SERVICE_URL", "http://localhost:8001")
 
 TABLE_NAME = "hc_ai_table"
 # mxbai-embed-large:latest produces 1024-dimensional embeddings
@@ -415,6 +419,52 @@ async def search_similar_chunks(
     except Exception as e:
         print(f"Error searching chunks: {e}")
         return []
+
+
+async def _post_json(url: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+    """Post JSON to the reranker service using standard library."""
+    data = json.dumps(payload).encode("utf-8")
+    request = urllib.request.Request(
+        url,
+        data=data,
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    return await asyncio.to_thread(_send_request, request)
+
+
+def _send_request(request: urllib.request.Request) -> Dict[str, Any]:
+    with urllib.request.urlopen(request, timeout=60) as response:
+        raw = response.read().decode("utf-8")
+        return json.loads(raw)
+
+
+async def retrieve_and_rerank(
+    query: str,
+    k_retrieve: int = 50,
+    k_return: int = 10,
+    filter_metadata: Optional[Dict[str, Any]] = None,
+) -> List[Document]:
+    """
+    Retrieve and rerank documents by calling the local reranker service.
+    """
+    payload = {
+        "query": query,
+        "k_retrieve": k_retrieve,
+        "k_return": k_return,
+        "filter_metadata": filter_metadata,
+    }
+    result = await _post_json(f"{RERANKER_SERVICE_URL}/rerank", payload)
+    docs: List[Document] = []
+    for item in result.get("results", []):
+        docs.append(
+            Document(
+                id=item.get("id"),
+                page_content=item.get("content", ""),
+                metadata=item.get("metadata", {}) or {},
+            )
+        )
+    return docs
 
 
 async def close_connections():
