@@ -11,7 +11,9 @@ import os
 from typing import Optional
 
 import pytest
+import requests
 
+from POC_agent.agent import multi_agent_graph
 from POC_agent.agent.multi_agent_graph import create_multi_agent_graph
 
 
@@ -51,11 +53,31 @@ PREDEFINED_QUERIES = {
 DEFAULT_QUERY = "medication_check"
 
 
+def _reranker_health_url() -> str:
+    base = os.getenv("RERANKER_SERVICE_URL", "http://localhost:8001/rerank")
+    if base.endswith("/rerank"):
+        return f"{base}/health"
+    return f"{base.rstrip('/')}/rerank/health"
+
+
+def _require_reranker() -> None:
+    """Fail early if reranker service is not reachable."""
+    url = _reranker_health_url()
+    try:
+        response = requests.get(url, timeout=2)
+        response.raise_for_status()
+    except Exception as exc:  # noqa: BLE001
+        pytest.fail(f"Reranker service not reachable at {url}. Start it before E2E tests. Error: {exc}")
+
+
 class TestE2EAgentFlow:
     """Test the full Researcher -> Validator pipeline."""
 
     @pytest.fixture
     def graph(self):
+        _require_reranker()
+        multi_agent_graph._RESEARCHER_AGENT = None
+        multi_agent_graph._VALIDATOR_AGENT = None
         return create_multi_agent_graph()
 
     @pytest.mark.asyncio

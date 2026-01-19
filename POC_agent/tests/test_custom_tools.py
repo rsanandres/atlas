@@ -62,7 +62,6 @@ class TestMedicalCalculators:
 
 external_enabled = os.getenv("ENABLE_EXTERNAL_API_TESTS", "false").lower() in {"1", "true", "yes"}
 
-
 @pytest.mark.skipif(not external_enabled, reason="External API tests disabled")
 @pytest.mark.asyncio
 async def test_metformin_normal_dose():
