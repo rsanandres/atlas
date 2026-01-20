@@ -1,10 +1,15 @@
-"""Load and manage agent prompts from external YAML file."""
+"""Load and manage agent prompts from external YAML file.
+
+This module loads prompts from prompts.yaml and injects appropriate fragments
+for each agent type. Fragments are reusable blocks that provide consistent
+guidance across agents (HIPAA compliance, safety rules, etc.).
+"""
 
 from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Any, Dict, Optional
 
 import yaml
 
@@ -25,29 +30,65 @@ def load_prompts(reload: bool = False) -> Dict[str, object]:
     return _prompts_cache
 
 
+def _get_fragment(fragments: Dict[str, Any], name: str) -> str:
+    """Safely get a fragment, returning empty string if not found."""
+    return str(fragments.get(name, "")).strip()
+
+
 def get_researcher_prompt(patient_id: Optional[str] = None) -> str:
-    """Get researcher system prompt, optionally with patient context."""
+    """Get researcher system prompt with all required fragments.
+
+    Injects the following fragments:
+    - hipaa_compliance: PII handling rules
+    - fhir_json_criteria: When to use include_full_json=True
+    - confidence_scoring: HIGH/MEDIUM/LOW methodology
+    - safety_reminder: Critical safety rules
+    - citation_format: Source citation format
+    - patient_context: Patient-specific context (if patient_id provided)
+    """
     prompts = load_prompts()
     base = str(prompts.get("researcher", {}).get("system_prompt", "")).strip()
-
     fragments = prompts.get("fragments", {})
-    base += "\n\n" + str(fragments.get("safety_reminder", "")).strip()
-    base += "\n\n" + str(fragments.get("citation_format", "")).strip()
 
+    # Core fragments for researcher
+    base += "\n\n" + _get_fragment(fragments, "hipaa_compliance")
+    base += "\n\n" + _get_fragment(fragments, "fhir_json_criteria")
+    base += "\n\n" + _get_fragment(fragments, "confidence_scoring")
+    base += "\n\n" + _get_fragment(fragments, "safety_reminder")
+    base += "\n\n" + _get_fragment(fragments, "citation_format")
+
+    # Patient context (with ID substitution)
     if patient_id:
-        context = str(fragments.get("patient_context", "")).format(patient_id=patient_id)
-        base += "\n\n" + context.strip()
+        context = _get_fragment(fragments, "patient_context")
+        if context:
+            context = context.format(patient_id=patient_id)
+            base += "\n\n" + context
 
     return base.strip()
 
 
 def get_validator_prompt() -> str:
-    """Get validator system prompt."""
+    """Get validator system prompt with required fragments.
+
+    Injects the following fragments:
+    - hipaa_compliance: PII handling rules
+    - safety_reminder: Critical safety rules
+    """
     prompts = load_prompts()
     base = str(prompts.get("validator", {}).get("system_prompt", "")).strip()
     fragments = prompts.get("fragments", {})
-    base += "\n\n" + str(fragments.get("safety_reminder", "")).strip()
+
+    # Core fragments for validator
+    base += "\n\n" + _get_fragment(fragments, "hipaa_compliance")
+    base += "\n\n" + _get_fragment(fragments, "safety_reminder")
+
     return base.strip()
+
+
+def get_metadata() -> Dict[str, Any]:
+    """Get metadata from prompts file (version, tool_count, etc.)."""
+    prompts = load_prompts()
+    return dict(prompts.get("metadata", {}))
 
 
 def reload_prompts() -> Dict[str, object]:
