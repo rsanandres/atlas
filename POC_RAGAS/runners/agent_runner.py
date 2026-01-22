@@ -27,23 +27,35 @@ async def run_agent_query(
     k_retrieve: Optional[int] = None,
     k_return: Optional[int] = None,
 ) -> Dict[str, Any]:
-    agent = get_agent()
-    max_iterations = int(os.getenv("AGENT_MAX_ITERATIONS", "10"))
-    state = {
-        "query": query,
-        "session_id": session_id,
-        "patient_id": patient_id,
-        "k_retrieve": k_retrieve,
-        "k_return": k_return,
-        "iteration_count": 0,
-    }
-    result = await agent.ainvoke(state, config={"recursion_limit": max_iterations})
-    response_text = result.get("final_response") or result.get("researcher_output", "")
-    return {
-        "query": query,
-        "response": response_text,
-        "sources": result.get("sources", []),
-        "tool_calls": result.get("tools_called", []),
-        "validation_result": result.get("validation_result"),
-        "raw": result,
-    }
+    try:
+        agent = get_agent()
+        max_iterations = int(os.getenv("AGENT_MAX_ITERATIONS", "10"))
+        state = {
+            "query": query,
+            "session_id": session_id,
+            "patient_id": patient_id,
+            "k_retrieve": k_retrieve,
+            "k_return": k_return,
+            "iteration_count": 0,
+        }
+        result = await agent.ainvoke(state, config={"recursion_limit": max_iterations})
+        response_text = result.get("final_response") or result.get("researcher_output", "")
+        return {
+            "query": query,
+            "response": response_text,
+            "sources": result.get("sources", []),
+            "tool_calls": result.get("tools_called", []),
+            "validation_result": result.get("validation_result"),
+            "raw": result,
+            "error": None,
+        }
+    except Exception as e:
+        return {
+            "query": query,
+            "response": "",
+            "sources": [],
+            "tool_calls": [],
+            "validation_result": None,
+            "raw": {},
+            "error": f"Error: {type(e).__name__} - {str(e)}",
+        }

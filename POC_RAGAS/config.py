@@ -27,6 +27,8 @@ class RagasConfig:
     data_dir: Path = Path(os.getenv("RAGAS_DATA_DIR", REPO_ROOT / "data" / "fhir"))
     testset_dir: Path = Path(os.getenv("RAGAS_TESTSET_DIR", Path(__file__).resolve().parent / "data" / "testsets"))
     results_dir: Path = Path(os.getenv("RAGAS_RESULTS_DIR", Path(__file__).resolve().parent / "data" / "results"))
+    checkpoint_dir: Path = Path(os.getenv("RAGAS_CHECKPOINT_DIR", Path(__file__).resolve().parent / "data" / "checkpoints"))
+    checkpoint_interval: int = int(os.getenv("RAGAS_CHECKPOINT_INTERVAL", "10"))
 
     reranker_url: str = os.getenv("RERANKER_SERVICE_URL", "http://localhost:8001")
     agent_api_url: str = os.getenv("AGENT_API_URL", "http://localhost:8002/agent/query")

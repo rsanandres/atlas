@@ -67,42 +67,59 @@ async def query_agent(payload: AgentQueryRequest) -> AgentQueryResponse:
     if not payload.query.strip():
         raise HTTPException(status_code=400, detail="Query is required.")
 
-    masked_query, _ = _pii_masker.mask_pii(payload.query)
+    try:
+        masked_query, _ = _pii_masker.mask_pii(payload.query)
 
-    store = build_store_from_env()
-    agent = get_agent()
-    max_iterations = int(os.getenv("AGENT_MAX_ITERATIONS", "10"))
-    state = {
-        "query": masked_query,
-        "session_id": payload.session_id,
-        "patient_id": payload.patient_id,
-        "k_retrieve": payload.k_retrieve,
-        "k_return": payload.k_return,
-        "iteration_count": 0,
-    }
-    result = await agent.ainvoke(state, config={"recursion_limit": max_iterations})
+        store = build_store_from_env()
+        agent = get_agent()
+        max_iterations = int(os.getenv("AGENT_MAX_ITERATIONS", "10"))
+        state = {
+            "query": masked_query,
+            "session_id": payload.session_id,
+            "patient_id": payload.patient_id,
+            "k_retrieve": payload.k_retrieve,
+            "k_return": payload.k_return,
+            "iteration_count": 0,
+        }
+        result = await agent.ainvoke(state, config={"recursion_limit": max_iterations})
 
-    response_text = result.get("final_response") or result.get("researcher_output", "")
+        response_text = result.get("final_response") or result.get("researcher_output", "")
 
-    response_text = _guard_output(response_text)
-    response_text, _ = _pii_masker.mask_pii(response_text)
+        response_text = _guard_output(response_text)
+        response_text, _ = _pii_masker.mask_pii(response_text)
 
-    tool_calls = result.get("tools_called", [])
-    sources = _build_sources(result.get("sources", []))
+        tool_calls = result.get("tools_called", [])
+        sources = _build_sources(result.get("sources", []))
 
-    store.append_turn(payload.session_id, role="user", text=masked_query, meta={"masked": True})
-    store.append_turn(payload.session_id, role="assistant", text=response_text, meta={"tool_calls": tool_calls})
+        try:
+            store.append_turn(payload.session_id, role="user", text=masked_query, meta={"masked": True})
+            store.append_turn(payload.session_id, role="assistant", text=response_text, meta={"tool_calls": tool_calls})
+        except Exception as store_error:
+            # Log store errors but don't fail the request
+            print(f"Warning: Failed to store session turn: {store_error}")
 
-    return AgentQueryResponse(
-        query=payload.query,
-        response=response_text,
-        sources=sources,
-        tool_calls=tool_calls,
-        session_id=payload.session_id,
-        validation_result=result.get("validation_result"),
-        researcher_output=result.get("researcher_output"),
-        validator_output=result.get("validator_output"),
-    )
+        return AgentQueryResponse(
+            query=payload.query,
+            response=response_text,
+            sources=sources,
+            tool_calls=tool_calls,
+            session_id=payload.session_id,
+            validation_result=result.get("validation_result"),
+            researcher_output=result.get("researcher_output"),
+            validator_output=result.get("validator_output"),
+        )
+    except Exception as e:
+        # Log the full error for debugging
+        import traceback
+        error_details = traceback.format_exc()
+        print(f"Error in agent query: {type(e).__name__}: {str(e)}")
+        print(f"Traceback: {error_details}")
+        
+        # Return a 500 with error details instead of crashing
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {type(e).__name__}: {str(e)}"
+        )
 
 
 @app.get("/agent/health")
