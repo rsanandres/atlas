@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import sys
 from pathlib import Path
 from typing import Any, Dict, Optional
@@ -88,25 +87,14 @@ async def run_api_query(
             "raw": {},
             "error": f"HTTPStatusError: {e.response.status_code} - {str(e)}",
         }
-        except Exception as e:
-            # For other exceptions, don't retry
-            return {
-                "query": query,
-                "response": "",
-                "sources": [],
-                "tool_calls": [],
-                "validation_result": None,
-                "raw": {},
-                "error": f"Error: {type(e).__name__} - {str(e)}",
-            }
-    
-    # Should never reach here, but just in case
-    return {
-        "query": query,
-        "response": "",
-        "sources": [],
-        "tool_calls": [],
-        "validation_result": None,
-        "raw": {},
-        "error": f"ConnectError: Failed to connect after {max_retries} attempts. Agent API service at {CONFIG.agent_api_url} may be down.",
-    }
+    except Exception as e:
+        # For other exceptions, return error
+        return {
+            "query": query,
+            "response": "",
+            "sources": [],
+            "tool_calls": [],
+            "validation_result": None,
+            "raw": {},
+            "error": f"Error: {type(e).__name__} - {str(e)}",
+        }

@@ -90,6 +90,36 @@ def load_latest_checkpoint() -> Optional[Dict[str, Any]]:
     return best_checkpoint["data"]
 
 
+def load_checkpoint_from_path(checkpoint_path: Path) -> Optional[Dict[str, Any]]:
+    """
+    Load checkpoint from a specific file path.
+    
+    Args:
+        checkpoint_path: Path to checkpoint file (can be relative or absolute).
+    
+    Returns:
+        Checkpoint data dict if found and valid, None otherwise.
+    """
+    # Handle relative paths - check in checkpoint_dir first, then try as-is
+    if not checkpoint_path.is_absolute():
+        # Try in checkpoint directory
+        checkpoint_file = CONFIG.checkpoint_dir / checkpoint_path
+        if not checkpoint_file.exists():
+            # Try as absolute path from checkpoint_dir
+            checkpoint_file = checkpoint_path
+    else:
+        checkpoint_file = checkpoint_path
+    
+    if not checkpoint_file.exists():
+        return None
+    
+    try:
+        data = json.loads(checkpoint_file.read_text())
+        return data
+    except (json.JSONDecodeError, IOError):
+        return None
+
+
 def should_checkpoint(completed_count: int, interval: int = None) -> bool:
     """Determine if checkpoint should be saved (every N questions)."""
     if interval is None:
