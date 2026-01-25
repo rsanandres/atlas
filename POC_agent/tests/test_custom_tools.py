@@ -58,6 +58,74 @@ class TestMedicalCalculators:
             {"age": 50, "sex": "male", "weight_kg": 80, "creatinine": 1.0}
         )
         assert result["creatinine_clearance"] > 0
+    
+    def test_bmi_edge_cases(self):
+        """Test BMI with edge cases."""
+        # Very low BMI
+        result = calculate_bmi.invoke({"weight_kg": 40, "height_cm": 180})
+        assert result["category"] == "Underweight"
+        
+        # Very high BMI
+        result = calculate_bmi.invoke({"weight_kg": 120, "height_cm": 160})
+        assert result["category"] == "Obese"
+        
+        # Invalid inputs
+        with pytest.raises(ValueError):
+            calculate_bmi.invoke({"weight_kg": -10, "height_cm": 175})
+        with pytest.raises(ValueError):
+            calculate_bmi.invoke({"weight_kg": 70, "height_cm": 0})
+    
+    def test_gfr_edge_cases(self):
+        """Test GFR with edge cases."""
+        # Very high GFR (young, healthy)
+        result = calculate_gfr.invoke({"age": 20, "sex": "male", "creatinine": 0.8})
+        assert result["gfr"] > 100
+        assert result["stage"] == "G1"
+        
+        # Very low GFR (severe CKD)
+        result = calculate_gfr.invoke({"age": 80, "sex": "female", "creatinine": 4.0})
+        assert result["gfr"] < 20
+        assert result["stage"] in ["G4", "G5"]
+        
+        # Invalid sex
+        with pytest.raises(ValueError):
+            calculate_gfr.invoke({"age": 50, "sex": "invalid", "creatinine": 1.0})
+    
+    def test_bsa_edge_cases(self):
+        """Test BSA with edge cases."""
+        # Child-sized
+        result = calculate_bsa.invoke({"weight_kg": 20, "height_cm": 100})
+        assert result["bsa"] < 1.0
+        
+        # Large adult
+        result = calculate_bsa.invoke({"weight_kg": 100, "height_cm": 200})
+        assert result["bsa"] > 2.0
+    
+    def test_creatinine_clearance_edge_cases(self):
+        """Test creatinine clearance with edge cases."""
+        # Female adjustment
+        result_female = calculate_creatinine_clearance.invoke({
+            "age": 50,
+            "sex": "female",
+            "weight_kg": 70,
+            "creatinine": 1.0,
+        })
+        result_male = calculate_creatinine_clearance.invoke({
+            "age": 50,
+            "sex": "male",
+            "weight_kg": 70,
+            "creatinine": 1.0,
+        })
+        assert result_female["creatinine_clearance"] < result_male["creatinine_clearance"]
+        
+        # Invalid inputs
+        with pytest.raises(ValueError):
+            calculate_creatinine_clearance.invoke({
+                "age": -10,
+                "sex": "male",
+                "weight_kg": 70,
+                "creatinine": 1.0,
+            })
 
 
 external_enabled = os.getenv("ENABLE_EXTERNAL_API_TESTS", "false").lower() in {"1", "true", "yes"}
