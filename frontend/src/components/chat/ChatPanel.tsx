@@ -1,7 +1,7 @@
 'use client';
 
-import { Box, Typography, IconButton, Tooltip } from '@mui/material';
-import { Trash2, Settings } from 'lucide-react';
+import { Box, Typography, IconButton, Tooltip, alpha } from '@mui/material';
+import { Trash2, Settings, Menu } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Message } from '@/types';
 import { MessageList } from './MessageList';
@@ -11,11 +11,13 @@ import { glassStyle } from '@/theme/theme';
 interface ChatPanelProps {
   messages: Message[];
   isLoading: boolean;
+  error?: string | null;
   onSend: (message: string) => void;
   onClear: () => void;
+  onOpenSessions?: () => void;
 }
 
-export function ChatPanel({ messages, isLoading, onSend, onClear }: ChatPanelProps) {
+export function ChatPanel({ messages, isLoading, error, onSend, onClear, onOpenSessions }: ChatPanelProps) {
   return (
     <motion.div
       initial={{ opacity: 0, x: -20 }}
@@ -53,7 +55,26 @@ export function ChatPanel({ messages, isLoading, onSend, onClear }: ChatPanelPro
               RAG-powered clinical assistant
             </Typography>
           </Box>
-          <Box sx={{ display: 'flex', gap: 0.5 }}>
+          <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
+            {onOpenSessions && (
+              <Tooltip title="Sessions" arrow>
+                <IconButton 
+                  size="small"
+                  onClick={onOpenSessions}
+                  sx={{ 
+                    color: 'text.secondary',
+                    transition: 'all 0.2s',
+                    '&:hover': { 
+                      color: 'primary.main',
+                      bgcolor: (theme) => alpha(theme.palette.primary.main, 0.1),
+                      transform: 'scale(1.05)',
+                    },
+                  }}
+                >
+                  <Menu size={18} strokeWidth={2} />
+                </IconButton>
+              </Tooltip>
+            )}
             <Tooltip title="Settings">
               <IconButton 
                 size="small"
@@ -85,7 +106,7 @@ export function ChatPanel({ messages, isLoading, onSend, onClear }: ChatPanelPro
         <MessageList messages={messages} />
 
         {/* Input */}
-        <ChatInput onSend={onSend} isLoading={isLoading} />
+        <ChatInput onSend={onSend} isLoading={isLoading} disabled={!!error} />
       </Box>
     </motion.div>
   );

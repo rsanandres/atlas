@@ -30,3 +30,6 @@ class AgentQueryResponse(BaseModel):
     sources: List[AgentDocument] = Field(default_factory=list)
     tool_calls: List[str] = Field(default_factory=list)
     session_id: str
+    iteration_count: Optional[int] = None
+    langsmith_run_url: Optional[str] = None
+

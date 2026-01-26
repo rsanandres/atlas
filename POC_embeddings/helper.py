@@ -672,7 +672,7 @@ async def process_and_store(note):
         logger.info(f"\n{'='*80}")
         logger.info(f"Processing Resource: {note.id}")
         logger.info(f"  Resource Type: {note.resourceType}")
-        logger.info(f"  Patient ID: {note.patientId}")
+        logger.info(f"  Patient ID: {note.patient_id}")
         logger.info(f"  Content Length: {len(note.content)} chars")
         logger.info(f"{'='*80}")
         
@@ -754,7 +754,7 @@ async def process_and_store(note):
             # Build metadata
             metadata = {
                 # Core identifiers
-                "patientId": note.patientId,
+                "patient_id": note.patient_id,
                 "resourceId": note.id,
                 "resourceType": note.resourceType,
                 "fullUrl": note.fullUrl,
@@ -778,11 +778,11 @@ async def process_and_store(note):
                 metadata["lastUpdated"] = resource_metadata["lastUpdated"]
             
             # Display chunk details
-            logger.info(f"\n{'═'*80}")
+            logger.info(f"\n{'═' * 80}")
             logger.info(f"CHUNK: {chunk_id}")
-            logger.info(f"{'═'*80}")
+            logger.info(f"{'═' * 80}")
             logger.info(f"Chunk ID:      {note.id}_{chunk_id}")
-            logger.info(f"Patient ID:    {note.patientId}")
+            logger.info(f"Patient ID:    {note.patient_id}")
             logger.info(f"Resource ID:   {note.id}")
             logger.info(f"Resource Type: {note.resourceType}")
             logger.info(f"Source File:   {note.sourceFile}")

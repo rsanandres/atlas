@@ -85,6 +85,12 @@ def get_validator_prompt() -> str:
     return base.strip()
 
 
+def get_conversational_prompt() -> str:
+    """Get conversational system prompt."""
+    prompts = load_prompts()
+    return str(prompts.get("conversational_responder", {}).get("system_prompt", "")).strip()
+
+
 def get_metadata() -> Dict[str, Any]:
     """Get metadata from prompts file (version, tool_count, etc.)."""
     prompts = load_prompts()

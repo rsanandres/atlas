@@ -6,9 +6,18 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
-import boto3
-from boto3.dynamodb.conditions import Key
-from botocore.exceptions import ClientError
+try:
+    import boto3
+    from boto3.dynamodb.conditions import Key
+    from botocore.exceptions import ClientError, NoCredentialsError
+    BOTO3_AVAILABLE = True
+except ImportError:
+    BOTO3_AVAILABLE = False
+    # Create dummy classes for type hints
+    class ClientError(Exception):
+        pass
+    class NoCredentialsError(Exception):
+        pass
 
 
 def _utc_iso() -> str:
@@ -19,6 +28,34 @@ def _ttl_epoch(ttl_days: Optional[int]) -> Optional[int]:
     if not ttl_days or ttl_days <= 0:
         return None
     return int(time.time() + ttl_days * 86400)
+
+
+def _validate_table_name(table_name: str) -> str:
+    """Validate DynamoDB table name according to AWS rules.
+    
+    Rules:
+    - Must be between 3 and 255 characters long
+    - May contain only: a-z, A-Z, 0-9, '_', '-', and '.'
+    
+    Raises ValueError if invalid.
+    """
+    if not table_name:
+        raise ValueError("Table name cannot be empty")
+    
+    if len(table_name) < 3 or len(table_name) > 255:
+        raise ValueError(
+            f"Table name '{table_name}' must be between 3 and 255 characters long "
+            f"(got {len(table_name)} characters)"
+        )
+    
+    import re
+    if not re.match(r'^[a-zA-Z0-9_.-]+$', table_name):
+        raise ValueError(
+            f"Table name '{table_name}' contains invalid characters. "
+            "Only a-z, A-Z, 0-9, '_', '-', and '.' are allowed."
+        )
+    
+    return table_name
 
 
 @dataclass
@@ -48,14 +85,40 @@ class SessionStore:
         max_recent: int = 10,
         auto_create: bool = False,
     ) -> None:
+        # Validate table names before proceeding
+        try:
+            validated_turns_table = _validate_table_name(turns_table)
+            validated_summary_table = _validate_table_name(summary_table)
+        except ValueError as e:
+            raise ValueError(f"Invalid DynamoDB table name: {e}") from e
+        
         self.region_name = region_name
-        self.turns_table_name = turns_table
-        self.summary_table_name = summary_table
+        self.turns_table_name = validated_turns_table
+        self.summary_table_name = validated_summary_table
         self.ttl_days = ttl_days
         self.max_recent = max_recent
-        self.resource = boto3.resource("dynamodb", region_name=region_name, endpoint_url=endpoint_url)
+        
+        if not BOTO3_AVAILABLE:
+            raise ImportError("boto3 is required for DynamoDB session store")
+            
+        # Initialize DynamoDB resource
+        # Use dummy credentials for local DynamoDB if endpoint_url is set
+        if endpoint_url:
+            # Local DynamoDB - use dummy credentials
+            self.resource = boto3.resource(
+                "dynamodb",
+                region_name=region_name,
+                endpoint_url=endpoint_url,
+                aws_access_key_id="dummy",
+                aws_secret_access_key="dummy",
+            )
+        else:
+            # Real AWS - use default credential chain
+            self.resource = boto3.resource("dynamodb", region_name=region_name)
+        
         self.turns_table = self.resource.Table(turns_table)
         self.summary_table = self.resource.Table(summary_table)
+        
         if auto_create:
             self.ensure_tables()
 
@@ -87,9 +150,13 @@ class SessionStore:
             attribute_definitions=[
                 {"AttributeName": "session_id", "AttributeType": "S"},
                 {"AttributeName": "sk", "AttributeType": "S"},
+                {"AttributeName": "user_id", "AttributeType": "S"},
+                {"AttributeName": "last_activity", "AttributeType": "S"},
             ],
             ttl_attribute="ttl" if self.ttl_days and self.ttl_days > 0 else None,
         )
+        # Create GSI for user_id queries
+        self._ensure_gsi(client, self.summary_table_name)
 
     def _ensure_table(
         self,
@@ -99,11 +166,25 @@ class SessionStore:
         attribute_definitions: List[Dict[str, str]],
         ttl_attribute: Optional[str] = None,
     ) -> None:
+        # Validate table name before DynamoDB operations
+        try:
+            _validate_table_name(table_name)
+        except ValueError as e:
+            raise ValueError(f"Cannot ensure table with invalid name '{table_name}': {e}") from e
+        
         try:
             client.describe_table(TableName=table_name)
             exists = True
         except client.exceptions.ResourceNotFoundException:
             exists = False
+        except ClientError as e:
+            error_code = e.response.get('Error', {}).get('Code', '')
+            if error_code == 'ValidationException':
+                raise ValueError(
+                    f"DynamoDB validation error for table '{table_name}': {e.response.get('Error', {}).get('Message', str(e))}. "
+                    f"Table name must be 3-255 characters and contain only a-z, A-Z, 0-9, '_', '-', and '.'"
+                ) from e
+            raise
 
         if not exists:
             client.create_table(
@@ -124,6 +205,42 @@ class SessionStore:
             except ClientError:
                 # If TTL already set or not permitted, ignore silently
                 pass
+
+    def _ensure_gsi(self, client, table_name: str) -> None:
+        """Ensure GSI exists for user_id queries."""
+        try:
+            table_desc = client.describe_table(TableName=table_name)
+            existing_indexes = {idx["IndexName"] for idx in table_desc.get("Table", {}).get("GlobalSecondaryIndexes", [])}
+            
+            if "user_id-index" not in existing_indexes:
+                try:
+                    client.update_table(
+                        TableName=table_name,
+                        AttributeDefinitions=[
+                            {"AttributeName": "user_id", "AttributeType": "S"},
+                            {"AttributeName": "last_activity", "AttributeType": "S"},
+                        ],
+                        GlobalSecondaryIndexUpdates=[
+                            {
+                                "Create": {
+                                    "IndexName": "user_id-index",
+                                    "KeySchema": [
+                                        {"AttributeName": "user_id", "KeyType": "HASH"},
+                                        {"AttributeName": "last_activity", "KeyType": "RANGE"},
+                                    ],
+                                    "Projection": {"ProjectionType": "ALL"},
+                                }
+                            }
+                        ],
+                    )
+                    # Wait for index to be active
+                    waiter = client.get_waiter("table_exists")
+                    waiter.wait(TableName=table_name)
+                except ClientError as e:
+                    # Index might already exist or creation failed - log but don't fail
+                    print(f"Note: Could not create GSI (may already exist): {e}")
+        except ClientError as e:
+            print(f"Note: Could not check/create GSI: {e}")
 
     # ------------------------ operations ------------------------ #
 
@@ -162,7 +279,13 @@ class SessionStore:
         # Return newest-first; callers can reverse if they prefer chronological.
         return items
 
-    def update_summary(self, session_id: str, summary: Dict[str, Any], patient_id: Optional[str] = None) -> None:
+    def update_summary(
+        self,
+        session_id: str,
+        summary: Dict[str, Any],
+        patient_id: Optional[str] = None,
+        user_id: Optional[str] = None,
+    ) -> None:
         ttl = _ttl_epoch(self.ttl_days)
         # Persist under SK=summary
         expr = ["updated_at = :updated_at"]
@@ -170,6 +293,9 @@ class SessionStore:
         if patient_id:
             expr.append("patient_id = :patient_id")
             values[":patient_id"] = patient_id
+        if user_id:
+            expr.append("user_id = :user_id")
+            values[":user_id"] = user_id
         for key, val in summary.items():
             expr.append(f"{key} = :{key}")
             values[f":{key}"] = val
@@ -220,17 +346,159 @@ class SessionStore:
             )
             items = resp.get("Items", [])
 
+    def list_sessions_by_user(self, user_id: str) -> List[Dict[str, Any]]:
+        """List all sessions for a user, sorted by last_activity (newest first)."""
+        try:
+            # Try to use GSI if available
+            resp = self.summary_table.query(
+                IndexName="user_id-index",
+                KeyConditionExpression=Key("user_id").eq(user_id),
+                FilterExpression=Key("sk").eq("summary"),
+                ScanIndexForward=False,  # Sort descending by last_activity
+            )
+        except ClientError:
+            # Fallback to scan with filter if GSI not available
+            resp = self.summary_table.scan(
+                FilterExpression=Key("sk").eq("summary") & Key("user_id").eq(user_id),
+            )
+        
+        items = resp.get("Items", [])
+        # Sort by last_activity if not already sorted
+        items.sort(key=lambda x: x.get("last_activity", x.get("updated_at", "")), reverse=True)
+        return items
+
+    def get_session_count(self, user_id: str) -> int:
+        """Count sessions for a user."""
+        try:
+            # Try to use GSI if available
+            resp = self.summary_table.query(
+                IndexName="user_id-index",
+                KeyConditionExpression=Key("user_id").eq(user_id),
+                FilterExpression=Key("sk").eq("summary"),
+                Select="COUNT",
+            )
+            return resp.get("Count", 0)
+        except ClientError:
+            # Fallback to scan with filter
+            resp = self.summary_table.scan(
+                FilterExpression=Key("sk").eq("summary") & Key("user_id").eq(user_id),
+                Select="COUNT",
+            )
+            return resp.get("Count", 0)
+
+    def get_first_message_preview(self, session_id: str, max_length: int = 100) -> Optional[str]:
+        """Get first user message for preview."""
+        try:
+            resp = self.turns_table.query(
+                KeyConditionExpression=Key("session_id").eq(session_id),
+                FilterExpression=Key("role").eq("user"),
+                ScanIndexForward=True,  # Oldest first
+                Limit=1,
+            )
+            items = resp.get("Items", [])
+            if items:
+                text = items[0].get("text", "")
+                if len(text) > max_length:
+                    return text[:max_length] + "..."
+                return text
+        except ClientError:
+            pass
+        return None
+
+    def migrate_existing_sessions(self, default_user_id: str) -> int:
+        """Assign default user_id to existing sessions without one. Returns count migrated."""
+        migrated = 0
+        try:
+            # Scan all summaries
+            resp = self.summary_table.scan(
+                FilterExpression=Key("sk").eq("summary"),
+            )
+            items = resp.get("Items", [])
+            
+            for item in items:
+                if "user_id" not in item:
+                    session_id = item.get("session_id")
+                    if session_id:
+                        # Update summary with default user_id
+                        self.update_summary(
+                            session_id=session_id,
+                            summary=item.get("summary", {}),
+                            patient_id=item.get("patient_id"),
+                            user_id=default_user_id,
+                        )
+                        migrated += 1
+            
+            # Handle pagination
+            while "LastEvaluatedKey" in resp:
+                resp = self.summary_table.scan(
+                    FilterExpression=Key("sk").eq("summary"),
+                    ExclusiveStartKey=resp["LastEvaluatedKey"],
+                )
+                items = resp.get("Items", [])
+                for item in items:
+                    if "user_id" not in item:
+                        session_id = item.get("session_id")
+                        if session_id:
+                            self.update_summary(
+                                session_id=session_id,
+                                summary=item.get("summary", {}),
+                                patient_id=item.get("patient_id"),
+                                user_id=default_user_id,
+                            )
+                            migrated += 1
+        except ClientError as e:
+            print(f"Error migrating sessions: {e}")
+        
+        return migrated
+
+
+def _clean_table_name(name: str) -> str:
+    """Clean and normalize table name from environment variable.
+    
+    Removes:
+    - Leading/trailing whitespace
+    - Quotes (single or double)
+    - Common invalid prefixes like "default "
+    """
+    if not name:
+        return name
+    
+    # Strip whitespace and quotes
+    name = name.strip().strip('"').strip("'")
+    
+    # Remove common invalid prefixes (case-insensitive)
+    prefixes_to_remove = ["default ", "default-", "default_"]
+    for prefix in prefixes_to_remove:
+        if name.lower().startswith(prefix.lower()):
+            name = name[len(prefix):]
+            break
+    
+    return name.strip()
+
 
 def build_store_from_env() -> SessionStore:
     """Factory that builds a SessionStore using environment variables."""
     region = os.getenv("AWS_REGION", "us-east-1")
-    turns_table = os.getenv("DDB_TURNS_TABLE", "hcai_session_turns")
-    summary_table = os.getenv("DDB_SUMMARY_TABLE", "hcai_session_summary")
-    endpoint = os.getenv("DDB_ENDPOINT")
+    turns_table_raw = os.getenv("DDB_TURNS_TABLE", "hcai_session_turns")
+    summary_table_raw = os.getenv("DDB_SUMMARY_TABLE", "hcai_session_summary")
+    
+    # Clean table names
+    turns_table = _clean_table_name(turns_table_raw)
+    summary_table = _clean_table_name(summary_table_raw)
+    
+    endpoint = os.getenv("DDB_ENDPOINT", "http://localhost:8000")  # Default to local DynamoDB
     ttl_days_str = os.getenv("DDB_TTL_DAYS")
     ttl_days = int(ttl_days_str) if ttl_days_str and ttl_days_str.isdigit() else None
     auto_create = os.getenv("DDB_AUTO_CREATE", "false").lower() in {"1", "true", "yes"}
     max_recent = int(os.getenv("SESSION_RECENT_LIMIT", "10"))
+    
+    # Validate table names before creating store
+    try:
+        _validate_table_name(turns_table)
+        _validate_table_name(summary_table)
+    except ValueError as e:
+        raise ValueError(f"Invalid table name in environment variables: {e}") from e
+    
     return SessionStore(
         region_name=region,
         turns_table=turns_table,

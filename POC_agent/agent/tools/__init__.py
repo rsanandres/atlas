@@ -64,7 +64,7 @@ def search_clinical_notes(
     patient_id: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
     """Search clinical notes for relevant context."""
-    filter_metadata = {"patientId": patient_id} if patient_id else None
+    filter_metadata = {"patient_id": patient_id} if patient_id else None
     return _call_reranker(query, k_retrieve, k_return, filter_metadata=filter_metadata)
 
 
@@ -75,7 +75,7 @@ def get_patient_timeline(patient_id: str, k_return: int = 20) -> Dict[str, Any]:
         query=f"patient timeline {patient_id}",
         k_retrieve=max(k_return * 3, 30),
         k_return=k_return,
-        filter_metadata={"patientId": patient_id},
+        filter_metadata={"patient_id": patient_id},
     )
 
     def _date_key(item: Dict[str, Any]) -> str:

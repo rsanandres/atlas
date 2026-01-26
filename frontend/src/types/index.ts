@@ -8,6 +8,7 @@ export interface AgentDocument {
 export interface AgentQueryRequest {
   query: string;
   session_id: string;
+  user_id?: string;
   patient_id?: string;
   k_retrieve?: number;
   k_return?: number;
@@ -16,6 +17,9 @@ export interface AgentQueryRequest {
 export interface AgentQueryResponse {
   query: string;
   response: string;
+  researcher_output?: string;
+  validator_output?: string;
+  validation_result?: string;
   sources: AgentDocument[];
   tool_calls: string[];
   session_id: string;
@@ -30,6 +34,9 @@ export interface Message {
   sources?: AgentDocument[];
   toolCalls?: string[];
   isLoading?: boolean;
+  researcherOutput?: string;
+  validatorOutput?: string;
+  validationResult?: string;
 }
 
 // Workflow Types
@@ -50,4 +57,46 @@ export interface ServiceHealth {
   status: 'healthy' | 'degraded' | 'unhealthy';
   latency?: number;
   lastChecked: Date;
+}
+
+// Session Management Types
+export interface SessionMetadata {
+  session_id: string;
+  user_id: string;
+  name?: string;
+  description?: string;
+  tags: string[];
+  created_at: string;
+  last_activity: string;
+  message_count: number;
+  first_message_preview?: string;
+}
+
+export interface SessionCreateRequest {
+  user_id: string;
+  name?: string;
+  description?: string;
+  tags?: string[];
+}
+
+export interface SessionUpdateRequest {
+  name?: string;
+  description?: string;
+  tags?: string[];
+}
+
+export interface SessionListResponse {
+  sessions: SessionMetadata[];
+  count: number;
+}
+
+export interface SessionCountResponse {
+  user_id: string;
+  count: number;
+  max_allowed: number;
+}
+
+export interface StreamEvent {
+  type: 'tool_call' | 'researcher_output' | 'validator_output' | 'final_response';
+  data: any;
 }

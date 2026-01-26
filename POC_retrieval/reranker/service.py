@@ -10,6 +10,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from langchain_core.documents import Document
 
 from .cache import InMemoryCache, build_cache_key
@@ -27,15 +28,23 @@ from .models import (
     SessionTurnRequest,
     SessionTurnResponse,
     StatsResponse,
+    SessionCreateRequest,
+    SessionUpdateRequest,
+    SessionMetadata,
+    SessionListResponse,
+    SessionCountResponse,
+    ErrorResponse,
 )
-from session.store_dynamodb import SessionStore
 
-
+# Setup path before importing from session module
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 import sys
 sys.path.insert(0, ROOT_DIR)
 from utils.env_loader import load_env_recursive
 load_env_recursive(ROOT_DIR)
+
+# Now import session after path is set
+from POC_retrieval.session.store_dynamodb import SessionStore
 
 RERANKER_MODEL = os.getenv("RERANKER_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
 RERANKER_DEVICE = os.getenv("RERANKER_DEVICE", "auto")
@@ -46,14 +55,29 @@ CACHE_MAX_SIZE = int(os.getenv("CACHE_MAX_SIZE", "10000"))
 SESSION_RECENT_LIMIT = int(os.getenv("SESSION_RECENT_LIMIT", "10"))
 
 DDB_REGION = os.getenv("AWS_REGION", "us-east-1")
-DDB_TURNS_TABLE = os.getenv("DDB_TURNS_TABLE", "hcai_session_turns")
-DDB_SUMMARY_TABLE = os.getenv("DDB_SUMMARY_TABLE", "hcai_session_summary")
-DDB_ENDPOINT = os.getenv("DDB_ENDPOINT")
+DDB_TURNS_TABLE = os.getenv("DDB_TURNS_TABLE", "hcai_session_turns").strip()
+DDB_SUMMARY_TABLE = os.getenv("DDB_SUMMARY_TABLE", "hcai_session_summary").strip()
+DDB_ENDPOINT = os.getenv("DDB_ENDPOINT", "http://localhost:8000")  # Default to local DynamoDB
 DDB_TTL_DAYS = os.getenv("DDB_TTL_DAYS")
-DDB_AUTO_CREATE = os.getenv("DDB_AUTO_CREATE", "false").lower() in {"1", "true", "yes"}
+DDB_AUTO_CREATE = os.getenv("DDB_AUTO_CREATE", "true").lower() in {"1", "true", "yes"}  # Default true for local dev
+
+# Validate table names
+if not DDB_TURNS_TABLE or len(DDB_TURNS_TABLE) < 3:
+    raise ValueError(f"Invalid DDB_TURNS_TABLE: '{DDB_TURNS_TABLE}'. Must be at least 3 characters.")
+if not DDB_SUMMARY_TABLE or len(DDB_SUMMARY_TABLE) < 3:
+    raise ValueError(f"Invalid DDB_SUMMARY_TABLE: '{DDB_SUMMARY_TABLE}'. Must be at least 3 characters.")
 
 
 app = FastAPI()
+
+# Configure CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000", "http://localhost:3001"],  # Next.js default ports
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 _reranker: Optional[Reranker] = None
 _cache: Optional[InMemoryCache] = None
@@ -215,7 +239,7 @@ async def rerank_with_context(request: RerankWithContextRequest) -> RerankWithCo
     patient_ids = []
     for item in reranked.results:
         metadata = item.metadata or {}
-        patient_id = metadata.get("patientId")
+        patient_id = metadata.get("patient_id") or metadata.get("patientId")
         if patient_id:
             patient_ids.append(str(patient_id))
     full_documents = []
@@ -290,3 +314,163 @@ def clear_session(session_id: str) -> Dict[str, str]:
     store = _get_session_store()
     store.clear_session(session_id)
     return {"status": "cleared", "session_id": session_id}
+
+
+# ---------------- Multi-session management endpoints ---------------- #
+
+import uuid
+from datetime import datetime
+
+
+@app.get("/sessions", response_model=SessionListResponse)
+def list_sessions(user_id: str) -> SessionListResponse:
+    """List all sessions for a user."""
+    store = _get_session_store()
+    sessions_data = store.list_sessions_by_user(user_id)
+    
+    sessions: List[SessionMetadata] = []
+    for item in sessions_data:
+        session_id = item.get("session_id", "")
+        first_preview = store.get_first_message_preview(session_id)
+        
+        # Count messages
+        recent = store.get_recent(session_id, limit=1000)  # Get all to count
+        message_count = len([t for t in recent if t.get("role") == "user"])
+        
+        sessions.append(
+            SessionMetadata(
+                session_id=session_id,
+                user_id=item.get("user_id", user_id),
+                name=item.get("name"),
+                description=item.get("description"),
+                tags=item.get("tags", []),
+                created_at=item.get("created_at", item.get("updated_at", datetime.utcnow().isoformat() + "Z")),
+                last_activity=item.get("last_activity", item.get("updated_at", datetime.utcnow().isoformat() + "Z")),
+                message_count=message_count,
+                first_message_preview=first_preview,
+            )
+        )
+    
+    return SessionListResponse(sessions=sessions, count=len(sessions))
+
+
+@app.get("/sessions/count", response_model=SessionCountResponse)
+def get_session_count(user_id: str) -> SessionCountResponse:
+    """Get session count for a user."""
+    store = _get_session_store()
+    count = store.get_session_count(user_id)
+    return SessionCountResponse(user_id=user_id, count=count, max_allowed=5)
+
+
+@app.post("/sessions", response_model=SessionMetadata)
+def create_session(payload: SessionCreateRequest) -> SessionMetadata:
+    """Create a new session."""
+    store = _get_session_store()
+    
+    # Check session limit
+    count = store.get_session_count(payload.user_id)
+    if count >= 5:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": "Session limit reached",
+                "code": "SESSION_LIMIT_EXCEEDED",
+                "max_sessions": 5,
+            }
+        )
+    
+    # Generate new session_id
+    session_id = str(uuid.uuid4())
+    now = datetime.utcnow().isoformat() + "Z"
+    
+    # Create summary with metadata
+    summary: Dict[str, Any] = {
+        "name": payload.name,
+        "description": payload.description,
+        "tags": payload.tags or [],
+        "created_at": now,
+        "last_activity": now,
+    }
+    
+    store.update_summary(
+        session_id=session_id,
+        summary=summary,
+        user_id=payload.user_id,
+    )
+    
+    return SessionMetadata(
+        session_id=session_id,
+        user_id=payload.user_id,
+        name=payload.name,
+        description=payload.description,
+        tags=payload.tags or [],
+        created_at=now,
+        last_activity=now,
+        message_count=0,
+        first_message_preview=None,
+    )
+
+
+@app.get("/sessions/{session_id}", response_model=SessionMetadata)
+def get_session_metadata(session_id: str) -> SessionMetadata:
+    """Get session metadata."""
+    store = _get_session_store()
+    summary = store.get_summary(session_id)
+    
+    if not summary:
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    first_preview = store.get_first_message_preview(session_id)
+    recent = store.get_recent(session_id, limit=1000)
+    message_count = len([t for t in recent if t.get("role") == "user"])
+    
+    return SessionMetadata(
+        session_id=session_id,
+        user_id=summary.get("user_id", ""),
+        name=summary.get("name"),
+        description=summary.get("description"),
+        tags=summary.get("tags", []),
+        created_at=summary.get("created_at", summary.get("updated_at", datetime.utcnow().isoformat() + "Z")),
+        last_activity=summary.get("last_activity", summary.get("updated_at", datetime.utcnow().isoformat() + "Z")),
+        message_count=message_count,
+        first_message_preview=first_preview,
+    )
+
+
+@app.put("/sessions/{session_id}", response_model=SessionMetadata)
+def update_session_metadata(session_id: str, payload: SessionUpdateRequest) -> SessionMetadata:
+    """Update session metadata."""
+    store = _get_session_store()
+    summary = store.get_summary(session_id)
+    
+    if not summary:
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    # Update only provided fields
+    updated_summary = summary.copy()
+    if payload.name is not None:
+        updated_summary["name"] = payload.name
+    if payload.description is not None:
+        updated_summary["description"] = payload.description
+    if payload.tags is not None:
+        updated_summary["tags"] = payload.tags
+    
+    updated_summary["last_activity"] = datetime.utcnow().isoformat() + "Z"
+    
+    store.update_summary(
+        session_id=session_id,
+        summary=updated_summary,
+        user_id=summary.get("user_id"),
+        patient_id=summary.get("patient_id"),
+    )
+    
+    # Return updated metadata
+    return get_session_metadata(session_id)
+
+
+@app.delete("/sessions/{session_id}")
+def delete_session(session_id: str) -> Dict[str, str]:
+    """Delete a session."""
+    store = _get_session_store()
+    store.clear_session(session_id)
+    return {"status": "deleted", "session_id": session_id}

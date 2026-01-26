@@ -53,10 +53,12 @@ def get_llm() -> Any:
     model = os.getenv("LLM_MODEL", "chevalblanc/claude-3-haiku:latest")
     base_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
     num_ctx = _int_env("LLM_NUM_CTX", 4096)
+    timeout = _int_env("LLM_TIMEOUT_SECONDS", 60) # Default 60s timeout
 
     return ChatOllama(
         model=model,
         base_url=base_url,
         temperature=temperature,
         num_ctx=num_ctx,
+        timeout=timeout,
     )

@@ -1,5 +1,6 @@
 # main.py
 from fastapi import FastAPI, BackgroundTasks, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from typing import Optional
 import logging
@@ -15,12 +16,21 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI()
 
+# Configure CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000", "http://localhost:3001"],  # Next.js default ports
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 class ClinicalNote(BaseModel):
     id: str
     fullUrl: str = Field(default="", alias="fullUrl")
     resourceType: str
     content: str = Field(min_length=1)  # Ensure content is not empty
-    patientId: str = Field(default="unknown", alias="patientId")
+    patient_id: str = Field(default="unknown", alias="patientId")
     resourceJson: str = Field(default="", alias="resourceJson")  # Optional: original JSON for RecursiveJsonSplitter
     sourceFile: str = Field(default="", alias="sourceFile")  # Source file path
 

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import math
-from typing import Dict, Optional
+from typing import Dict, Optional, Union
 
 from langchain_core.tools import tool
 
@@ -28,7 +28,7 @@ def calculate_gfr(
     sex: str,
     creatinine: float,
     race: Optional[str] = None,
-) -> Dict[str, float | str]:
+) -> Dict[str, Union[float, str]]:
     """Calculate eGFR using CKD-EPI 2021 equation (no race adjustment)."""
     sex_lower = sex.strip().lower()
     if sex_lower not in {"male", "female"}:
@@ -52,7 +52,7 @@ def calculate_gfr(
 
 
 @tool
-def calculate_bmi(weight_kg: float, height_cm: float) -> Dict[str, float | str]:
+def calculate_bmi(weight_kg: float, height_cm: float) -> Dict[str, Union[float, str]]:
     """Calculate body mass index and category."""
     if weight_kg <= 0 or height_cm <= 0:
         raise ValueError("weight_kg and height_cm must be positive.")

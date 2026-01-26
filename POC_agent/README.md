@@ -28,6 +28,33 @@ This service hosts a LangGraph ReAct agent for healthcare RAG.
 uvicorn POC_agent.service:app --reload --port 8002
 ```
 
+## Terminal CLI Interface
+
+A terminal-based chat interface is available for interactive conversations with the agent:
+
+```bash
+python POC_agent/scripts/chat_cli.py
+```
+
+Or to continue an existing session:
+
+```bash
+python POC_agent/scripts/chat_cli.py <session_id>
+```
+
+The CLI automatically:
+- Creates a new session ID if none is provided
+- Loads and injects conversation history into the agent context
+- Displays formatted responses with sources and tool usage
+- Supports session management commands
+
+**Commands:**
+- Type your question and press Enter to send
+- Type `exit`, `quit`, or `q` to exit
+- Type `clear` to clear the current session history
+
+**Note:** The agent service must be running (see above) and the session store (DynamoDB) must be configured for conversation history to work.
+
 ## Query Endpoint
 
 `POST /agent/query`

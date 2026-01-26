@@ -32,7 +32,7 @@ async def search_patient_records(
         "k_return": k_chunks,
     }
     if patient_id:
-        payload["filter_metadata"] = {"patientId": patient_id}
+        payload["filter_metadata"] = {"patient_id": patient_id}
     if include_full_json:
         payload["include_full_json"] = True
     path = "/rerank/with-context" if include_full_json else "/rerank"

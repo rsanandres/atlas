@@ -6,14 +6,18 @@ import { ChatPanel } from '@/components/chat/ChatPanel';
 import { WorkflowPanel } from '@/components/workflow/WorkflowPanel';
 import { ObservabilityPanel } from '@/components/observability/ObservabilityPanel';
 import { ConnectModal } from '@/components/lead-capture/ConnectModal';
+import { SessionSidebar } from '@/components/session/SessionSidebar';
 import { useChat } from '@/hooks/useChat';
 import { useWorkflow } from '@/hooks/useWorkflow';
 import { useObservability } from '@/hooks/useObservability';
 import { useLeadCapture } from '@/hooks/useLeadCapture';
+import { useSessions } from '@/hooks/useSessions';
 import { getMockCostBreakdown } from '@/services/mockData';
 
 export default function Home() {
-  const { messages, isLoading, sendMessage, clearChat, getLastResponse, messageCount } = useChat();
+  const { activeSessionId, switchSession } = useSessions();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { messages, isLoading, error, sendMessage, clearChat, getLastResponse, messageCount } = useChat();
   const { pipeline, lastToolCalls, isProcessing, startProcessing, updateFromResponse } = useWorkflow();
   const {
     serviceHealth,
@@ -48,15 +52,27 @@ export default function Home() {
   const lastUserMessage = messages.filter(m => m.role === 'user').pop();
   const displayQuery = lastUserMessage?.content || lastQuery;
 
+  const handleSessionSelect = (sessionId: string) => {
+    switchSession(sessionId);
+    setSidebarOpen(false);
+  };
+
   return (
     <>
+      <SessionSidebar
+        open={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        onSessionSelect={handleSessionSelect}
+      />
       <MainLayout
         chatPanel={
           <ChatPanel
             messages={messages}
             isLoading={isLoading}
+            error={error}
             onSend={handleSend}
             onClear={clearChat}
+            onOpenSessions={() => setSidebarOpen(true)}
           />
         }
         workflowPanel={

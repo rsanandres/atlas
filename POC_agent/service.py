@@ -8,6 +8,10 @@ from typing import Any, Dict, List
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import StreamingResponse
+import json
+import asyncio
+from fastapi.middleware.cors import CORSMiddleware
 
 from POC_agent.agent.graph import get_agent
 from POC_agent.agent.models import AgentDocument, AgentQueryRequest, AgentQueryResponse
@@ -26,6 +30,16 @@ from utils.env_loader import load_env_recursive
 load_env_recursive(ROOT_DIR)
 
 app = FastAPI()
+
+# Configure CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000", "http://localhost:3001"],  # Next.js default ports
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 _pii_masker = create_pii_masker()
 _guard = setup_guard()
 try:
@@ -93,7 +107,18 @@ async def query_agent(payload: AgentQueryRequest) -> AgentQueryResponse:
 
         try:
             store.append_turn(payload.session_id, role="user", text=masked_query, meta={"masked": True})
-            store.append_turn(payload.session_id, role="assistant", text=response_text, meta={"tool_calls": tool_calls})
+            store.append_turn(
+                payload.session_id,
+                role="assistant",
+                text=response_text,
+                meta={
+                    "tool_calls": tool_calls,
+                    "sources": [{"doc_id": s.doc_id, "content_preview": s.content_preview, "metadata": s.metadata} for s in sources],
+                    "researcher_output": result.get("researcher_output"),
+                    "validator_output": result.get("validator_output"),
+                    "validation_result": result.get("validation_result"),
+                }
+            )
         except Exception as store_error:
             # Log store errors but don't fail the request
             print(f"Warning: Failed to store session turn: {store_error}")
@@ -107,6 +132,7 @@ async def query_agent(payload: AgentQueryRequest) -> AgentQueryResponse:
             validation_result=result.get("validation_result"),
             researcher_output=result.get("researcher_output"),
             validator_output=result.get("validator_output"),
+            iteration_count=result.get("iteration_count"),
         )
     except Exception as e:
         # Log the full error for debugging
@@ -120,6 +146,107 @@ async def query_agent(payload: AgentQueryRequest) -> AgentQueryResponse:
             status_code=500,
             detail=f"Internal server error: {type(e).__name__}: {str(e)}"
         )
+
+
+@app.post("/agent/query/stream")
+async def query_agent_stream(payload: AgentQueryRequest):
+    """Stream agent execution progress using Server-Sent Events."""
+    
+    async def event_generator():
+        try:
+            yield f"data: {json.dumps({'type': 'start', 'message': 'Starting agent...'})}\n\n"
+            
+            masked_query, _ = _pii_masker.mask_pii(payload.query)
+            
+            store = build_store_from_env()
+            agent = get_agent()
+            max_iterations = int(os.getenv("AGENT_MAX_ITERATIONS", "10"))
+             # Ensure reload picks up new env var
+            
+            state = {
+                "query": masked_query,
+                "session_id": payload.session_id,
+                "patient_id": payload.patient_id,
+                "k_retrieve": payload.k_retrieve,
+                "k_return": payload.k_return,
+                "iteration_count": 0,
+            }
+            
+            yield f"data: {json.dumps({'type': 'status', 'message': '🔍 Researcher agent thinking...'})}\n\n"
+            
+            # Stream events from LangGraph
+            async for event in agent.astream_events(state, config={"recursion_limit": max_iterations}, version="v1"):
+                event_type = event.get("event")
+                
+                # Track node transitions
+                if event_type == "on_chain_start":
+                    name = event.get("name", "")
+                    if "researcher" in name.lower():
+                        yield f"data: {json.dumps({'type': 'status', 'message': '🔍 Researcher agent working...'})}\n\n"
+                    elif "validator" in name.lower():
+                        yield f"data: {json.dumps({'type': 'status', 'message': '✓ Validator reviewing...'})}\n\n"
+                
+                # Track tool calls
+                elif event_type == "on_tool_start":
+                    tool_name = event.get("name", "unknown")
+                    yield f"data: {json.dumps({'type': 'tool', 'tool': tool_name, 'message': f'🔧 Tool: {tool_name}'})}\n\n"
+                
+                # Track LLM responses
+                elif event_type == "on_chat_model_stream":
+                    chunk = event.get("data", {}).get("chunk", {})
+                    if hasattr(chunk, "content") and chunk.content:
+                        yield f"data: {json.dumps({'type': 'chunk', 'content': chunk.content})}\n\n"
+            
+            # Get final result
+            result = await agent.ainvoke(state, config={"recursion_limit": max_iterations})
+            
+            response_text = result.get("final_response") or result.get("researcher_output", "")
+            response_text = _guard_output(response_text)
+            response_text, _ = _pii_masker.mask_pii(response_text)
+            
+            tool_calls = result.get("tools_called", [])
+            sources = _build_sources(result.get("sources", []))
+            
+            # Store in session
+            try:
+                store.append_turn(payload.session_id, role="user", text=masked_query, meta={"masked": True})
+                store.append_turn(
+                    payload.session_id,
+                    role="assistant",
+                    text=response_text,
+                    meta={
+                        "tool_calls": tool_calls,
+                        "sources": [{"doc_id": s.doc_id, "content_preview": s.content_preview, "metadata": s.metadata} for s in sources],
+                        "researcher_output": result.get("researcher_output"),
+                        "validator_output": result.get("validator_output"),
+                        "validation_result": result.get("validation_result"),
+                    }
+                )
+            except Exception as store_error:
+                print(f"Warning: Failed to store session turn: {store_error}")
+            
+            # Send final response
+            final_data = {
+                "type": "complete",
+                "response": response_text,
+                "researcher_output": result.get("researcher_output"),
+                "validator_output": result.get("validator_output"),
+                "validation_result": result.get("validation_result"),
+                "tool_calls": tool_calls,
+                "sources": [{"doc_id": s.doc_id, "content_preview": s.content_preview} for s in sources],
+                "iteration_count": result.get("iteration_count"),
+            }
+            yield f"data: {json.dumps(final_data)}\n\n"
+            
+        except Exception as e:
+            import traceback
+            error_details = traceback.format_exc()
+            print(f"Error in streaming agent query: {type(e).__name__}: {str(e)}")
+            print(f"Traceback: {error_details}")
+            yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+    
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
+
 
 
 @app.get("/agent/health")
