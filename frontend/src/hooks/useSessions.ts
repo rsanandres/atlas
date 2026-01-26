@@ -53,7 +53,7 @@ export function useSessions() {
     try {
       // Check service health before attempting to load sessions
       try {
-        const healthUrl = `${process.env.NEXT_PUBLIC_RERANKER_URL || 'http://localhost:8001'}/rerank/health`;
+        const healthUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/retrieval/rerank/health`;
         const healthController = new AbortController();
         const healthTimeout = setTimeout(() => healthController.abort(), 3000);
         

@@ -367,7 +367,7 @@ func sendToPipeline(data map[string]string) {
 		return
 	}
 
-	resp, err := http.Post("http://localhost:8000/ingest", "application/json", bytes.NewBuffer(jsonData))
+	resp, err := http.Post("http://localhost:8000/embeddings/ingest", "application/json", bytes.NewBuffer(jsonData))
 	if err != nil {
 		log.Printf("Error sending to pipeline: %v", err)
 		return

@@ -1,6 +1,6 @@
 import { ServiceHealth } from '@/types';
 
-const EMBEDDINGS_BASE_URL = process.env.NEXT_PUBLIC_EMBEDDINGS_URL || 'http://localhost:8003';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 const HEALTH_CHECK_TIMEOUT = 5000; // 5 seconds for health checks
 
 // Fetch with timeout
@@ -37,7 +37,7 @@ export async function getEmbeddingsHealth(): Promise<ServiceHealth> {
   try {
     const start = Date.now();
     const response = await fetchWithTimeout(
-      `${EMBEDDINGS_BASE_URL}/health`,
+      `${API_BASE_URL}/embeddings/health`,
       {},
       HEALTH_CHECK_TIMEOUT
     );

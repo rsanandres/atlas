@@ -77,7 +77,7 @@ export function useChat(sessionId?: string) {
 
     // Check agent service health before sending message
     try {
-      const healthUrl = `${process.env.NEXT_PUBLIC_AGENT_URL || 'http://localhost:8002'}/agent/health`;
+      const healthUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/agent/health`;
       const healthController = new AbortController();
       const healthTimeout = setTimeout(() => healthController.abort(), 3000);
       

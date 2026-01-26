@@ -50,8 +50,8 @@ Key variables:
   - `AWS_REGION` (default `us-east-1`)
   - `DDB_TURNS_TABLE` (default `hcai_session_turns`)
   - `DDB_SUMMARY_TABLE` (default `hcai_session_summary`)
-  - `DDB_ENDPOINT` (set to `http://localhost:8000` for DynamoDB local)
+  - `DDB_ENDPOINT` (set to `http://localhost:8001` for DynamoDB local)
   - `DDB_TTL_DAYS` (optional TTL for turns/summary)
   - `DDB_AUTO_CREATE` (`true` to auto-create tables; off by default)
   - `SESSION_RECENT_LIMIT` (default `10`)
-- Local dev: `POC_retrieval/docker-compose.yml` runs DynamoDB Local on `localhost:8000`; set `DDB_ENDPOINT=http://localhost:8000` to target it.
+- Local dev: `POC_retrieval/docker-compose.yml` runs DynamoDB Local on `localhost:8001`; set `DDB_ENDPOINT=http://localhost:8001` to target it.

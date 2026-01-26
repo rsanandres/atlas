@@ -13,7 +13,7 @@ _REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
-from POC_agent.agent.graph import get_agent
+from api.agent.graph import get_agent
 from POC_RAGAS.config import REPO_ROOT
 
 

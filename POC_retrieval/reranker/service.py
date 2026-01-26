@@ -57,7 +57,7 @@ SESSION_RECENT_LIMIT = int(os.getenv("SESSION_RECENT_LIMIT", "10"))
 DDB_REGION = os.getenv("AWS_REGION", "us-east-1")
 DDB_TURNS_TABLE = os.getenv("DDB_TURNS_TABLE", "hcai_session_turns").strip()
 DDB_SUMMARY_TABLE = os.getenv("DDB_SUMMARY_TABLE", "hcai_session_summary").strip()
-DDB_ENDPOINT = os.getenv("DDB_ENDPOINT", "http://localhost:8000")  # Default to local DynamoDB
+DDB_ENDPOINT = os.getenv("DDB_ENDPOINT", "http://localhost:8001")  # Default to local DynamoDB
 DDB_TTL_DAYS = os.getenv("DDB_TTL_DAYS")
 DDB_AUTO_CREATE = os.getenv("DDB_AUTO_CREATE", "true").lower() in {"1", "true", "yes"}  # Default true for local dev
 

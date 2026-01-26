@@ -451,7 +451,7 @@ class TestOtherTools:
         
         # Set env vars before trying to use the tool
         if not original_endpoint:
-            os.environ["DDB_ENDPOINT"] = "http://localhost:8000"
+            os.environ["DDB_ENDPOINT"] = "http://localhost:8001"
         if not original_auto_create:
             os.environ["DDB_AUTO_CREATE"] = "true"
         if not original_region:

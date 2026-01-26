@@ -2,8 +2,7 @@ import { AgentQueryRequest, AgentQueryResponse, ServiceHealth } from '@/types';
 import { RerankerStats, LangSmithTrace } from '@/types/observability';
 import { getEmbeddingsHealth } from './embeddingsApi';
 
-const AGENT_BASE_URL = process.env.NEXT_PUBLIC_AGENT_URL || 'http://localhost:8002';
-const RERANKER_BASE_URL = process.env.NEXT_PUBLIC_RERANKER_URL || 'http://localhost:8001';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 const LANGSMITH_API_URL = process.env.NEXT_PUBLIC_LANGSMITH_API_URL || 'https://api.smith.langchain.com';
 const LANGSMITH_API_KEY = process.env.NEXT_PUBLIC_LANGSMITH_API_KEY;
 
@@ -131,7 +130,7 @@ export async function queryAgent(request: AgentQueryRequest): Promise<AgentQuery
       });
       
       const response = await fetchWithTimeout(
-        `${AGENT_BASE_URL}/agent/query`,
+        `${API_BASE_URL}/agent/query`,
         {
           method: 'POST',
           headers: {
@@ -178,7 +177,7 @@ export async function getAgentHealth(): Promise<ServiceHealth> {
   try {
     const start = Date.now();
     const response = await fetchWithTimeout(
-      `${AGENT_BASE_URL}/agent/health`,
+      `${API_BASE_URL}/agent/health`,
       {},
       HEALTH_CHECK_TIMEOUT
     );
@@ -218,7 +217,7 @@ export async function getRerankerHealth(): Promise<ServiceHealth> {
   try {
     const start = Date.now();
     const response = await fetchWithTimeout(
-      `${RERANKER_BASE_URL}/rerank/health`,
+      `${API_BASE_URL}/retrieval/rerank/health`,
       {},
       HEALTH_CHECK_TIMEOUT
     );
@@ -251,7 +250,7 @@ export async function getRerankerHealth(): Promise<ServiceHealth> {
 export async function getRerankerStats(): Promise<RerankerStats | null> {
   try {
     const response = await fetchWithTimeout(
-      `${RERANKER_BASE_URL}/rerank/stats`,
+      `${API_BASE_URL}/retrieval/rerank/stats`,
       {},
       HEALTH_CHECK_TIMEOUT
     );
@@ -265,7 +264,7 @@ export async function getRerankerStats(): Promise<RerankerStats | null> {
 export async function clearSession(sessionId: string): Promise<void> {
   await retryWithBackoff(async () => {
     const response = await fetchWithTimeout(
-      `${AGENT_BASE_URL}/agent/session/${sessionId}/clear`,
+      `${API_BASE_URL}/session/${sessionId}`,
       {
         method: 'POST',
       },
@@ -335,7 +334,7 @@ export async function getSessions(userId: string): Promise<SessionListResponse> 
   return retryWithBackoff(async () => {
     try {
       const response = await fetchWithTimeout(
-        `${RERANKER_BASE_URL}/sessions?user_id=${encodeURIComponent(userId)}`,
+        `${API_BASE_URL}/session/list?user_id=${encodeURIComponent(userId)}`,
         {},
         HEALTH_CHECK_TIMEOUT
       );
@@ -349,7 +348,7 @@ export async function getSessions(userId: string): Promise<SessionListResponse> 
           status: response.status,
           statusText: response.statusText,
           errorText,
-          url: `${RERANKER_BASE_URL}/sessions?user_id=${encodeURIComponent(userId)}`,
+          url: `${API_BASE_URL}/session/list?user_id=${encodeURIComponent(userId)}`,
         });
         throw error;
       }
@@ -371,7 +370,7 @@ export async function getSessions(userId: string): Promise<SessionListResponse> 
 export async function getSessionCount(userId: string): Promise<SessionCountResponse> {
   return retryWithBackoff(async () => {
     const response = await fetchWithTimeout(
-      `${RERANKER_BASE_URL}/sessions/count?user_id=${encodeURIComponent(userId)}`,
+      `${API_BASE_URL}/session/count?user_id=${encodeURIComponent(userId)}`,
       {},
       HEALTH_CHECK_TIMEOUT
     );
@@ -393,7 +392,7 @@ export async function createSession(userId: string, metadata?: Partial<SessionCr
       console.log('[createSession] Creating session:', { userId, metadata });
       
       const response = await fetchWithTimeout(
-        `${RERANKER_BASE_URL}/sessions`,
+        `${API_BASE_URL}/session/create`,
         {
           method: 'POST',
           headers: {
@@ -448,7 +447,7 @@ export async function createSession(userId: string, metadata?: Partial<SessionCr
 export async function getSessionMetadata(sessionId: string): Promise<SessionMetadata> {
   return retryWithBackoff(async () => {
     const response = await fetchWithTimeout(
-      `${RERANKER_BASE_URL}/sessions/${sessionId}`,
+      `${API_BASE_URL}/session/${sessionId}/metadata`,
       {},
       HEALTH_CHECK_TIMEOUT
     );
@@ -462,7 +461,7 @@ export async function getSessionMetadata(sessionId: string): Promise<SessionMeta
 export async function updateSessionMetadata(sessionId: string, metadata: SessionUpdateRequest): Promise<SessionMetadata> {
   return retryWithBackoff(async () => {
     const response = await fetchWithTimeout(
-      `${RERANKER_BASE_URL}/sessions/${sessionId}`,
+      `${API_BASE_URL}/session/${sessionId}/metadata`,
       {
         method: 'PUT',
         headers: {
@@ -482,7 +481,7 @@ export async function updateSessionMetadata(sessionId: string, metadata: Session
 export async function deleteSession(sessionId: string): Promise<void> {
   return retryWithBackoff(async () => {
     const response = await fetchWithTimeout(
-      `${RERANKER_BASE_URL}/sessions/${sessionId}`,
+      `${API_BASE_URL}/session/${sessionId}`,
       {
         method: 'DELETE',
       },
@@ -497,7 +496,7 @@ export async function deleteSession(sessionId: string): Promise<void> {
 export async function getSessionMessages(sessionId: string, limit: number = 50, offset: number = 0): Promise<any[]> {
   return retryWithBackoff(async () => {
     const response = await fetchWithTimeout(
-      `${RERANKER_BASE_URL}/session/${sessionId}?limit=${limit}`,
+      `${API_BASE_URL}/session/${sessionId}?limit=${limit}`,
       {},
       HEALTH_CHECK_TIMEOUT
     );
