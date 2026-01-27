@@ -27,7 +27,8 @@ def _get_reranker() -> Reranker:
 
 
 def _reranker_url(path: str) -> str:
-    # Prefer explicit reranker URL, fallback to API base
+    """Get reranker URL with path - unified API endpoint on port 8000."""
+    # Prefer explicit reranker URL, fallback to API base (unified API on port 8000)
     api_base = os.getenv("RERANKER_SERVICE_URL") or os.getenv("API_BASE_URL", "http://localhost:8000")
     api_base = api_base.rstrip("/")
     # If caller already included /retrieval, honor it
@@ -35,6 +36,7 @@ def _reranker_url(path: str) -> str:
         if path.startswith("/"):
             return f"{api_base}{path}"
         return f"{api_base}/{path}"
+    # Construct path: /retrieval/rerank or /retrieval/rerank/with-context
     if path.startswith("/"):
         return f"{api_base}/retrieval{path}"
     return f"{api_base}/retrieval/{path}"
@@ -52,21 +54,22 @@ async def search_patient_records(
     
     Args:
         query: Search query string
-        patient_id: Patient UUID in format "f1d2d1e2-4a03-43cb-8f06-f68c90e96cc8" (required for patient-specific searches)
+        patient_id: Patient UUID like "f1d2d1e2-4a03-43cb-8f06-f68c90e96cc8" (NOT an ICD-10 code!)
         k_chunks: Number of chunks to return
         include_full_json: Whether to include full document JSON
     """
+    from api.agent.tools.argument_validators import validate_patient_id
+    
     if patient_id:
-        # Validate UUID format
-        try:
-            uuid.UUID(patient_id)
-        except (ValueError, TypeError):
+        # Validate patient_id format (catches ICD-10/UUID confusion)
+        is_valid, error_msg = validate_patient_id(patient_id)
+        if not is_valid:
             return RetrievalResponse(
                 query=query,
                 chunks=[],
                 count=0,
                 success=False,
-                error=f"Invalid patient_id format. Must be a UUID like 'f1d2d1e2-4a03-43cb-8f06-f68c90e96cc8', got: {patient_id}",
+                error=error_msg,
             ).model_dump()
         payload = {
             "query": query,
@@ -125,32 +128,51 @@ async def retrieve_patient_data(
     patient_id: Optional[str] = None,
     k_retrieve: int = 50,
     k_return: int = 10,
+    use_hybrid: bool = True,
 ) -> Dict[str, Any]:
     """
-    Direct retrieval from PostgreSQL with cross-encoder reranking. No HTTP.
+    Direct retrieval from PostgreSQL with hybrid search and cross-encoder reranking.
+    
+    Uses BM25 (keyword) + semantic (vector) hybrid search for better coverage,
+    then reranks with cross-encoder for final results.
     
     Args:
         query: Search query string
-        patient_id: Patient UUID in format "f1d2d1e2-4a03-43cb-8f06-f68c90e96cc8" (required for patient-specific searches)
+        patient_id: Patient UUID like "f1d2d1e2-4a03-43cb-8f06-f68c90e96cc8" (NOT an ICD-10 code!)
         k_retrieve: Number of candidates to retrieve before reranking
         k_return: Number of results to return after reranking
+        use_hybrid: If True, use BM25+semantic hybrid search. If False, semantic only.
     """
+    from api.agent.tools.argument_validators import validate_patient_id
+    from api.database.postgres import hybrid_search, search_similar_chunks
+    
     if patient_id:
-        # Validate UUID format
-        try:
-            uuid.UUID(patient_id)
-        except (ValueError, TypeError):
+        # Validate patient_id format (catches ICD-10/UUID confusion)
+        is_valid, error_msg = validate_patient_id(patient_id)
+        if not is_valid:
             return RetrievalResponse(
                 query=query,
                 chunks=[],
                 count=0,
                 success=False,
-                error=f"Invalid patient_id format. Must be a UUID like 'f1d2d1e2-4a03-43cb-8f06-f68c90e96cc8', got: {patient_id}",
+                error=error_msg,
             ).model_dump()
         filter_metadata = {"patient_id": patient_id}
     else:
         filter_metadata = None
-    candidates = await search_similar_chunks(query, k=k_retrieve, filter_metadata=filter_metadata)
+    
+    # Use hybrid search (BM25 + semantic) or semantic-only
+    if use_hybrid:
+        candidates = await hybrid_search(
+            query, 
+            k=k_retrieve, 
+            filter_metadata=filter_metadata,
+            bm25_weight=0.3,
+            semantic_weight=0.7,
+        )
+    else:
+        candidates = await search_similar_chunks(query, k=k_retrieve, filter_metadata=filter_metadata)
+    
     if not candidates:
         return RetrievalResponse(query=query, chunks=[], count=0).model_dump()
 

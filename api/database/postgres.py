@@ -468,6 +468,178 @@ async def search_similar_chunks(
         return []
 
 
+async def hybrid_search(
+    query: str,
+    k: int = 10,
+    filter_metadata: Optional[Dict[str, Any]] = None,
+    bm25_weight: float = 0.3,
+    semantic_weight: float = 0.7,
+    bm25_k: int = 50,
+    semantic_k: int = 50,
+) -> List[Document]:
+    """
+    Hybrid search combining BM25 (keyword) and semantic (vector) search.
+    
+    This approach ensures both exact keyword matches (like ICD-10 codes)
+    and semantically similar content are retrieved.
+    
+    Args:
+        query: Search query text
+        k: Number of final results to return
+        filter_metadata: Optional metadata filters (e.g., {"patient_id": "..."})
+        bm25_weight: Weight for BM25 scores (default 0.3)
+        semantic_weight: Weight for semantic scores (default 0.7)
+        bm25_k: Number of BM25 candidates to retrieve
+        semantic_k: Number of semantic candidates to retrieve
+        
+    Returns:
+        List of Document objects sorted by combined score
+    """
+    import asyncio
+    from api.database.bm25_search import bm25_search
+    
+    # Run both searches in parallel
+    bm25_task = asyncio.create_task(
+        bm25_search(query, k=bm25_k, filter_metadata=filter_metadata)
+    )
+    semantic_task = asyncio.create_task(
+        search_similar_chunks(query, k=semantic_k, filter_metadata=filter_metadata)
+    )
+    
+    bm25_results, semantic_results = await asyncio.gather(bm25_task, semantic_task)
+    
+    # Create a dict to merge results by document ID
+    merged: Dict[str, Dict[str, Any]] = {}
+    
+    # Process BM25 results
+    if bm25_results:
+        # Normalize BM25 scores to 0-1 range
+        max_bm25 = max(
+            (doc.metadata.get("_bm25_score", 0) for doc in bm25_results),
+            default=1.0
+        )
+        max_bm25 = max_bm25 if max_bm25 > 0 else 1.0
+        
+        for doc in bm25_results:
+            doc_id = str(doc.id) if doc.id else doc.page_content[:50]
+            bm25_score = doc.metadata.get("_bm25_score", 0) / max_bm25
+            merged[doc_id] = {
+                "doc": doc,
+                "bm25_score": bm25_score,
+                "semantic_score": 0.0,
+            }
+    
+    # Process semantic results (they don't have scores by default, so use rank)
+    for rank, doc in enumerate(semantic_results):
+        doc_id = str(doc.id) if doc.id else doc.page_content[:50]
+        # Convert rank to score (higher rank = lower score, normalize to 0-1)
+        semantic_score = 1.0 - (rank / max(len(semantic_results), 1))
+        
+        if doc_id in merged:
+            merged[doc_id]["semantic_score"] = semantic_score
+        else:
+            merged[doc_id] = {
+                "doc": doc,
+                "bm25_score": 0.0,
+                "semantic_score": semantic_score,
+            }
+    
+    # Calculate combined scores and sort
+    scored_results = []
+    for doc_id, data in merged.items():
+        combined_score = (
+            bm25_weight * data["bm25_score"] +
+            semantic_weight * data["semantic_score"]
+        )
+        # Add combined score to metadata for debugging
+        doc = data["doc"]
+        doc.metadata["_hybrid_score"] = combined_score
+        doc.metadata["_bm25_component"] = data["bm25_score"]
+        doc.metadata["_semantic_component"] = data["semantic_score"]
+        scored_results.append((combined_score, doc))
+    
+    # Sort by combined score descending
+    scored_results.sort(key=lambda x: x[0], reverse=True)
+    
+    return [doc for _, doc in scored_results[:k]]
+
+
+async def get_patient_timeline(
+    patient_id: str,
+    k: int = 50,
+    resource_types: Optional[List[str]] = None,
+) -> List[Document]:
+    """
+    Get patient timeline by directly querying all chunks for a patient ID.
+    
+    Unlike vector search, this filters at the database level to ensure
+    ALL patient chunks are considered, sorted by effectiveDate.
+    
+    Args:
+        patient_id: UUID of the patient
+        k: Maximum number of results to return
+        resource_types: Optional filter for specific FHIR resource types
+        
+    Returns:
+        List of Documents sorted by effectiveDate (newest first)
+    """
+    if _engine is None:
+        await initialize_vector_store()
+    
+    if not _engine:
+        return []
+    
+    # Build query with direct patient filter
+    params: Dict[str, Any] = {"patient_id": patient_id, "k": k}
+    
+    base_sql = f"""
+        SELECT 
+            langchain_id,
+            content,
+            langchain_metadata
+        FROM "{SCHEMA_NAME}"."{TABLE_NAME}"
+        WHERE langchain_metadata->>'patientId' = :patient_id
+    """
+    
+    # Add resource type filter if specified
+    if resource_types:
+        type_list = ", ".join(f"'{t}'" for t in resource_types)
+        base_sql += f" AND langchain_metadata->>'resourceType' IN ({type_list})"
+    
+    # Sort by effectiveDate descending (newest first)
+    base_sql += """
+        ORDER BY langchain_metadata->>'effectiveDate' DESC NULLS LAST
+        LIMIT :k
+    """
+    
+    try:
+        async with _engine.begin() as conn:
+            result = await conn.execute(text(base_sql), params)
+            rows = result.fetchall()
+            
+            documents = []
+            for row in rows:
+                if hasattr(row, '_mapping'):
+                    langchain_id = row._mapping['langchain_id']
+                    content = row._mapping['content']
+                    metadata = row._mapping['langchain_metadata'] or {}
+                else:
+                    langchain_id, content, metadata = row
+                    
+                doc = Document(
+                    id=str(langchain_id),
+                    page_content=content or "",
+                    metadata=metadata if isinstance(metadata, dict) else {},
+                )
+                documents.append(doc)
+                
+            return documents
+            
+    except Exception as e:
+        print(f"Patient timeline query error: {e}")
+        return []
+
+
 async def _post_json(url: str, payload: Dict[str, Any]) -> Dict[str, Any]:
     """Post JSON to the reranker service using standard library."""
     data = json.dumps(payload).encode("utf-8")

@@ -9,6 +9,8 @@ import httpx
 from langchain_core.tools import tool
 
 from api.agent.tools.schemas import TerminologyResponse
+from api.agent.tools.argument_validators import validate_icd10_code as _validate_icd10_format
+
 _ICD10_BASE_URL = os.getenv("ICD10_API_URL", "https://clinicaltables.nlm.nih.gov/api/icd10cm/v3")
 _RXNORM_BASE_URL = os.getenv("RXNORM_API_URL", "https://rxnav.nlm.nih.gov/REST")
 
@@ -74,11 +76,18 @@ async def search_icd10(term: str, max_results: int = 10) -> Dict[str, Any]:
 
 @tool
 async def validate_icd10_code(code: str) -> Dict[str, Any]:
-    """Validate whether an ICD-10-CM code exists by searching for exact code match."""
-    if not code.strip():
+    """
+    Validate whether an ICD-10-CM code exists by searching for exact code match.
+    
+    Args:
+        code: ICD-10-CM code like 'E11.9', 'I10', 'J06.9' (NOT a patient UUID!)
+    """
+    # Validate format first
+    is_valid, error_msg = _validate_icd10_format(code)
+    if not is_valid:
         return TerminologyResponse(
             success=False,
-            error="code is required",
+            error=error_msg,
             results=[],
             count=0,
         ).model_dump()
@@ -140,7 +149,3 @@ async def lookup_rxnorm(drug_name: str) -> Dict[str, Any]:
     rxcui_list = data.get("idGroup", {}).get("rxnormId", [])
     results = [{"rxcui": rxcui} for rxcui in rxcui_list]
     return TerminologyResponse(results=results, count=len(results)).model_dump()
-
-
-
-ß

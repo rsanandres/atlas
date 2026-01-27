@@ -25,9 +25,13 @@ _pii_masker = create_pii_masker()
 
 
 def _reranker_url() -> str:
+    """Get reranker URL - unified API endpoint on port 8000."""
     url = os.getenv("RERANKER_SERVICE_URL", "http://localhost:8000/retrieval")
     if url.endswith("/rerank") or url.endswith("/rerank/with-context"):
         return url
+    # Ensure it points to /retrieval/rerank on unified API
+    if not url.endswith("/retrieval"):
+        url = url.rstrip("/") + "/retrieval"
     return f"{url.rstrip('/')}/rerank"
 
 
@@ -113,14 +117,18 @@ def search_clinical_notes(
 
 
 @tool
-def get_patient_timeline(patient_id: str, k_return: int = 20) -> Dict[str, Any]:
+async def get_patient_timeline(patient_id: str, k_return: int = 50) -> Dict[str, Any]:
     """
     Return a chronological timeline for a patient based on retrieved notes.
     
+    Queries database directly to get ALL patient chunks sorted by date.
+    
     Args:
         patient_id: Patient UUID in format "f1d2d1e2-4a03-43cb-8f06-f68c90e96cc8" (required)
-        k_return: Number of timeline events to return
+        k_return: Number of timeline events to return (max 100)
     """
+    from api.database.postgres import get_patient_timeline as db_get_timeline
+    
     # Validate UUID format
     try:
         uuid.UUID(patient_id)
@@ -132,28 +140,19 @@ def get_patient_timeline(patient_id: str, k_return: int = 20) -> Dict[str, Any]:
             error=f"Invalid patient_id format. Must be a UUID like 'f1d2d1e2-4a03-43cb-8f06-f68c90e96cc8', got: {patient_id}",
         ).model_dump()
     
-    results = _call_reranker(
-        query=f"patient timeline {patient_id}",
-        k_retrieve=max(k_return * 3, 30),
-        k_return=k_return,
-        filter_metadata={"patient_id": patient_id},
-    )
-
-    def _date_key(item: Dict[str, Any]) -> str:
-        metadata = item.get("metadata", {})
-        return str(metadata.get("effectiveDate") or metadata.get("lastUpdated") or "")
-
-    sorted_results = sorted(results, key=_date_key)
+    # Use direct DB query (not vector search) to get all patient chunks
+    results = await db_get_timeline(patient_id, k=min(k_return, 100))
+    
     return TimelineResponse(
         patient_id=patient_id,
         events=[
             ChunkResult(
-                id=str(item.get("id", "")),
-                content=str(item.get("content", "")),
-                score=float(item.get("score", 0.0)),
-                metadata=item.get("metadata", {}) or {},
+                id=str(doc.id) if doc.id else "",
+                content=_mask_content(doc.page_content),
+                score=0.0,
+                metadata=doc.metadata or {},
             )
-            for item in sorted_results
+            for doc in results
         ],
     ).model_dump()
 

@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 from typing import Any, Dict, List, Optional, TypedDict
 
-from langgraph.prebuilt import create_react_agent
+from langchain.agents import create_agent
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
 from langgraph.graph import END, StateGraph
 
@@ -13,7 +13,8 @@ from api.agent.config import get_llm
 from api.agent.prompt_loader import (
     get_researcher_prompt,
     get_validator_prompt,
-    get_conversational_prompt
+    get_conversational_prompt,
+    get_response_prompt
 )
 from api.agent.tools import (
     calculate,
@@ -62,6 +63,7 @@ class AgentState(TypedDict, total=False):
 
 _RESEARCHER_AGENT: Any = None
 _VALIDATOR_AGENT: Any = None
+_RESPONSE_AGENT: Any = None
 
 
 def _extract_tool_calls(messages: List[Any]) -> List[str]:
@@ -102,9 +104,15 @@ def _get_researcher_agent() -> Any:
             calculate,
             get_current_date,
         ]
-        _RESEARCHER_AGENT = create_react_agent(llm, tools)
+        _RESEARCHER_AGENT = create_agent(llm, tools)
     return _RESEARCHER_AGENT
 
+def _get_response_agent() -> Any:
+    global _RESPONSE_AGENT
+    if _RESPONSE_AGENT is None:
+        llm = get_llm()
+        _RESPONSE_AGENT = create_agent(llm)
+    return _RESPONSE_AGENT
 
 def _get_validator_agent() -> Any:
     global _VALIDATOR_AGENT
@@ -116,9 +124,35 @@ def _get_validator_agent() -> Any:
             lookup_rxnorm,
             get_current_date,
         ]
-        _VALIDATOR_AGENT = create_react_agent(llm, tools)
+        _VALIDATOR_AGENT = create_agent(llm, tools)
     return _VALIDATOR_AGENT
 
+
+def _clean_response(text: str) -> str:
+    """Strip internal details that shouldn't be shown to users."""
+    import re
+    
+    if not text:
+        return text
+    
+    # Remove validation YAML blocks (validation_status: PASS, issues:, etc.)
+    text = re.sub(r'\*?\*?[Vv]alidation[_ ][Ss]tatus:?\*?\*?:?\s*\w+', '', text)
+    text = re.sub(r'issues:\s*\n\s*-.*?(?=\n\n|\n[A-Z]|\Z)', '', text, flags=re.DOTALL)
+    
+    # Remove "Final Output Override: None" or similar
+    text = re.sub(r'\*?\*?Final Output Override:?\*?\*?:?\s*None\s*', '', text)
+    
+    # Remove FHIR citation placeholders like [FHIR:Observation/123]
+    text = re.sub(r'\[FHIR:\w+/\d+\]', '', text)
+    
+    # Remove PII masking explanations
+    text = re.sub(r'Please note that this response has been scrubbed for PII.*?(?=\n\n|\Z)', '', text, flags=re.DOTALL)
+    text = re.sub(r'\[PATIENT\]|\[DATE\]|\[SSN\]|\[PHONE\]|\[EMAIL\]', '', text)
+    
+    # Clean up multiple blank lines
+    text = re.sub(r'\n{3,}', '\n\n', text)
+    
+    return text.strip()
 
 def _load_conversation_history(session_id: str, limit: int = 10) -> List[Any]:
     """Load recent conversation history from session store and convert to messages."""
@@ -167,8 +201,16 @@ async def _researcher_node(state: AgentState) -> AgentState:
     messages.append(HumanMessage(content=state["query"]))
     
     # Add validator feedback if present (for revision cycles)
+    # Use HumanMessage for feedback - more salient than SystemMessage
     if state.get("validator_output"):
-        messages.append(SystemMessage(content=f"Validator feedback:\n{state['validator_output']}"))
+        messages.append(HumanMessage(
+            content=(
+                "⚠️ REVISION REQUIRED ⚠️\n\n"
+                "Your previous response was rejected. Fix ONLY these issues:\n\n"
+                f"{state['validator_output']}\n\n"
+                "Keep everything else the same. Do not rewrite the entire response."
+            )
+        ))
 
     # Add greeting instruction if this was a mixed query
     if state.get("should_acknowledge_greeting", False):
@@ -179,6 +221,13 @@ async def _researcher_node(state: AgentState) -> AgentState:
     output_messages = result.get("messages", [])
     response_text = _extract_response_text(output_messages)
 
+    # Validate non-empty response
+    if not response_text or len(response_text.strip()) < 20:
+        response_text = (
+            "ERROR: Unable to generate a complete response. "
+            "Please rephrase your question or provide more context."
+        )
+
     tools_called = (state.get("tools_called") or []) + _extract_tool_calls(output_messages)
     return {
         **state,
@@ -188,56 +237,120 @@ async def _researcher_node(state: AgentState) -> AgentState:
         "sources": state.get("sources", []),
     }
 
-
 async def _validator_node(state: AgentState) -> AgentState:
-    # CALCULATE REMAINING ATTEMPTS
+    """Validate researcher output with strictness tiers and structured parsing."""
+    from api.agent.output_schemas import parse_validator_output
+    from api.agent.guardrails.validators import validate_output
+
+    # Calculate strictness tier in Python (more reliable than LLM)
     current_iter = state.get("iteration_count", 0)
     max_iter = int(os.getenv("AGENT_MAX_ITERATIONS", "5"))
     remaining = max_iter - current_iter
 
-    # INJECT INTO PROMPT
+    if remaining > 2:
+        strictness_tier = "TIER_STRICT"
+    elif remaining > 0:
+        strictness_tier = "TIER_RELAXED"
+    else:
+        strictness_tier = "TIER_EMERGENCY"
+
+    # Run Guardrails AI validation first (if enabled)
+    researcher_output = state.get("researcher_output", "")
+    guardrails_valid, guardrails_error = validate_output(researcher_output)
+    
+    if not guardrails_valid:
+        # Auto-fail with guardrails error
+        return {
+            **state,
+            "validator_output": f"Guardrails validation failed:\n{guardrails_error}",
+            "validation_result": "FAIL",
+            "tools_called": state.get("tools_called") or [],
+            "sources": state.get("sources", []),
+        }
+
+    # Inject strictness tier into prompt
+    patient_id = state.get("patient_id") or "N/A"
     system_prompt = get_validator_prompt().format(
-        remaining_attempts=remaining
+        strictness_tier=strictness_tier,
+        patient_id=patient_id
     )
     messages = [
         SystemMessage(content=system_prompt),
         HumanMessage(
             content=(
-                "Validate the response below. If the researcher response is empty, "
-                "evaluate safety based on the user query alone.\n\n"
+                f"Validate the response below.\n\n"
+                f"STRICTNESS TIER: {strictness_tier}\n"
+                f"REMAINING ATTEMPTS: {remaining}\n\n"
                 f"User query:\n{state.get('query', '')}\n\n"
-                f"Researcher response:\n{state.get('researcher_output', '')}"
+                f"Researcher response:\n{researcher_output}"
             )
         ),
     ]
 
     agent = _get_validator_agent()
-    result = await agent.ainvoke({"messages": messages}, config={"recursion_limit": max_iterations})
+    result = await agent.ainvoke({"messages": messages}, config={"recursion_limit": max_iter})
     output_messages = result.get("messages", [])
     response_text = _extract_response_text(output_messages)
 
     tools_called = (state.get("tools_called") or []) + _extract_tool_calls(output_messages)
-    validation_result = "NEEDS_REVISION"
-    for line in response_text.splitlines():
-        if line.strip().startswith("VALIDATION_STATUS"):
-            validation_result = line.split(":", 1)[-1].strip()
-            break
+    
+    # Use structured parsing with fallback
+    parsed = parse_validator_output(response_text)
+    validation_result = parsed.validation_status
+    
+    # Handle final_output_override if provided
+    final_output = response_text
+    if parsed.final_output_override:
+        final_output = f"{response_text}\n\n---\nCORRECTED OUTPUT:\n{parsed.final_output_override}"
+        # If override is provided in TIER_EMERGENCY, auto-pass
+        if strictness_tier == "TIER_EMERGENCY":
+            validation_result = "PASS"
 
     return {
         **state,
-        "validator_output": response_text,
+        "validator_output": final_output,
         "validation_result": validation_result,
         "tools_called": tools_called,
         "sources": state.get("sources", []),
     }
 
 
-def _respond_node(state: AgentState) -> AgentState:
+async def _respond_node(state: AgentState) -> AgentState:
+    """Synthesize the researched information into a user-friendly response."""
+    max_iterations = int(os.getenv("AGENT_MAX_ITERATIONS", "10"))
+    system_prompt = get_response_prompt() or get_conversational_prompt()
+    
+    # Get the research findings
+    researcher_output = state.get("researcher_output", "")
     validation_result = state.get("validation_result", "NEEDS_REVISION")
-    if validation_result == "PASS":
-        final_response = state.get("researcher_output", "")
-    else:
-        final_response = f"{state.get('validator_output', '')}\n\nRESEARCHER_RESPONSE:\n{state.get('researcher_output', '')}"
+    validator_output = state.get("validator_output", "")
+    user_query = state.get("query", "")
+    
+    # Build messages for response synthesis - only include what user needs to see
+    messages = [
+        SystemMessage(content=system_prompt),
+        HumanMessage(
+            content=(
+                f"User's question: {user_query}\n\n"
+                f"Research findings:\n{researcher_output}\n\n"
+                "Synthesize these findings into a clear, conversational response for the user."
+            )
+        ),
+    ]
+    
+    # Use response agent to synthesize
+    agent = _get_response_agent()
+    result = await agent.ainvoke({"messages": messages}, config={"recursion_limit": max_iterations})
+    output_messages = result.get("messages", [])
+    final_response = _extract_response_text(output_messages)
+    
+    # Fallback to researcher output if synthesis fails
+    if not final_response or len(final_response.strip()) < 10:
+        final_response = researcher_output
+    
+    # Clean up any internal details that leaked through
+    final_response = _clean_response(final_response)
+    
     return {**state, "final_response": final_response}
 
 
@@ -316,37 +429,40 @@ def _route_after_classification(state: AgentState) -> str:
 
 
 def _route_after_validation(state: AgentState) -> str:
+    """Route based on validation result.
+    
+    - PASS: Go to respond (good answer)
+    - FAIL/NEEDS_REVISION: Retry with researcher (up to max iterations)
+    - Max iterations: Force respond even if not perfect
+    """
     validation_result = state.get("validation_result", "NEEDS_REVISION")
-    query_type = state.get("query_type", "medical")
+    iteration_count = state.get("iteration_count", 0)
+    max_iterations = int(os.getenv("AGENT_MAX_ITERATIONS", "5"))
     
-    # Conversational queries skip validation (already handled, but safety check)
-    if query_type == "conversational":
-        return "respond"
-        
-    if validation_result in {"PASS", "FAIL"}:
+    # Conversational queries skip validation (safety check)
+    if state.get("query_type") == "conversational":
         return "respond"
     
-    # Strict limit on iterations
-    max_revisions = int(os.getenv("AGENT_MAX_ITERATIONS", "3"))
-    if state.get("iteration_count", 0) >= max_revisions:
+    # PASS = validated answer, go to respond
+    if validation_result == "PASS":
         return "respond"
-        
+    
+    # Hit max iterations, force respond with whatever we have
+    if iteration_count >= max_iterations:
+        return "respond"
+    
+    # FAIL or NEEDS_REVISION = retry with researcher
+    # Researcher will receive validator_output as feedback (lines 177-187)
     return "researcher"
 
 
 def create_multi_agent_graph():
     graph = StateGraph(AgentState)
-    graph.add_node("classify_query", _classify_node)
-    graph.add_node("conversational_responder", _conversational_responder_node)
     graph.add_node("researcher", _researcher_node)
     graph.add_node("validator", _validator_node)
     graph.add_node("respond", _respond_node)
 
-    graph.set_entry_point("classify_query")
-    graph.add_conditional_edges("classify_query", _route_after_classification)
-    
-    graph.add_edge("conversational_responder", END)
-    
+    graph.set_entry_point("researcher")
     graph.add_edge("researcher", "validator")
     graph.add_conditional_edges("validator", _route_after_validation)
     graph.add_edge("respond", END)
