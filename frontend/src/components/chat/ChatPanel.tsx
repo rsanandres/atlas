@@ -131,15 +131,13 @@ export function ChatPanel({
         {/* Messages */}
         <MessageList messages={messages} debugMode={debugMode} />
 
-        {/* Thinking Panel (Debug Mode) */}
+        {/* Thinking Panel (Debug Mode) - persists after completion to show progress */}
         {debugMode && streamingState && (
           <ThinkingPanel
-            isVisible={streamingState.isStreaming || isLoading}
+            isVisible={streamingState.isStreaming || isLoading || streamingState.steps.length > 0}
             currentStatus={streamingState.currentStatus}
             toolCalls={streamingState.toolCalls}
-            researcherOutput={streamingState.researcherOutput}
-            validatorOutput={streamingState.validatorOutput}
-            validationResult={streamingState.validationResult}
+            steps={streamingState.steps}
           />
         )}
 

@@ -8,13 +8,20 @@ import { useSessions } from './useSessions';
 import { useUser } from './useUser';
 
 // Streaming state for real-time updates (debug mode)
+// Agent step for sequential display
+export interface AgentStep {
+  type: 'researcher' | 'validator' | 'response';
+  output: string;
+  iteration: number;
+  result?: string; // For validator (APPROVED/REVISION_NEEDED)
+}
+
+// Streaming state for real-time updates (debug mode)
 export interface StreamingState {
   isStreaming: boolean;
   currentStatus: string;
   toolCalls: string[];
-  researcherOutput: string;
-  validatorOutput: string;
-  validationResult?: string;
+  steps: AgentStep[];  // Array of all agent steps in order
 }
 
 interface SessionTurn {
@@ -35,9 +42,7 @@ const initialStreamingState: StreamingState = {
   isStreaming: false,
   currentStatus: '',
   toolCalls: [],
-  researcherOutput: '',
-  validatorOutput: '',
-  validationResult: undefined,
+  steps: [],
 };
 
 export function useChat(sessionId?: string) {
@@ -125,8 +130,9 @@ export function useChat(sessionId?: string) {
 
   // Reset streaming state helper
   const resetStreamingState = useCallback(() => {
+    console.log('[useChat] resetStreamingState called - clearing steps');
     streamingToolsRef.current = [];
-    setStreamingState(initialStreamingState);
+    setStreamingState({ ...initialStreamingState });
   }, []);
 
   const sendMessage = useCallback(async (content: string) => {
@@ -139,21 +145,16 @@ export function useChat(sessionId?: string) {
       const healthTimeout = setTimeout(() => healthController.abort(), 3000);
 
       const healthResponse = await fetch(healthUrl, {
-        signal: healthController.signal,
+        signal: healthController.signal
       });
-
       clearTimeout(healthTimeout);
 
       if (!healthResponse.ok) {
-        throw new Error(`Service health check failed: ${healthResponse.status}`);
+        throw new Error('Agent service is not healthy');
       }
-    } catch (healthError) {
-      const errorMsg = 'Agent service is unavailable. Please ensure the backend service is running.';
-      console.error('[useChat] Service health check failed:', {
-        error: healthError instanceof Error ? healthError.message : String(healthError),
-        stack: healthError instanceof Error ? healthError.stack : undefined,
-      });
-      setError(errorMsg);
+    } catch (err) {
+      console.error('[useChat] Health check failed:', err);
+      setError('Agent service unavailable. Is the backend running?');
       return;
     }
 
@@ -223,34 +224,44 @@ export function useChat(sessionId?: string) {
         },
         {
           onStatus: (message) => {
+            console.log('[useChat] onStatus:', message);
             setStreamingState(prev => ({ ...prev, currentStatus: message }));
           },
           onTool: (toolName) => {
+            console.log('[useChat] onTool:', toolName);
             streamingToolsRef.current = [...streamingToolsRef.current, toolName];
             setStreamingState(prev => ({
               ...prev,
               toolCalls: streamingToolsRef.current,
             }));
           },
-          onResearcherOutput: (output) => {
-            setStreamingState(prev => ({ ...prev, researcherOutput: output }));
-          },
-          onValidatorOutput: (output, result) => {
+          onResearcherOutput: (output, iteration) => {
+            console.log('[useChat] onResearcherOutput:', { iteration, outputLength: output.length });
             setStreamingState(prev => ({
               ...prev,
-              validatorOutput: output,
-              validationResult: result
+              steps: [...prev.steps, { type: 'researcher', output, iteration }],
+            }));
+          },
+          onValidatorOutput: (output, result, iteration) => {
+            console.log('[useChat] onValidatorOutput:', { iteration, result, outputLength: output.length });
+            setStreamingState(prev => ({
+              ...prev,
+              steps: [...prev.steps, { type: 'validator', output, iteration, result }],
+            }));
+          },
+          onResponseOutput: (output, iteration) => {
+            console.log('[useChat] onResponseOutput:', { iteration, outputLength: output.length });
+            setStreamingState(prev => ({
+              ...prev,
+              steps: [...prev.steps, { type: 'response', output, iteration }],
             }));
           },
           onComplete: (data: StreamEvent) => {
-            // Update streaming state with final data
+            // Update streaming state - steps already accumulated
             setStreamingState(prev => ({
               ...prev,
               isStreaming: false,
               currentStatus: '',
-              researcherOutput: data.researcher_output || '',
-              validatorOutput: data.validator_output || '',
-              validationResult: data.validation_result,
             }));
 
             // Create final assistant message

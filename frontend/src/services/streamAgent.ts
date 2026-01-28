@@ -6,11 +6,12 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 // Stream event types from backend
 export interface StreamEvent {
-    type: 'start' | 'status' | 'tool' | 'researcher_output' | 'validator_output' | 'complete' | 'error';
+    type: 'start' | 'status' | 'tool' | 'researcher_output' | 'validator_output' | 'response_output' | 'complete' | 'error';
     message?: string;
     tool?: string;
     output?: string; // For researcher_output and validator_output
     result?: string; // For validator_output validation result
+    iteration?: number; // Iteration number for sequential display
     // Complete event data
     response?: string;
     researcher_output?: string;
@@ -24,8 +25,9 @@ export interface StreamEvent {
 export interface StreamCallbacks {
     onStatus?: (message: string) => void;
     onTool?: (toolName: string) => void;
-    onResearcherOutput?: (output: string) => void;
-    onValidatorOutput?: (output: string, result?: string) => void;
+    onResearcherOutput?: (output: string, iteration: number) => void;
+    onValidatorOutput?: (output: string, result: string | undefined, iteration: number) => void;
+    onResponseOutput?: (output: string, iteration: number) => void;
     onComplete?: (data: StreamEvent) => void;
     onError?: (error: string) => void;
 }
@@ -99,10 +101,13 @@ export async function streamAgent(
                             callbacks.onTool?.(data.tool || '');
                             break;
                         case 'researcher_output':
-                            callbacks.onResearcherOutput?.(data.output || '');
+                            callbacks.onResearcherOutput?.(data.output || '', data.iteration || 1);
                             break;
                         case 'validator_output':
-                            callbacks.onValidatorOutput?.(data.output || '', data.result);
+                            callbacks.onValidatorOutput?.(data.output || '', data.result, data.iteration || 1);
+                            break;
+                        case 'response_output':
+                            callbacks.onResponseOutput?.(data.output || '', data.iteration || 1);
                             break;
                         case 'complete':
                             callbacks.onComplete?.(data);
