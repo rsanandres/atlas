@@ -90,23 +90,58 @@ const RECOMMENDED_PROMPTS = [
     "What are the patient's active conditions?",
     "Summarize the patient's medication history.",
     "Show me the timeline of recent encounters.",
-    "Does the patient have any known allergies?",
-    "Check for any potential drug interactions."
+    "Does the patient have any known allergies?"
 ];
 
 interface ReferencePanelProps {
     onCopy: (text: string) => void;
+    onPromptSelect?: (text: string) => void; // Added prop
 }
 
-export function ReferencePanel({ onCopy }: ReferencePanelProps) {
+export function ReferencePanel({ onCopy, onPromptSelect }: ReferencePanelProps) {
     const [modalOpen, setModalOpen] = useState(false);
     const [modalTab, setModalTab] = useState(0);
     const [selectedJson, setSelectedJson] = useState<any>(null);
     const [sortOrder, setSortOrder] = useState<'default' | 'newest' | 'oldest'>('default');
 
+    // Prompt Selection State
+    const [promptDialogOpen, setPromptDialogOpen] = useState(false);
+    const [selectedPrompt, setSelectedPrompt] = useState<string | null>(null);
+
     const handleCopy = (text: string, label: string) => {
         navigator.clipboard.writeText(text);
         onCopy(`Copied ${label}`);
+    };
+
+    const handlePromptClick = (prompt: string) => {
+        if (onPromptSelect) {
+            setSelectedPrompt(prompt);
+            setPromptDialogOpen(true);
+        } else {
+            handleCopy(prompt, "Prompt");
+        }
+    };
+
+    const handlePatientSelectForPrompt = (patientName: string) => {
+        if (selectedPrompt && onPromptSelect) {
+            // Find patient to get ID
+            const patient = PERSONAS.find(p => p.name === patientName);
+            if (!patient) return;
+
+            // Replace "the patient" or "the patient's" with "Name's"
+            let finalPrompt = selectedPrompt.replace(/the patient's/gi, `${patientName}'s`);
+            finalPrompt = finalPrompt.replace(/the patient/gi, patientName);
+
+            // Append ID
+            finalPrompt += `? The patient ID is ${patient.id}`;
+
+            // Fix double question marks if they exist
+            finalPrompt = finalPrompt.replace(/\?\?/, '?');
+
+            onPromptSelect(finalPrompt);
+            setPromptDialogOpen(false);
+            setSelectedPrompt(null);
+        }
     };
 
     const handleOpenModal = (data: any) => {
@@ -141,7 +176,7 @@ export function ReferencePanel({ onCopy }: ReferencePanelProps) {
                             key={i}
                             variant="outlined"
                             size="small"
-                            onClick={() => handleCopy(prompt, "Prompt")}
+                            onClick={() => handlePromptClick(prompt)}
                             sx={{
                                 justifyContent: 'flex-start',
                                 textAlign: 'left',
@@ -186,10 +221,37 @@ export function ReferencePanel({ onCopy }: ReferencePanelProps) {
                                     transform: 'translateY(-2px)',
                                     boxShadow: 2
                                 },
-                                cursor: 'pointer'
+                                cursor: 'pointer',
+                                position: 'relative'
                             }}
                         >
-                            <CardActionArea onClick={() => handleOpenModal(p.data)} sx={{ p: 1.5 }}>
+                            {/* Copy Button - Positioned absolutely to avoid nesting in CardActionArea */}
+                            <Box
+                                sx={{
+                                    position: 'absolute',
+                                    top: 12,
+                                    right: 12,
+                                    zIndex: 1
+                                }}
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                <Tooltip title="Copy Patient ID">
+                                    <IconButton
+                                        size="small"
+                                        onClick={() => handleCopy(p.id, "Patient ID")}
+                                        sx={{
+                                            bgcolor: 'background.paper',
+                                            '&:hover': {
+                                                bgcolor: 'action.hover'
+                                            }
+                                        }}
+                                    >
+                                        <Copy size={14} />
+                                    </IconButton>
+                                </Tooltip>
+                            </Box>
+
+                            <CardActionArea onClick={() => handleOpenModal(p.data)} sx={{ p: 1.5, pr: 6 }}>
                                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
                                     <Box>
                                         <Typography variant="subtitle2" fontWeight="bold">
@@ -198,13 +260,6 @@ export function ReferencePanel({ onCopy }: ReferencePanelProps) {
                                         <Typography variant="caption" color="text.secondary">
                                             {p.age} years old • {p.description}
                                         </Typography>
-                                    </Box>
-                                    <Box sx={{ display: 'flex', gap: 0.5 }} onClick={(e) => e.stopPropagation()}>
-                                        <Tooltip title="Copy Patient ID">
-                                            <IconButton size="small" onClick={() => handleCopy(p.id, "Patient ID")}>
-                                                <Copy size={14} />
-                                            </IconButton>
-                                        </Tooltip>
                                     </Box>
                                 </Box>
 
@@ -550,6 +605,89 @@ export function ReferencePanel({ onCopy }: ReferencePanelProps) {
                             />
                         </Box>
                     )}
+                </DialogContent>
+            </Dialog>
+
+            {/* Prompt Patient Selection Dialog */}
+            <Dialog
+                open={promptDialogOpen}
+                onClose={() => setPromptDialogOpen(false)}
+                maxWidth="xs"
+                fullWidth
+                PaperProps={{
+                    sx: { borderRadius: 3 }
+                }}
+            >
+                <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <User size={20} />
+                    Select Patient Context
+                </DialogTitle>
+                <DialogContent>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                        Who is this prompt regarding?
+                    </Typography>
+                    <List sx={{ pt: 0 }}>
+                        {PERSONAS.map((p) => (
+                            <ListItem
+                                key={p.id}
+                                disablePadding
+                                sx={{ mb: 1 }}
+                            >
+                                <CardActionArea
+                                    onClick={() => handlePatientSelectForPrompt(p.name)}
+                                    sx={{
+                                        borderRadius: 2,
+                                        border: '1px solid',
+                                        borderColor: 'divider',
+                                        p: 1
+                                    }}
+                                >
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, px: 1 }}>
+                                        <Box
+                                            sx={{
+                                                width: 32,
+                                                height: 32,
+                                                borderRadius: '50%',
+                                                bgcolor: 'primary.main',
+                                                color: 'primary.contrastText',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                fontWeight: 600,
+                                                fontSize: '0.85rem'
+                                            }}
+                                        >
+                                            {p.name.charAt(0)}
+                                        </Box>
+                                        <Box>
+                                            <Typography variant="subtitle2" sx={{ lineHeight: 1.2 }}>
+                                                {p.name}
+                                            </Typography>
+                                            <Typography variant="caption" color="text.secondary">
+                                                {p.age} yrs • {p.conditions[0]}
+                                            </Typography>
+                                        </Box>
+                                    </Box>
+                                </CardActionArea>
+                            </ListItem>
+                        ))}
+
+                        <ListItem disablePadding sx={{ mt: 1 }}>
+                            <Button
+                                fullWidth
+                                variant="outlined"
+                                color="inherit"
+                                onClick={() => {
+                                    if (selectedPrompt && onPromptSelect) {
+                                        onPromptSelect(selectedPrompt); // No patient context
+                                        setPromptDialogOpen(false);
+                                    }
+                                }}
+                            >
+                                No Specific Patient
+                            </Button>
+                        </ListItem>
+                    </List>
                 </DialogContent>
             </Dialog>
         </Box>

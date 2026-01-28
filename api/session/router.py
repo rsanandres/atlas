@@ -210,6 +210,12 @@ def update_session_metadata(session_id: str, payload: SessionUpdateRequest) -> S
     
     updated_summary["last_activity"] = datetime.utcnow().isoformat() + "Z"
     
+    # Remove keys that shouldn't be updated or are primary keys
+    # Also remove user_id/patient_id as they are passed explicitly to update_summary
+    # Remove updated_at/ttl as they are handled automatically by update_summary and cause overlapping path errors
+    for key in ["session_id", "sk", "user_id", "patient_id", "created_at", "updated_at", "ttl"]:
+        updated_summary.pop(key, None)
+    
     store.update_summary(
         session_id=session_id,
         summary=updated_summary,

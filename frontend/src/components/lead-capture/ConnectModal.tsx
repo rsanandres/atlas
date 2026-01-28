@@ -1,8 +1,7 @@
-'use client';
-
-import { Box, Typography, Button, Modal, IconButton, alpha } from '@mui/material';
+import { useState } from 'react';
+import { Box, Typography, Button, Modal, IconButton, alpha, Tooltip } from '@mui/material';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Linkedin, Mail, Sparkles, ExternalLink } from 'lucide-react';
+import { X, Linkedin, Mail, Sparkles, ExternalLink, Github, Copy, Check } from 'lucide-react';
 import { glassStyle } from '@/theme/theme';
 
 interface ConnectModalProps {
@@ -12,8 +11,17 @@ interface ConnectModalProps {
 
 const MY_EMAIL = 'rysanandres@gmail.com';
 const MY_LINKEDIN = 'https://www.linkedin.com/in/raphael-san-andres/';
+const MY_GITHUB = 'https://github.com/rsanandres';
 
 export function ConnectModal({ open, onClose }: ConnectModalProps) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyEmail = () => {
+    navigator.clipboard.writeText(MY_EMAIL);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   return (
     <Modal open={open} onClose={onClose}>
       <AnimatePresence>
@@ -106,40 +114,44 @@ export function ConnectModal({ open, onClose }: ConnectModalProps) {
                   Enjoying the demo?
                 </Typography>
                 <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                  I&apos;d love to connect! Let&apos;s chat about RAG systems, 
+                  I&apos;d love to connect! Let&apos;s chat about RAG systems,
                   healthcare AI, or potential opportunities.
                 </Typography>
 
                 {/* Contact Links */}
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  {/* Email Link */}
-                  <Button
-                    component="a"
-                    href={`mailto:${MY_EMAIL}`}
-                    fullWidth
-                    variant="outlined"
-                    startIcon={<Mail size={20} />}
-                    endIcon={<ExternalLink size={16} />}
-                    sx={{
-                      borderRadius: '12px',
-                      py: 1.5,
-                      px: 2,
-                      justifyContent: 'flex-start',
-                      textTransform: 'none',
-                      borderColor: 'divider',
-                      color: 'text.primary',
-                      '&:hover': {
-                        borderColor: 'primary.main',
-                        bgcolor: (theme) => alpha(theme.palette.primary.main, 0.05),
-                      },
-                      '& .MuiButton-endIcon': {
-                        marginLeft: 'auto',
-                        opacity: 0.5,
-                      },
-                    }}
-                  >
-                    {MY_EMAIL}
-                  </Button>
+
+                  {/* Copy Email Button */}
+                  <Tooltip title={copied ? "Copied!" : "Click to copy email"} arrow>
+                    <Button
+                      fullWidth
+                      variant="outlined"
+                      onClick={handleCopyEmail}
+                      startIcon={<Mail size={20} />}
+                      endIcon={copied ? <Check size={16} /> : <Copy size={16} />}
+                      sx={{
+                        borderRadius: '12px',
+                        py: 1.5,
+                        px: 2,
+                        justifyContent: 'flex-start',
+                        textTransform: 'none',
+                        borderColor: copied ? 'success.main' : 'divider',
+                        color: copied ? 'success.main' : 'text.primary',
+                        bgcolor: copied ? (theme) => alpha(theme.palette.success.main, 0.05) : 'transparent',
+                        '&:hover': {
+                          borderColor: copied ? 'success.main' : 'primary.main',
+                          bgcolor: (theme) => alpha(copied ? theme.palette.success.main : theme.palette.primary.main, 0.05),
+                        },
+                        '& .MuiButton-endIcon': {
+                          marginLeft: 'auto',
+                          opacity: 0.5,
+                          color: copied ? 'success.main' : 'inherit',
+                        },
+                      }}
+                    >
+                      {MY_EMAIL}
+                    </Button>
+                  </Tooltip>
 
                   {/* LinkedIn Link */}
                   <Button
@@ -170,6 +182,37 @@ export function ConnectModal({ open, onClose }: ConnectModalProps) {
                     }}
                   >
                     Raphael San Andres
+                  </Button>
+
+                  {/* GitHub Link */}
+                  <Button
+                    component="a"
+                    href={MY_GITHUB}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    fullWidth
+                    variant="outlined"
+                    startIcon={<Github size={20} />}
+                    endIcon={<ExternalLink size={16} />}
+                    sx={{
+                      borderRadius: '12px',
+                      py: 1.5,
+                      px: 2,
+                      justifyContent: 'flex-start',
+                      textTransform: 'none',
+                      borderColor: 'divider',
+                      color: 'text.primary',
+                      '&:hover': {
+                        borderColor: '#24292e',
+                        bgcolor: alpha('#24292e', 0.05),
+                      },
+                      '& .MuiButton-endIcon': {
+                        marginLeft: 'auto',
+                        opacity: 0.5,
+                      },
+                    }}
+                  >
+                    rsanandres
                   </Button>
 
                   {/* Close Button */}

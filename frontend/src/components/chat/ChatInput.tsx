@@ -1,19 +1,27 @@
 'use client';
 
-import { useState, useCallback, KeyboardEvent } from 'react';
+import { useState, useCallback, KeyboardEvent, useEffect } from 'react';
 import { Box, TextField, IconButton, alpha, CircularProgress, Tooltip } from '@mui/material';
 import { Send, Square } from 'lucide-react'; // Added Square
 import { motion } from 'framer-motion';
 
 interface ChatInputProps {
   onSend: (message: string) => void;
-  onStop?: () => void; // Added onStop prop
+  onStop?: () => void;
   isLoading: boolean;
   disabled?: boolean;
+  externalInput?: string; // Added externalInput
 }
 
-export function ChatInput({ onSend, onStop, isLoading, disabled }: ChatInputProps) {
+export function ChatInput({ onSend, onStop, isLoading, disabled, externalInput }: ChatInputProps) {
   const [input, setInput] = useState('');
+
+  // Update input when externalInput changes
+  useEffect(() => {
+    if (externalInput) {
+      setInput(externalInput);
+    }
+  }, [externalInput]);
 
   const handleSend = useCallback(() => {
     if (input.trim() && !isLoading && !disabled) {

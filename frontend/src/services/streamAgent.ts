@@ -6,9 +6,11 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 // Stream event types from backend
 export interface StreamEvent {
-    type: 'start' | 'status' | 'tool' | 'complete' | 'error';
+    type: 'start' | 'status' | 'tool' | 'researcher_output' | 'validator_output' | 'complete' | 'error';
     message?: string;
     tool?: string;
+    output?: string; // For researcher_output and validator_output
+    result?: string; // For validator_output validation result
     // Complete event data
     response?: string;
     researcher_output?: string;
@@ -95,6 +97,12 @@ export async function streamAgent(
                             break;
                         case 'tool':
                             callbacks.onTool?.(data.tool || '');
+                            break;
+                        case 'researcher_output':
+                            callbacks.onResearcherOutput?.(data.output || '');
+                            break;
+                        case 'validator_output':
+                            callbacks.onValidatorOutput?.(data.output || '', data.result);
                             break;
                         case 'complete':
                             callbacks.onComplete?.(data);

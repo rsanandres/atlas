@@ -232,6 +232,16 @@ export function useChat(sessionId?: string) {
               toolCalls: streamingToolsRef.current,
             }));
           },
+          onResearcherOutput: (output) => {
+            setStreamingState(prev => ({ ...prev, researcherOutput: output }));
+          },
+          onValidatorOutput: (output, result) => {
+            setStreamingState(prev => ({
+              ...prev,
+              validatorOutput: output,
+              validationResult: result
+            }));
+          },
           onComplete: (data: StreamEvent) => {
             // Update streaming state with final data
             setStreamingState(prev => ({

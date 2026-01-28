@@ -36,10 +36,12 @@ export default function Home() {
 
   // Track the last query for workflow display
   const [lastQuery, setLastQuery] = useState<string>('');
+  const [chatInput, setChatInput] = useState<string>(''); // Added external input state
 
   // Start workflow animation when sending a message
   const handleSend = (message: string) => {
     setLastQuery(message);
+    setChatInput(''); // Clear external input after sending
     startProcessing();
     sendMessage(message);
   };
@@ -78,6 +80,7 @@ export default function Home() {
             onStop={stopGeneration}
             onClear={clearChat}
             streamingState={streamingState}
+            externalInput={chatInput} // Pass input state
           />
         }
         workflowPanel={
@@ -87,6 +90,7 @@ export default function Home() {
             lastResponse={getLastResponse()}
             isProcessing={isProcessing}
             lastQuery={displayQuery}
+            onPromptSelect={setChatInput} // Pass setter
           />
         }
         observabilityPanel={

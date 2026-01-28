@@ -456,7 +456,71 @@ def _route_after_validation(state: AgentState) -> str:
     return "researcher"
 
 
-def create_multi_agent_graph():
+def _assess_query_complexity(state: AgentState) -> str:
+    """Assess if query is simple or complex to route to appropriate graph.
+    
+    Simple queries: Factual lookups, single-patient queries, basic information retrieval
+    Complex queries: Multi-step analysis, cross-referencing, validation required
+    
+    Returns:
+        "simple" -> route to single-agent graph (researcher -> respond)
+        "complex" -> route to multi-agent graph (researcher -> validator -> respond)
+    """
+    query = state.get("query", "").lower()
+    
+    # Complexity indicators
+    complex_keywords = [
+        "compare", "analyze", "cross-reference", "validate",
+        "verify", "check for conflicts", "review", "assess",
+        "multiple", "all patients", "trend", "pattern",
+        "icd", "loinc", "rxnorm", "diagnosis", "differential"
+    ]
+    
+    # Simple indicators
+    simple_keywords = [
+        "what is", "when was", "show me", "get", "list",
+        "find", "lookup", "search", "retrieve"
+    ]
+    
+    # Check for complex indicators
+    complexity_score = sum(1 for keyword in complex_keywords if keyword in query)
+    simplicity_score = sum(1 for keyword in simple_keywords if keyword in query)
+    
+    # Query length as a factor (longer queries tend to be more complex)
+    word_count = len(query.split())
+    
+    # Decision logic
+    if complexity_score >= 2:  # Multiple complex keywords
+        return "complex"
+    elif complexity_score == 1 and simplicity_score == 0 and word_count > 10:
+        return "complex"
+    elif simplicity_score > 0 and complexity_score == 0 and word_count <= 15:
+        return "simple"
+    else:
+        # Default to complex for safety (validation is better than missing issues)
+        return "complex"
+
+
+def create_simple_graph():
+    """Create a simple single-agent graph: researcher -> respond.
+    
+    Used for straightforward queries that don't require validation.
+    """
+    graph = StateGraph(AgentState)
+    graph.add_node("researcher", _researcher_node)
+    graph.add_node("respond", _respond_node)
+
+    graph.set_entry_point("researcher")
+    graph.add_edge("researcher", "respond")
+    graph.add_edge("respond", END)
+    return graph.compile()
+
+
+def create_complex_graph():
+    """Create the full multi-agent graph: researcher -> validator -> respond.
+    
+    Used for complex queries requiring validation and iterative refinement.
+    """
     graph = StateGraph(AgentState)
     graph.add_node("researcher", _researcher_node)
     graph.add_node("validator", _validator_node)
@@ -467,3 +531,22 @@ def create_multi_agent_graph():
     graph.add_conditional_edges("validator", _route_after_validation)
     graph.add_edge("respond", END)
     return graph.compile()
+
+
+def create_multi_agent_graph():
+    """Create the main graph with configurable complexity.
+    
+    Uses AGENT_GRAPH_TYPE environment variable to determine graph type:
+    - "simple": researcher → respond (fast, no validation)
+    - "complex": researcher → validator → respond (validated, iterative refinement)
+    
+    Defaults to "simple" if not specified.
+    """
+    graph_type = os.getenv("AGENT_GRAPH_TYPE", "simple").lower()
+    
+    if graph_type == "complex":
+        print(f"[GRAPH] Creating complex multi-agent graph (researcher → validator → respond)")
+        return create_complex_graph()
+    else:
+        print(f"[GRAPH] Creating simple single-agent graph (researcher → respond)")
+        return create_simple_graph()

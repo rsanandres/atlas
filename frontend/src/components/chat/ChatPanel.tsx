@@ -20,6 +20,7 @@ interface ChatPanelProps {
   onClear: () => void;
   onOpenSessions?: () => void;
   streamingState?: StreamingState;
+  externalInput?: string; // Added prop
 }
 
 export function ChatPanel({
@@ -31,6 +32,7 @@ export function ChatPanel({
   onClear,
   onOpenSessions,
   streamingState,
+  externalInput, // Destructure
 }: ChatPanelProps) {
   const { debugMode, toggleDebugMode } = useDebugMode();
 
@@ -142,7 +144,7 @@ export function ChatPanel({
         )}
 
         {/* Input */}
-        <ChatInput onSend={onSend} onStop={onStop} isLoading={isLoading} disabled={!!error} />
+        <ChatInput onSend={onSend} onStop={onStop} isLoading={isLoading} disabled={!!error} externalInput={externalInput} />
       </Box>
     </motion.div>
   );

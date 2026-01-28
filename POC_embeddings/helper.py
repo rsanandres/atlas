@@ -755,27 +755,27 @@ async def process_and_store(note):
             metadata = {
                 # Core identifiers
                 "patient_id": note.patient_id,
-                "resourceId": note.id,
-                "resourceType": note.resourceType,
-                "fullUrl": note.fullUrl,
-                "sourceFile": note.sourceFile,
+                "resource_id": note.id,
+                "resource_type": note.resourceType,
+                "full_url": note.fullUrl,
+                "source_file": note.sourceFile,
                 
                 # Chunk identifiers
-                "chunkId": f"{note.id}_{chunk_id}",
-                "chunkIndex": chunk["chunk_index"],
-                "totalChunks": total_chunks,
+                "chunk_id": f"{note.id}_{chunk_id}",
+                "chunk_index": chunk["chunk_index"],
+                "total_chunks": total_chunks,
                 
                 # Chunk properties
-                "chunkSize": chunk["chunk_size"],
+                "chunk_size": chunk["chunk_size"],
             }
             
             # Add extracted metadata from resource JSON if available
             if "effectiveDate" in resource_metadata:
-                metadata["effectiveDate"] = resource_metadata["effectiveDate"]
+                metadata["effective_date"] = resource_metadata["effectiveDate"]
             if "status" in resource_metadata:
                 metadata["status"] = resource_metadata["status"]
             if "lastUpdated" in resource_metadata:
-                metadata["lastUpdated"] = resource_metadata["lastUpdated"]
+                metadata["last_updated"] = resource_metadata["lastUpdated"]
             
             # Display chunk details
             logger.info(f"\n{'═' * 80}")
@@ -787,12 +787,12 @@ async def process_and_store(note):
             logger.info(f"Resource Type: {note.resourceType}")
             logger.info(f"Source File:   {note.sourceFile}")
             logger.info(f"Chunk Index:   {chunk['chunk_index']} of {total_chunks}")
-            if "effectiveDate" in metadata:
-                logger.info(f"Effective Date: {metadata['effectiveDate']}")
+            if "effective_date" in metadata:
+                logger.info(f"Effective Date: {metadata['effective_date']}")
             if "status" in metadata:
                 logger.info(f"Status:         {metadata['status']}")
-            if "lastUpdated" in metadata:
-                logger.info(f"Last Updated:   {metadata['lastUpdated']}")
+            if "last_updated" in metadata:
+                logger.info(f"Last Updated:   {metadata['last_updated']}")
             logger.info(f"{embedding_info}")
             logger.info(f"Metadata:      {metadata}")
             logger.info(f"\n{'─'*80}")

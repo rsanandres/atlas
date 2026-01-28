@@ -63,7 +63,7 @@ class AgentDebugCLI:
         self.agent_url = agent_url
         self.patient_id: Optional[str] = None
         self.verbose = True  # Show intermediate steps by default
-        self.show_langsmith = True  # Show LangSmith URLs by default
+        self.show_langsmith = False  # Hidden by default (frontend doesn't show this)
         self.last_response: Optional[dict] = None  # Store last response for saving
         
     def print_header(self) -> None:
@@ -72,8 +72,7 @@ class AgentDebugCLI:
         print(f"  Agent Debug CLI - Enhanced Terminal Interface")
         print(f"{'═' * 70}{Colors.RESET}")
         print(f"{Colors.INFO}Session: {self.session_id}{Colors.RESET}")
-        print(f"{Colors.INFO}Verbose mode: {'ON' if self.verbose else 'OFF'}")
-        print(f"LangSmith URLs: {'ON' if self.show_langsmith else 'OFF'}{Colors.RESET}")
+        print(f"{Colors.INFO}Verbose mode: {'ON' if self.verbose else 'OFF'}{Colors.RESET}")
         print()
         self._print_help()
         print(f"{Colors.HEADER}{'═' * 70}{Colors.RESET}\n")
@@ -82,7 +81,7 @@ class AgentDebugCLI:
         """Print help text."""
         print(f"{Colors.DIM}Commands:")
         print(f"  /verbose    - Toggle verbose mode (show Researcher/Validator output)")
-        print(f"  /langsmith  - Toggle LangSmith trace URL display")
+        print(f"  /langsmith  - Toggle LangSmith trace URL display (hidden by default)")
         print(f"  /history    - Show recent session history")
         print(f"  /patient <id> - Set patient ID for queries")
         print(f"  /clear      - Clear session history")

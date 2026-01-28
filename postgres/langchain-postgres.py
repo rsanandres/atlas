@@ -550,15 +550,15 @@ async def queue_worker():
                     _queue_stats["failed"] += 1
                     # Log queue full error
                     await log_error(
-                        file_id=queued_chunk.metadata.get("sourceFile"),
-                        resource_id=queued_chunk.metadata.get("resourceId"),
+                        file_id=queued_chunk.metadata.get("source_file"),
+                        resource_id=queued_chunk.metadata.get("resource_id"),
                         chunk_id=queued_chunk.chunk_id,
-                        chunk_index=queued_chunk.metadata.get("chunkIndex"),
+                        chunk_index=queued_chunk.metadata.get("chunk_index"),
                         error_type="queue_full",
                         error_message=f"Queue full after {queued_chunk.retry_count} retries: {str(e)}",
                         metadata=queued_chunk.metadata,
                         retry_count=queued_chunk.retry_count,
-                        source_file=queued_chunk.metadata.get("sourceFile"),
+                        source_file=queued_chunk.metadata.get("source_file"),
                     )
             else:
                 _queue_stats["failed"] += 1
@@ -566,15 +566,15 @@ async def queue_worker():
                 # Log max retries or fatal error
                 error_type = "max_retries" if queued_chunk.retry_count >= MAX_RETRIES else "fatal"
                 await log_error(
-                    file_id=queued_chunk.metadata.get("sourceFile"),
-                    resource_id=queued_chunk.metadata.get("resourceId"),
+                    file_id=queued_chunk.metadata.get("source_file"),
+                    resource_id=queued_chunk.metadata.get("resource_id"),
                     chunk_id=queued_chunk.chunk_id,
-                    chunk_index=queued_chunk.metadata.get("chunkIndex"),
+                    chunk_index=queued_chunk.metadata.get("chunk_index"),
                     error_type=error_type,
                     error_message=str(e),
                     metadata=queued_chunk.metadata,
                     retry_count=queued_chunk.retry_count,
-                    source_file=queued_chunk.metadata.get("sourceFile"),
+                    source_file=queued_chunk.metadata.get("source_file"),
                 )
         finally:
             _queue.task_done()
@@ -593,14 +593,14 @@ async def store_chunk_direct(
     if not is_valid:
         # Log validation error
         await log_error(
-            file_id=metadata.get("sourceFile"),
-            resource_id=metadata.get("resourceId"),
+            file_id=metadata.get("source_file"),
+            resource_id=metadata.get("resource_id"),
             chunk_id=chunk_id,
-            chunk_index=metadata.get("chunkIndex"),
+            chunk_index=metadata.get("chunk_index"),
             error_type="validation",
             error_message=msg,
             metadata=metadata,
-            source_file=metadata.get("sourceFile"),
+            source_file=metadata.get("source_file"),
         )
         raise ValueError(msg)
 
@@ -644,26 +644,26 @@ async def store_chunk(
                 _queue_stats["failed"] += 1
                 # Log queue full error
                 await log_error(
-                    file_id=metadata.get("sourceFile"),
-                    resource_id=metadata.get("resourceId"),
+                    file_id=metadata.get("source_file"),
+                    resource_id=metadata.get("resource_id"),
                     chunk_id=chunk_id,
-                    chunk_index=metadata.get("chunkIndex"),
+                    chunk_index=metadata.get("chunk_index"),
                     error_type="queue_full",
                     error_message=f"Queue full, cannot queue chunk: {str(e)}",
                     metadata=metadata,
-                    source_file=metadata.get("sourceFile"),
+                    source_file=metadata.get("source_file"),
                 )
                 return False
         # Log fatal or non-retryable errors
         await log_error(
-            file_id=metadata.get("sourceFile"),
-            resource_id=metadata.get("resourceId"),
+            file_id=metadata.get("source_file"),
+            resource_id=metadata.get("resource_id"),
             chunk_id=chunk_id,
-            chunk_index=metadata.get("chunkIndex"),
+            chunk_index=metadata.get("chunk_index"),
             error_type="fatal",
             error_message=str(e),
             metadata=metadata,
-            source_file=metadata.get("sourceFile"),
+            source_file=metadata.get("source_file"),
         )
         raise
 

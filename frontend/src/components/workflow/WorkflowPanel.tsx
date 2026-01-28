@@ -6,6 +6,7 @@ import { PipelineStep as PipelineStepType, Message } from '@/types';
 import { PipelineStep } from './PipelineStep';
 import { SourceCard } from './SourceCard';
 import { ReferencePanel } from './ReferencePanel';
+import { DocumentationPanel } from './DocumentationPanel';
 import { glassStyle } from '@/theme/theme';
 
 interface WorkflowPanelProps {
@@ -14,9 +15,10 @@ interface WorkflowPanelProps {
   lastResponse: Message | null;
   isProcessing: boolean;
   lastQuery?: string;
+  onPromptSelect?: (text: string) => void; // Added prop
 }
 
-export function WorkflowPanel({ pipeline, toolCalls, lastResponse, isProcessing, lastQuery }: WorkflowPanelProps) {
+export function WorkflowPanel({ pipeline, toolCalls, lastResponse, isProcessing, lastQuery, onPromptSelect }: WorkflowPanelProps) {
   const [tabIndex, setTabIndex] = useState(0);
   const sources = lastResponse?.sources || [];
   const hasActivity = pipeline.some(s => s.status === 'completed' || s.status === 'active');
@@ -66,6 +68,7 @@ export function WorkflowPanel({ pipeline, toolCalls, lastResponse, isProcessing,
           >
             <Tab label="Pipeline" icon={<Workflow size={16} />} iconPosition="start" />
             <Tab label="Reference" icon={<Users size={16} />} iconPosition="start" />
+            <Tab label="Documentation" icon={<Info size={16} />} iconPosition="start" />
           </Tabs>
         </Box>
 
@@ -166,9 +169,12 @@ export function WorkflowPanel({ pipeline, toolCalls, lastResponse, isProcessing,
                 )}
               </AnimatePresence>
             </Box>
-          ) : (
+          ) : tabIndex === 1 ? (
             // Reference View
-            <ReferencePanel onCopy={handleCopyFeedback} />
+            <ReferencePanel onCopy={handleCopyFeedback} onPromptSelect={onPromptSelect} />
+          ) : (
+            // Documentation View
+            <DocumentationPanel />
           )}
         </Box>
       </Box>

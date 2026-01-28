@@ -27,6 +27,7 @@ class LoggingMiddleware(BaseHTTPMiddleware):
         
         # Don't log health check bodies to avoid noise, but log the access
         is_health = "health" in url or "stats" in url
+        is_streaming = "/stream" in url  # Skip body logging for streaming endpoints
         
         log_msg = f"Request: {method} {url}"
         if query:
@@ -35,7 +36,8 @@ class LoggingMiddleware(BaseHTTPMiddleware):
         logger.info(log_msg)
         
         # Log body for non-GET requests (if likely JSON)
-        if method in ["POST", "PUT", "PATCH"] and not is_health:
+        # IMPORTANT: Skip body logging for streaming endpoints because it breaks SSE
+        if method in ["POST", "PUT", "PATCH"] and not is_health and not is_streaming:
             try:
                 body_bytes = await request.body()
                 # Restore body for downstream
@@ -64,7 +66,12 @@ def setup_cors(app: FastAPI) -> None:
     """Configure CORS middleware for the FastAPI app."""
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["http://localhost:3000", "http://localhost:3001"],  # Next.js default ports
+        allow_origins=[
+            "http://localhost:3000", 
+            "http://localhost:3001",
+            "http://127.0.0.1:3000",
+            "http://127.0.0.1:3001",
+        ],
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],

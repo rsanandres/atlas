@@ -81,10 +81,10 @@ async def test_patient_filtered_search():
     
     try:
         row = await conn.fetchrow("""
-            SELECT langchain_metadata->>'patientId' as patient_id,
+            SELECT langchain_metadata->>'patient_id' as patient_id,
                    COUNT(*) as chunk_count
             FROM hc_ai_schema.hc_ai_table
-            GROUP BY langchain_metadata->>'patientId'
+            GROUP BY langchain_metadata->>'patient_id'
             ORDER BY COUNT(*) DESC
             LIMIT 1
         """)
@@ -227,7 +227,7 @@ async def analyze_retrieval_problem():
     try:
         # Get a sample chunk content to search for
         sample = await conn.fetchrow("""
-            SELECT content, langchain_metadata->>'patientId' as patient_id
+            SELECT content, langchain_metadata->>'patient_id' as patient_id
             FROM hc_ai_schema.hc_ai_table
             WHERE content ILIKE '%diabetes%'
             LIMIT 1
@@ -246,7 +246,7 @@ async def analyze_retrieval_problem():
         
         semantic_found = False
         for doc in semantic_results:
-            if doc.metadata.get('patientId') == sample['patient_id']:
+            if doc.metadata.get('patient_id') == sample['patient_id']:
                 semantic_found = True
                 break
         print(f"  Results: {len(semantic_results)} chunks")
@@ -258,7 +258,7 @@ async def analyze_retrieval_problem():
         
         hybrid_found = False
         for doc in hybrid_results:
-            if doc.metadata.get('patientId') == sample['patient_id']:
+            if doc.metadata.get('patient_id') == sample['patient_id']:
                 hybrid_found = True
                 break
         print(f"  Results: {len(hybrid_results)} chunks")

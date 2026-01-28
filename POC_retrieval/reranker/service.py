@@ -143,7 +143,7 @@ def _document_id(doc: Document, fallback_index: int) -> str:
     if doc_id:
         return str(doc_id)
     meta = doc.metadata or {}
-    for key in ("chunkId", "resourceId", "id"):
+    for key in ("chunk_id", "resource_id", "id"):
         if key in meta:
             return str(meta[key])
     content_hash = hashlib.sha256(doc.page_content.encode("utf-8")).hexdigest()
@@ -239,7 +239,7 @@ async def rerank_with_context(request: RerankWithContextRequest) -> RerankWithCo
     patient_ids = []
     for item in reranked.results:
         metadata = item.metadata or {}
-        patient_id = metadata.get("patient_id") or metadata.get("patientId")
+        patient_id = metadata.get("patient_id")
         if patient_id:
             patient_ids.append(str(patient_id))
     full_documents = []

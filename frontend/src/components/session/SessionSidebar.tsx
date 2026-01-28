@@ -29,6 +29,54 @@ interface SessionSidebarProps {
   onSessionSelect: (sessionId: string) => void;
 }
 
+// Hydration-safe date formatter hook
+const useFormattedDate = (dateString: string) => {
+  const [formatted, setFormatted] = useState(dateString);
+
+  useEffect(() => {
+    try {
+      const date = new Date(dateString);
+      const now = new Date();
+      const diffMs = now.getTime() - date.getTime();
+      const diffMins = Math.floor(diffMs / 60000);
+      const diffHours = Math.floor(diffMs / 3600000);
+      const diffDays = Math.floor(diffMs / 86400000);
+
+      if (diffMins < 1) {
+        setFormatted('Just now');
+        return;
+      }
+      if (diffMins < 60) {
+        setFormatted(`${diffMins}m ago`);
+        return;
+      }
+      if (diffHours < 24) {
+        setFormatted(`${diffHours}h ago`);
+        return;
+      }
+      if (diffDays < 7) {
+        setFormatted(`${diffDays}d ago`);
+        return;
+      }
+      setFormatted(date.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
+      }));
+    } catch {
+      setFormatted(dateString);
+    }
+  }, [dateString]);
+
+  return formatted;
+};
+
+// Component to render date to avoid hydration mismatch in list
+const SessionDate = ({ date }: { date: string }) => {
+  const formatted = useFormattedDate(date);
+  return <>{formatted}</>;
+};
+
 export function SessionSidebar({ open, onClose, onSessionSelect }: SessionSidebarProps) {
   const {
     sessions,
@@ -136,54 +184,6 @@ export function SessionSidebar({ open, onClose, onSessionSelect }: SessionSideba
       setSessionToEdit(null);
       setEditName('');
     }
-  };
-
-  // Hydration-safe date formatter
-  const useFormattedDate = (dateString: string) => {
-    const [formatted, setFormatted] = useState(dateString);
-
-    useEffect(() => {
-      try {
-        const date = new Date(dateString);
-        const now = new Date();
-        const diffMs = now.getTime() - date.getTime();
-        const diffMins = Math.floor(diffMs / 60000);
-        const diffHours = Math.floor(diffMs / 3600000);
-        const diffDays = Math.floor(diffMs / 86400000);
-
-        if (diffMins < 1) {
-          setFormatted('Just now');
-          return;
-        }
-        if (diffMins < 60) {
-          setFormatted(`${diffMins}m ago`);
-          return;
-        }
-        if (diffHours < 24) {
-          setFormatted(`${diffHours}h ago`);
-          return;
-        }
-        if (diffDays < 7) {
-          setFormatted(`${diffDays}d ago`);
-          return;
-        }
-        setFormatted(date.toLocaleDateString('en-US', {
-          month: 'short',
-          day: 'numeric',
-          year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
-        }));
-      } catch {
-        setFormatted(dateString);
-      }
-    }, [dateString]);
-
-    return formatted;
-  };
-
-  // Component to render date to avoid hydration mismatch in list
-  const SessionDate = ({ date }: { date: string }) => {
-    const formatted = useFormattedDate(date);
-    return <>{formatted}</>;
   };
 
   return (
@@ -359,6 +359,12 @@ export function SessionSidebar({ open, onClose, onSessionSelect }: SessionSideba
             variant="outlined"
             value={editName}
             onChange={(e) => setEditName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                confirmEdit();
+              }
+            }}
             sx={{ mt: 1 }}
           />
         </DialogContent>

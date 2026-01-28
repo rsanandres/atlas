@@ -152,8 +152,11 @@ async def query_agent_stream(payload: AgentQueryRequest):
     async def event_generator():
         result = None
         request_id = str(uuid.uuid4())
+        print(f"[STREAM {request_id}] === Generator function CALLED ===")
         try:
+            print(f"[STREAM {request_id}] About to yield first event...")
             yield f"data: {json.dumps({'type': 'start', 'message': 'Starting agent...'})}\n\n"
+            print(f"[STREAM {request_id}] First event yielded")
             
             masked_query, _ = _pii_masker.mask_pii(payload.query)
             
@@ -166,7 +169,7 @@ async def query_agent_stream(payload: AgentQueryRequest):
                 "query": masked_query,
                 "session_id": payload.session_id,
                 "patient_id": payload.patient_id,
-                "request_id": request_id,  # Add for debugging and isolation
+                "request_id": request_id, # Add for debugging and isolation
                 "k_retrieve": payload.k_retrieve,
                 "k_return": payload.k_return,
                 "iteration_count": 0,
@@ -174,22 +177,88 @@ async def query_agent_stream(payload: AgentQueryRequest):
             
             yield f"data: {json.dumps({'type': 'status', 'message': '🔍 Starting agent...'})}\n\n"
             
-            # FIXED: Use ainvoke() ONCE to avoid double invocation (the original bug)
-            # This prevents timeouts and double execution
-            yield f"data: {json.dumps({'type': 'status', 'message': '🔍 Processing query...'})}\n\n"
+            # Track state accumulation for final result
+            accumulated_state = {}
+            start_time = asyncio.get_event_loop().time()
+            event_count = 0
             
-            # Add timeout handling for agent invocation
+            print(f"[STREAM {request_id}] Starting astream_events loop...")
+            
+            # Use astream_events for real-time streaming (removed version parameter for compatibility)
             try:
-                result = await asyncio.wait_for(
-                    agent.ainvoke(state, config={"recursion_limit": max_iterations}),
-                    timeout=agent_timeout
-                )
-            except asyncio.TimeoutError:
-                error_msg = f"Agent request {request_id} timed out after {agent_timeout} seconds"
-                print(f"Error: {error_msg}")
+                async for event in agent.astream_events(
+                    state, 
+                    config={"recursion_limit": max_iterations}
+                ):
+                    event_count += 1
+                    print(f"[STREAM {request_id}] Event {event_count}: {event.get('event')} - {event.get('name', 'unknown')}")
+                    
+                    # Check timeout manually during streaming
+                    if asyncio.get_event_loop().time() - start_time > agent_timeout:
+                        error_msg = f"Agent request {request_id} timed out after {agent_timeout} seconds"
+                        print(f"Error: {error_msg}")
+                        yield f"data: {json.dumps({'type': 'error', 'message': error_msg})}\n\n"
+                        return
+                    
+                    event_type = event.get("event")
+                    event_name = event.get("name", "")
+                    event_data = event.get("data", {})
+                    
+                    # Handle different LangGraph events
+                    if event_type == "on_chain_start":
+                        # Node starting (researcher, validator, respond, etc.)
+                        print(f"[STREAM {request_id}] Chain starting: {event_name}")
+                        if "researcher" in event_name.lower():
+                            yield f"data: {json.dumps({'type': 'status', 'message': '🔬 Researcher investigating...'})}\n\n"
+                        elif "validator" in event_name.lower():
+                            yield f"data: {json.dumps({'type': 'status', 'message': '✓ Validator checking...'})}\n\n"
+                        elif "respond" in event_name.lower():
+                            yield f"data: {json.dumps({'type': 'status', 'message': '📝 Synthesizing response...'})}\n\n"
+                    
+                    elif event_type == "on_tool_start":
+                        # Tool being called
+                        tool_name = event_name or event_data.get("name", "unknown_tool")
+                        print(f"[STREAM {request_id}] Tool starting: {tool_name}")
+                        yield f"data: {json.dumps({'type': 'tool', 'tool': tool_name})}\n\n"
+                        yield f"data: {json.dumps({'type': 'status', 'message': f'🛠️ Using {tool_name}...'})}\n\n"
+                    
+                    elif event_type == "on_tool_end":
+                        # Tool completed
+                        print(f"[STREAM {request_id}] Tool ended: {event_name}")
+                    
+                    elif event_type == "on_chain_end":
+                        # Node completed - capture outputs
+                        print(f"[STREAM {request_id}] Chain ended: {event_name}")
+                        output = event_data.get("output", {})
+                        
+                        # Update accumulated state
+                        if isinstance(output, dict):
+                            accumulated_state.update(output)
+                            print(f"[STREAM {request_id}] Accumulated state keys: {list(accumulated_state.keys())}")
+                            
+                            # Emit intermediate outputs for debug mode
+                            if "researcher_output" in output and output["researcher_output"]:
+                                yield f"data: {json.dumps({'type': 'researcher_output', 'output': output['researcher_output']})}\n\n"
+                            
+                            if "validator_output" in output and output["validator_output"]:
+                                validation_result = output.get("validation_result", "")
+                                yield f"data: {json.dumps({'type': 'validator_output', 'output': output['validator_output'], 'result': validation_result})}\n\n"
+                
+                print(f"[STREAM {request_id}] astream_events loop completed. Total events: {event_count}")
+                
+                # After streaming completes, use accumulated state as result
+                result = accumulated_state
+                
+            except Exception as e:
+                import traceback
+                error_msg = f"Error in astream_events: {type(e).__name__}: {str(e)}"
+                error_trace = traceback.format_exc()
+                print(f"[STREAM {request_id}] {error_msg}")
+                print(f"[STREAM {request_id}] Traceback: {error_trace}")
                 yield f"data: {json.dumps({'type': 'error', 'message': error_msg})}\n\n"
                 return
             
+            print(f"[STREAM {request_id}] Preparing final response...")
             yield f"data: {json.dumps({'type': 'status', 'message': '✓ Agent processing complete'})}\n\n"
             
             response_text = result.get("final_response") or result.get("researcher_output", "")

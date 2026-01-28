@@ -81,10 +81,10 @@ async def get_distinct_patient_ids(limit: int = 5000) -> List[str]:
             result = await conn.execute(
                 text(
                     f"""
-                    SELECT DISTINCT (langchain_metadata::jsonb)->>'patientId' AS patient_id
+                    SELECT DISTINCT (langchain_metadata::jsonb)->>'patient_id' AS patient_id
                     FROM "{schema}"."{table}"
-                    WHERE (langchain_metadata::jsonb) ? 'patientId'
-                      AND (langchain_metadata::jsonb)->>'patientId' IS NOT NULL
+                    WHERE (langchain_metadata::jsonb) ? 'patient_id'
+                      AND (langchain_metadata::jsonb)->>'patient_id' IS NOT NULL
                     LIMIT :limit
                     """
                 ),
@@ -111,8 +111,8 @@ async def load_chunks(
                         f"""
                         SELECT content, langchain_metadata
                         FROM "{schema}"."{table}"
-                        WHERE langchain_metadata->>'patientId' = ANY(:patient_ids)
-                        ORDER BY langchain_metadata->>'patientId'
+                        WHERE langchain_metadata->>'patient_id' = ANY(:patient_ids)
+                        ORDER BY langchain_metadata->>'patient_id'
                         LIMIT :limit OFFSET :offset
                         """
                     ),

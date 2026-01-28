@@ -415,18 +415,10 @@ async def search_similar_chunks(
     try:
         vector_store = await initialize_vector_store()
         
-        # Normalize filter keys: convert patient_id to patientId (database uses camelCase)
-        normalized_filter = {}
-        if filter_metadata:
-            for key, value in filter_metadata.items():
-                if key == "patient_id":
-                    normalized_filter["patientId"] = value
-                else:
-                    normalized_filter[key] = value
-        
+        # Database uses snake_case - no conversion needed
         # If filtering by patient_id, retrieve a very large pool since semantic similarity
         # might not align with patient_id - we need to cast a wide net
-        if normalized_filter.get("patientId"):
+        if filter_metadata and filter_metadata.get("patient_id"):
             # Retrieve a large number to increase chances of finding patient's chunks
             retrieve_k = min(max(k * 100, 1000), 5000)  # Cap at 5000 for performance
         elif filter_metadata:
@@ -442,13 +434,13 @@ async def search_similar_chunks(
         )
         
         # Filter results in Python if filter_metadata is provided
-        if normalized_filter and results:
+        if filter_metadata and results:
             filtered_results = []
             for doc in results:
                 doc_metadata = doc.metadata or {}
                 # Check if all filter conditions match
                 matches = True
-                for key, value in normalized_filter.items():
+                for key, value in filter_metadata.items():
                     doc_value = doc_metadata.get(key)
                     if doc_value != value:
                         matches = False
@@ -457,8 +449,8 @@ async def search_similar_chunks(
                     filtered_results.append(doc)
             
             # If we didn't find enough matches, log a warning
-            if len(filtered_results) < k and normalized_filter:
-                print(f"Warning: Only found {len(filtered_results)}/{k} results after filtering from {len(results)} candidates (patientId={normalized_filter.get('patientId', 'N/A')})")
+            if len(filtered_results) < k and filter_metadata:
+                print(f"Warning: Only found {len(filtered_results)}/{k} results after filtering from {len(results)} candidates (patient_id={filter_metadata.get('patient_id', 'N/A')})")
             
             return filtered_results[:k]
         
@@ -598,13 +590,13 @@ async def get_patient_timeline(
             content,
             langchain_metadata
         FROM "{SCHEMA_NAME}"."{TABLE_NAME}"
-        WHERE langchain_metadata->>'patientId' = :patient_id
+        WHERE langchain_metadata->>'patient_id' = :patient_id
     """
     
     # Add resource type filter if specified
     if resource_types:
         type_list = ", ".join(f"'{t}'" for t in resource_types)
-        base_sql += f" AND langchain_metadata->>'resourceType' IN ({type_list})"
+        base_sql += f" AND langchain_metadata->>'resource_type' IN ({type_list})"
     
     # Sort by effectiveDate descending (newest first)
     base_sql += """
@@ -769,12 +761,12 @@ async def queue_worker():
                         file_id=queued_chunk.metadata.get("sourceFile"),
                         resource_id=queued_chunk.metadata.get("resourceId"),
                         chunk_id=queued_chunk.chunk_id,
-                        chunk_index=queued_chunk.metadata.get("chunkIndex"),
+                        chunk_index=queued_chunk.metadata.get("chunk_index"),
                         error_type="queue_full",
                         error_message=f"Queue full after {queued_chunk.retry_count} retries: {str(e)}",
                         metadata=queued_chunk.metadata,
                         retry_count=queued_chunk.retry_count,
-                        source_file=queued_chunk.metadata.get("sourceFile"),
+                        source_file=queued_chunk.metadata.get("source_file"),
                     )
             else:
                 _queue_stats["failed"] += 1
@@ -782,15 +774,15 @@ async def queue_worker():
                 # Log max retries or fatal error
                 error_type = "max_retries" if queued_chunk.retry_count >= MAX_RETRIES else "fatal"
                 await log_error(
-                    file_id=queued_chunk.metadata.get("sourceFile"),
-                    resource_id=queued_chunk.metadata.get("resourceId"),
+                    file_id=queued_chunk.metadata.get("source_file"),
+                    resource_id=queued_chunk.metadata.get("resource_id"),
                     chunk_id=queued_chunk.chunk_id,
-                    chunk_index=queued_chunk.metadata.get("chunkIndex"),
+                    chunk_index=queued_chunk.metadata.get("chunk_index"),
                     error_type=error_type,
                     error_message=str(e),
                     metadata=queued_chunk.metadata,
                     retry_count=queued_chunk.retry_count,
-                    source_file=queued_chunk.metadata.get("sourceFile"),
+                    source_file=queued_chunk.metadata.get("source_file"),
                 )
         finally:
             _queue.task_done()
@@ -809,14 +801,14 @@ async def store_chunk_direct(
     if not is_valid:
         # Log validation error
         await log_error(
-            file_id=metadata.get("sourceFile"),
-            resource_id=metadata.get("resourceId"),
+            file_id=metadata.get("source_file"),
+            resource_id=metadata.get("resource_id"),
             chunk_id=chunk_id,
-            chunk_index=metadata.get("chunkIndex"),
+            chunk_index=metadata.get("chunk_index"),
             error_type="validation",
             error_message=msg,
             metadata=metadata,
-            source_file=metadata.get("sourceFile"),
+            source_file=metadata.get("source_file"),
         )
         raise ValueError(msg)
 
@@ -860,26 +852,26 @@ async def store_chunk(
                 _queue_stats["failed"] += 1
                 # Log queue full error
                 await log_error(
-                    file_id=metadata.get("sourceFile"),
-                    resource_id=metadata.get("resourceId"),
+                    file_id=metadata.get("source_file"),
+                    resource_id=metadata.get("resource_id"),
                     chunk_id=chunk_id,
-                    chunk_index=metadata.get("chunkIndex"),
+                    chunk_index=metadata.get("chunk_index"),
                     error_type="queue_full",
                     error_message=f"Queue full, cannot queue chunk: {str(e)}",
                     metadata=metadata,
-                    source_file=metadata.get("sourceFile"),
+                    source_file=metadata.get("source_file"),
                 )
                 return False
         # Log fatal or non-retryable errors
         await log_error(
-            file_id=metadata.get("sourceFile"),
-            resource_id=metadata.get("resourceId"),
+            file_id=metadata.get("source_file"),
+            resource_id=metadata.get("resource_id"),
             chunk_id=chunk_id,
-            chunk_index=metadata.get("chunkIndex"),
+            chunk_index=metadata.get("chunk_index"),
             error_type="fatal",
             error_message=str(e),
             metadata=metadata,
-            source_file=metadata.get("sourceFile"),
+            source_file=metadata.get("source_file"),
         )
         raise
 

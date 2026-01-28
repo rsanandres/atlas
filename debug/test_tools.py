@@ -89,12 +89,12 @@ async def _get_real_patient_ids(limit: int = 5) -> List[str]:
                 text(
                     f"""
                     SELECT 
-                        (langchain_metadata::jsonb)->>'patientId' AS patient_id,
+                        (langchain_metadata::jsonb)->>'patient_id' AS patient_id,
                         COUNT(*) as chunk_count
                     FROM "{schema_name}"."{table_name}"
-                    WHERE (langchain_metadata::jsonb)->>'patientId' IS NOT NULL
-                      AND (langchain_metadata::jsonb)->>'patientId' != ''
-                    GROUP BY (langchain_metadata::jsonb)->>'patientId'
+                    WHERE (langchain_metadata::jsonb)->>'patient_id' IS NOT NULL
+                      AND (langchain_metadata::jsonb)->>'patient_id' != ''
+                    GROUP BY (langchain_metadata::jsonb)->>'patient_id'
                     HAVING COUNT(*) >= 5
                     ORDER BY chunk_count DESC
                     LIMIT :limit

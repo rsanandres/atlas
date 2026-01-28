@@ -30,7 +30,7 @@ async def bm25_search(
     Args:
         query: Search query (will be converted to tsquery)
         k: Number of results to return
-        filter_metadata: Optional metadata filters (e.g., {"patientId": "..."})
+        filter_metadata: Optional metadata filters (e.g., {"patient_id": "..."})
         engine: SQLAlchemy async engine (if not provided, uses global)
         
     Returns:
@@ -66,11 +66,10 @@ async def bm25_search(
     where_clauses = []
     if filter_metadata:
         for key, value in filter_metadata.items():
-            # Normalize patient_id to patientId (DB uses camelCase)
-            db_key = "patientId" if key == "patient_id" else key
-            param_name = f"meta_{db_key}"
+            # Database uses snake_case
+            param_name = f"meta_{key}"
             where_clauses.append(
-                f"langchain_metadata->>'{db_key}' = :{param_name}"
+                f"langchain_metadata->>'{key}' = :{param_name}"
             )
             params[param_name] = value
     
@@ -157,10 +156,10 @@ async def bm25_search_with_phrase(
     where_clauses = []
     if filter_metadata:
         for key, value in filter_metadata.items():
-            db_key = "patientId" if key == "patient_id" else key
-            param_name = f"meta_{db_key}"
+            # Database uses snake_case
+            param_name = f"meta_{key}"
             where_clauses.append(
-                f"langchain_metadata->>'{db_key}' = :{param_name}"
+                f"langchain_metadata->>'{key}' = :{param_name}"
             )
             params[param_name] = value
     
