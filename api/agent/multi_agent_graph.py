@@ -78,16 +78,34 @@ def _extract_tool_calls(messages: List[Any]) -> List[str]:
 
 
 def _extract_response_text(messages: List[Any]) -> str:
+    import re
+    content = ""
+    found = False
+    
     for message in reversed(messages):
         if isinstance(message, AIMessage) and getattr(message, "content", ""):
-            return str(message.content)
-    for message in reversed(messages):
-        if getattr(message, "content", ""):
-            return str(message.content)
-    if messages:
+            content = str(message.content)
+            found = True
+            break
+            
+    if not found:
+        for message in reversed(messages):
+            if getattr(message, "content", ""):
+                content = str(message.content)
+                found = True
+                break
+                
+    if not found and messages:
         last = messages[-1]
-        return getattr(last, "content", "") if hasattr(last, "content") else str(last)
-    return ""
+        content = getattr(last, "content", "") if hasattr(last, "content") else str(last)
+
+    # Clean internal prompt leakage
+    # Remove "VALIDATION TOOLS AVAILABLE" block
+    content = re.sub(r'=+\s*VALIDATION TOOLS AVAILABLE\s*=+', '', content, flags=re.IGNORECASE)
+    # Remove "OUTPUT FORMAT" block
+    content = re.sub(r'=+\s*OUTPUT FORMAT.*=+', '', content, flags=re.IGNORECASE)
+    
+    return content.strip()
 
 
 def _get_researcher_agent() -> Any:

@@ -52,6 +52,18 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="Start evaluation from this question index (0-based). Clears checkpoint and starts fresh.",
     )
+    parser.add_argument(
+        "--output-id",
+        type=str,
+        default=None,
+        help="Optional identifier to append to output filenames (e.g., timestamp).",
+    )
+    parser.add_argument(
+        "--cooldown",
+        type=int,
+        default=0,
+        help="Seconds to wait between questions to let the agent clear background processes.",
+    )
     return parser.parse_args()
 
 
@@ -171,10 +183,26 @@ async def main() -> int:
 
     # Process questions
     total_questions = len(testset)
+    print(f"DEBUG: total_questions={total_questions}")
+    print(f"DEBUG: modes={modes}")
+    print(f"DEBUG: completed_combinations len={len(completed_combinations)}")
+    
     for question_idx, item in enumerate(testset):
         question = item.get("question") or item.get("query") or item.get("prompt") or item.get("user_input")
         if not question:
             continue
+
+        # Extract patient_id from the question if possible
+        # Standard UUID regex
+        import re
+        uuid_pattern = r'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'
+        match = re.search(uuid_pattern, question)
+        
+        # Allow individual question patient_id override, or fallback to global patient_id
+        current_patient_id = match.group(0) if match else patient_id
+        
+        # Unique session per question to avoid context bleeding
+        current_session_id_base = f"ragas-{run_id}-{question_idx}"
 
         for mode in modes:
             # Check if this combination was already completed
@@ -183,19 +211,20 @@ async def main() -> int:
                 continue
 
             try:
+                print(f"Processing [{question_idx+1}/{total_questions}] {mode}: {question[:60]}... (PID: {current_patient_id})")
                 if mode == "direct":
                     result = await run_agent_query(
                         query=question,
-                        session_id=f"ragas-{run_id}-direct",
-                        patient_id=patient_id if args.patient_mode != "without" else None,
+                        session_id=f"{current_session_id_base}-direct",
+                        patient_id=current_patient_id if args.patient_mode != "without" else None,
                     )
                 else:
                     result = await run_api_query(
                         query=question,
-                        session_id=f"ragas-{run_id}-api",
-                        patient_id=patient_id if args.patient_mode != "without" else None,
+                        session_id=f"{current_session_id_base}-api",
+                        patient_id=current_patient_id if args.patient_mode != "without" else None,
                     )
-                
+            
                 # Check for errors in result
                 if result.get("error"):
                     error_msg = result.get("error", "")
@@ -239,7 +268,7 @@ async def main() -> int:
                         print(f"\nCheckpoint saved: {checkpoint_path}")
                         return 1
                 else:
-                    new_samples = await _build_samples(question, result, patient_id)
+                    new_samples = await _build_samples(question, result, current_patient_id)
                     samples.extend(new_samples)
                     completed_combinations.add(combination)
                     print(f"Completed [{question_idx+1}/{total_questions}] {mode}: {question[:60]}...")
@@ -252,6 +281,11 @@ async def main() -> int:
                     "timestamp": datetime.utcnow().isoformat(),
                 })
                 print(f"Exception [{question_idx+1}/{total_questions}] {mode}: {type(e).__name__} - {str(e)[:100]}")
+
+            # Cooldown between questions to let agent clear background processes
+            if args.cooldown > 0:
+                print(f"Cooldown: waiting {args.cooldown}s before next question...")
+                await asyncio.sleep(args.cooldown)
 
             # Save checkpoint every N questions
             completed_count = len(samples)
@@ -304,8 +338,15 @@ async def main() -> int:
         "failed": failed,
     }
 
-    results_path = Path(CONFIG.results_dir) / "results.json"
-    report_path = Path(CONFIG.results_dir) / "report.md"
+    if args.output_id:
+        results_filename = f"results_{args.output_id}.json"
+        report_filename = f"report_{args.output_id}.md"
+    else:
+        results_filename = "results.json"
+        report_filename = "report.md"
+
+    results_path = Path(CONFIG.results_dir) / results_filename
+    report_path = Path(CONFIG.results_dir) / report_filename
     write_json_report(summary, results_path)
     write_markdown_report(summary, samples, report_path)
 

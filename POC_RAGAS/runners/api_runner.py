@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sys
+import json
 from pathlib import Path
 from typing import Any, Dict, Optional
 
@@ -30,6 +31,8 @@ async def run_api_query(
         "k_retrieve": k_retrieve,
         "k_return": k_return,
     }
+    # Remove None values to avoid Pydantic/FastAPI validation issues
+    payload = {k: v for k, v in payload.items() if v is not None}
     # Health check before request
     if not await check_service_health():
         return {
@@ -44,7 +47,7 @@ async def run_api_query(
     
     # Single attempt - no retries, no restarts
     try:
-        async with httpx.AsyncClient(timeout=300.0) as client:
+        async with httpx.AsyncClient(timeout=1800.0) as client:
             response = await client.post(CONFIG.agent_api_url, json=payload)
             response.raise_for_status()
             data = response.json()
@@ -78,6 +81,9 @@ async def run_api_query(
             "error": f"ReadTimeout: Request timed out after 300s - {str(e)}",
         }
     except httpx.HTTPStatusError as e:
+        if e.response.status_code == 422:
+            print(f"\n[DEBUG] 422 Payload: {json.dumps(payload, indent=2)}")
+            print(f"[DEBUG] 422 Response: {e.response.text}\n")
         return {
             "query": query,
             "response": "",

@@ -236,13 +236,20 @@ async def query_agent_stream(payload: AgentQueryRequest):
                             accumulated_state.update(output)
                             print(f"[STREAM {request_id}] Accumulated state keys: {list(accumulated_state.keys())}")
                             
-                            # Emit intermediate outputs for debug mode
-                            if "researcher_output" in output and output["researcher_output"]:
-                                yield f"data: {json.dumps({'type': 'researcher_output', 'output': output['researcher_output']})}\n\n"
+                            # Get current iteration
+                            iteration_count = output.get("iteration_count", accumulated_state.get("iteration_count", 1))
                             
-                            if "validator_output" in output and output["validator_output"]:
+                            # Emit intermediate outputs with iteration number for debug mode
+                            # Only emit if this is the actual node (not wrapper chains like LangGraph)
+                            if "researcher_output" in output and output["researcher_output"] and "researcher" in event_name.lower():
+                                yield f"data: {json.dumps({'type': 'researcher_output', 'output': output['researcher_output'], 'iteration': iteration_count})}\n\n"
+                            
+                            if "validator_output" in output and output["validator_output"] and "validator" in event_name.lower():
                                 validation_result = output.get("validation_result", "")
-                                yield f"data: {json.dumps({'type': 'validator_output', 'output': output['validator_output'], 'result': validation_result})}\n\n"
+                                yield f"data: {json.dumps({'type': 'validator_output', 'output': output['validator_output'], 'result': validation_result, 'iteration': iteration_count})}\n\n"
+                            
+                            if "final_response" in output and output["final_response"] and "respond" in event_name.lower():
+                                yield f"data: {json.dumps({'type': 'response_output', 'output': output['final_response'], 'iteration': iteration_count})}\n\n"
                 
                 print(f"[STREAM {request_id}] astream_events loop completed. Total events: {event_count}")
                 
