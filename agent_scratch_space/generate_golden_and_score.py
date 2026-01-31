@@ -9,7 +9,6 @@ from typing import List, Dict
 
 from datasets import Dataset
 from ragas import evaluate
-# Revert to original imports to match installed version compatibility
 from ragas.metrics import (
     answer_relevancy,
     faithfulness,
@@ -19,9 +18,35 @@ from ragas.metrics import (
 
 # Import local modules
 _REPO_ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(_REPO_ROOT))
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
 
-from POC_RAGAS.config import CONFIG
+# Load environment variables explicitly
+from dotenv import load_dotenv, find_dotenv
+print(f"DEBUG: Script location: {Path(__file__).resolve()}")
+print(f"DEBUG: Calculated REPO_ROOT: {_REPO_ROOT}")
+env_path = _REPO_ROOT / ".env"
+print(f"DEBUG: Expected .env path: {env_path}, Exists: {env_path.exists()}")
+
+if not load_dotenv(env_path):
+    print("DEBUG: load_dotenv returned False (failed to load or empty)")
+    # Try finding it automatically
+    print("DEBUG: Trying find_dotenv...")
+    load_dotenv(find_dotenv())
+
+print(f"DEBUG: OPENAI_API_KEY present: {'OPENAI_API_KEY' in os.environ}")
+
+# Attempt to load config - handle potential import errors if environment isn't perfect
+try:
+    from POC_RAGAS.config import CONFIG
+except ImportError:
+    # Fallback/Mock config if module structure is tricky in scratch space
+    print("Warning: Could not import POC_RAGAS.config. Using raw environment variables.")
+    class ConfigMock:
+        openai_api_key = os.getenv("OPENAI_API_KEY")
+        ragas_model = "gpt-4o-mini"
+    CONFIG = ConfigMock()
+
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 
 # Define metrics
@@ -33,7 +58,7 @@ METRICS = [
 ]
 
 def load_batch_results(batch_dir: Path) -> List[Dict]:
-    """Load all result_*.json files from the directory."""
+    """Load all result_*.json files and use AGENT RESPONSE as GROUND TRUTH."""
     results = []
     pattern = str(batch_dir / "result_*.json")
     files = sorted(glob(pattern))
@@ -54,7 +79,6 @@ def load_batch_results(batch_dir: Path) -> List[Dict]:
                 
             response_data = data.get("response", {})
             if isinstance(response_data, str):
-                 # Handle case where response might be just a string (though unlikely in recent runs)
                  answer = response_data
                  sources = []
             else:
@@ -63,7 +87,6 @@ def load_batch_results(batch_dir: Path) -> List[Dict]:
             
             # Extract basic fields
             question = data.get("question")
-            ground_truths = data.get("ground_truths", [])
             
             # Extract contexts from sources
             contexts = []
@@ -73,12 +96,31 @@ def load_batch_results(batch_dir: Path) -> List[Dict]:
                 elif isinstance(src, str):
                     contexts.append(src)
             
-            # RAGAS expects list of strings for contexts
+            # FALLBACK: If sources are empty, try to use researcher_output from raw response
+            # This is critical because the Agent API seems to be returning empty sources currently,
+            # but the researcher clearly found data.
+            if not contexts:
+                raw_data = response_data.get("raw", {})
+                researcher_out = raw_data.get("researcher_output")
+                if researcher_out:
+                    print(f"  > Warning: Empty sources for Q[{data.get('question_index')}]. Using 'researcher_output' as context proxy.")
+                    contexts.append(researcher_out)
+
+            # CLEANING: If contexts is empty or just ["N/A"], metrics like Context Recall will fail or score 0.
+            # But the user wants to see the score.
+            final_contexts = contexts if contexts else ["N/A"]
+
+            # GOLDEN ANSWER LOGIC:
+            # Use the agent's answer as the ground truth
+            ground_truth = answer
+            
+            print(f"Processing Q[{data.get('question_index')}]: Setting Ground Truth = Agent Answer ({len(answer)} chars)")
+            
             results.append({
                 "question": question,
                 "answer": answer,
-                "contexts": contexts if contexts else ["N/A"], # Prevent empty context error
-                "ground_truth": ground_truths[0] if ground_truths else ""
+                "contexts": final_contexts,
+                "ground_truth": ground_truth 
             })
             
         except Exception as e:
@@ -87,7 +129,7 @@ def load_batch_results(batch_dir: Path) -> List[Dict]:
     return results
 
 def main():
-    parser = argparse.ArgumentParser(description="Score RAGAS batch results.")
+    parser = argparse.ArgumentParser(description="Score RAGAS batch results with Golden Answers.")
     parser.add_argument("--batch-dir", type=Path, required=True, help="Directory containing result_*.json files")
     args = parser.parse_args()
     
@@ -112,7 +154,7 @@ def main():
     
     dataset = Dataset.from_dict(ragas_data)
     
-    # Configure OpenAI LLM and Embeddings (User Reguested)
+    # Configure OpenAI LLM and Embeddings
     print("Configuring OpenAI models (gpt-4o-mini)...")
     if not CONFIG.openai_api_key:
         print("Error: OPENAI_API_KEY not found in environment!")
@@ -137,16 +179,17 @@ def main():
     print(results)
     
     # Save Report
-    output_file = args.batch_dir / "report.md"
+    output_file = args.batch_dir / "golden_report.md"
     df = results.to_pandas()
     
     # Calculate averages safely using pandas
     means = df.mean(numeric_only=True)
     
     with open(output_file, "w") as f:
-        f.write(f"# Batch Evaluation Report\n\n")
-        f.write(f"**Date:** {os.getenv('RunDate', datetime.now().isoformat())}\n")
-        f.write(f"**Total Questions Scored:** {len(df)}\n\n")
+        f.write(f"# Batch Evaluation Report (Golden Answer Experiment)\n\n")
+        f.write(f"**Date:** {datetime.now().isoformat()}\n")
+        f.write(f"**Total Questions Scored:** {len(df)}\n")
+        f.write(f"**Note:** Ground Truth was set to the Agent's Answer for this run.\n\n")
         
         f.write("## Aggregate Metrics\n")
         for metric, score in means.items():
