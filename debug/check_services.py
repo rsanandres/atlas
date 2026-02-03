@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import socket
+import os
 import sys
 from dataclasses import dataclass
 from typing import Callable, Optional
@@ -65,7 +66,7 @@ def main() -> int:
         ),
         ServiceCheck(
             name="Ollama /api/tags",
-            check=lambda: _http_ok("http://localhost:11434/api/tags"),
+            check=lambda: _http_ok(f"{os.getenv('OLLAMA_BASE_URL', 'http://localhost:11434')}/api/tags"),
             hint="Start Ollama: ollama serve",
         ),
     ]

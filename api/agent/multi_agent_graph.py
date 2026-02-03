@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import json
 from typing import Any, Dict, List, Optional, TypedDict
 
 from langchain.agents import create_agent
@@ -247,13 +248,43 @@ async def _researcher_node(state: AgentState) -> AgentState:
         )
 
     tools_called = (state.get("tools_called") or []) + _extract_tool_calls(output_messages)
+    
+    # Extract sources from tool outputs
+    new_sources = _extract_sources(output_messages)
+    all_sources = state.get("sources", []) + new_sources
+    
     return {
         **state,
         "researcher_output": response_text,
         "iteration_count": state.get("iteration_count", 0) + 1,
         "tools_called": tools_called,
-        "sources": state.get("sources", []),
+        "sources": all_sources,
     }
+
+def _extract_sources(messages: List[Any]) -> List[Dict[str, Any]]:
+    """Extract source documents from ToolMessages."""
+    sources: List[Dict[str, Any]] = []
+    for message in messages:
+        if isinstance(message, ToolMessage):
+            try:
+                # content can be string or list of content blocks
+                content_str = str(message.content)
+                data = json.loads(content_str)
+                
+                # Check for standard "chunks" format
+                if isinstance(data, dict) and "chunks" in data and isinstance(data["chunks"], list):
+                    for chunk in data["chunks"]:
+                        if isinstance(chunk, dict):
+                            sources.append({
+                                "doc_id": chunk.get("id", ""),
+                                "content_preview": chunk.get("content", "") or chunk.get("text", ""),
+                                "metadata": chunk.get("metadata", {})
+                            })
+            except json.JSONDecodeError:
+                continue
+            except Exception:
+                continue
+    return sources
 
 async def _validator_node(state: AgentState) -> AgentState:
     """Validate researcher output with strictness tiers and structured parsing."""

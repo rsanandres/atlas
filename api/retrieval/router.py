@@ -115,10 +115,15 @@ async def _rerank_single(request: RerankRequest) -> RerankResponse:
     k_retrieve = request.k_retrieve or DEFAULT_K_RETRIEVE
     k_return = request.k_return or DEFAULT_K_RETURN
 
-    candidates: List[Document] = await module.search_similar_chunks(
+    # ENFORCED: Always use Hybrid Search (BM25 + Semantic)
+    # This ensures exact matches for ICD-10 codes, dates, and names are found
+    # even if semantic similarity is low.
+    candidates: List[Document] = await module.hybrid_search(
         query=query,
         k=k_retrieve,
         filter_metadata=request.filter_metadata,
+        bm25_weight=0.3,     # Good balance for general queries
+        semantic_weight=0.7, # Favor semantic understanding
     )
 
     if not candidates:

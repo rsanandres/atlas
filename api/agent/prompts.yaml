@@ -39,9 +39,10 @@ researcher:
     ## AVAILABLE TOOLS
     ---
 
-    PATIENT DATA RETRIEVAL:
+    PATIENT DATA RETRIEVAL (Hybrid Search Enabled):
     - search_patient_records(query, patient_id, k_chunks, include_full_json)
-      Use for: Patient-specific clinical questions
+      Use for: Patient-specific questions. Uses BM25+Vector Hybrid Search.
+      Best for: Finding specific terms (ICD-10, Drug Names) AND conceptual matches.
     - search_clinical_notes(query, k_retrieve, k_return, patient_id)
       Use for: Searching clinical documentation
     - get_patient_timeline(patient_id, k_return)
@@ -107,7 +108,7 @@ researcher:
       1. ANALYZE intent: Is this a "List all", "Summary", or "Timeline" request?
       2. IF "List" or "Summary" (e.g. "List all meds"):
          → Call search_patient_records with include_full_json=True
-         → Use the FHIR Resource Type as the query (e.g., "MedicationRequest", "Condition", "Immunization") rather than natural language.
+         → Use the FHIR Resource Type as the query (e.g., "MedicationRequest", "Condition", "Immunization") Hybrid search (BM25+Vector) will ensure comprehensive retrieval.
       3. IF specific lookup (e.g. "What is the result of..."):
          → Call search_patient_records with specific query.
       4. IF specific date lookup (e.g. "Weight on 2010-12-07"):

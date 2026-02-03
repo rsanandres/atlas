@@ -1,0 +1,3313 @@
+INFO:api.embeddings.utils.helper:================================================================================
+INFO:api.embeddings.utils.helper:EMBEDDING CONFIGURATION
+INFO:api.embeddings.utils.helper:================================================================================
+INFO:api.embeddings.utils.helper:Provider: OLLAMA
+INFO:api.embeddings.utils.helper:  Ollama URL: http://100.91.76.71:11434
+INFO:api.embeddings.utils.helper:  Model: mxbai-embed-large:latest
+INFO:api.embeddings.utils.helper:  ✓ Model 'mxbai-embed-large:latest' is available
+INFO:api.embeddings.utils.helper:================================================================================
+INFO:     Started server process [34220]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+2026-02-02 15:37:21,062 - api.access - INFO - Request: GET /agent/health
+INFO:api.access:Request: GET /agent/health
+2026-02-02 15:37:21,063 - api.access - INFO - Response: 200 in 0.0006s
+INFO:api.access:Response: 200 in 0.0006s
+Warning: /agent/health not reachable
+Warning: /retrieval/rerank/health not reachable
+INFO:     127.0.0.1:60107 - "GET /agent/health HTTP/1.1" 200 OK
+2026-02-02 15:37:21,070 - api.access - INFO - Request: POST /agent/query
+INFO:api.access:Request: POST /agent/query
+2026-02-02 15:37:21,070 - api.access - INFO - Body: {
+  "query": "What active conditions does patient 179713d4-6c3d-4397-81f4-687dc9d7e609 have?",
+  "session_id": "golden-candidate-0",
+  "patient_id": "179713d4-6c3d-4397-81f4-687dc9d7e609"
+}
+INFO:api.access:Body: {
+  "query": "What active conditions does patient 179713d4-6c3d-4397-81f4-687dc9d7e609 have?",
+  "session_id": "golden-candidate-0",
+  "patient_id": "179713d4-6c3d-4397-81f4-687dc9d7e609"
+}
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 15:37:24,177 - api.access - INFO - Request: POST /retrieval/rerank/with-context
+INFO:api.access:Request: POST /retrieval/rerank/with-context
+2026-02-02 15:37:24,177 - api.access - INFO - Body: {
+  "query": "active conditions for patient 179713d4-6c3d-4397-81f4-687dc9d7e609",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "179713d4-6c3d-4397-81f4-687dc9d7e609"
+  },
+  "include_full_json": true
+}
+INFO:api.access:Body: {
+  "query": "active conditions for patient 179713d4-6c3d-4397-81f4-687dc9d7e609",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "179713d4-6c3d-4397-81f4-687dc9d7e609"
+  },
+  "include_full_json": true
+}
+Some weights of BertForSequenceClassification were not initialized from the model checkpoint at sentence-transformers/all-MiniLM-L6-v2 and are newly initialized: ['classifier.bias', 'classifier.weight']
+You should probably TRAIN this model on a down-stream task to be able to use it for predictions and inference.
+[GRAPH] Creating complex multi-agent graph (researcher → validator → respond)
+Warning: Only found 1/50 results after filtering from 5000 candidates (patient_id=179713d4-6c3d-4397-81f4-687dc9d7e609)
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  8.29it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  8.28it/s]
+2026-02-02 15:37:31,482 - api.access - INFO - Response: 200 in 7.3051s
+INFO:api.access:Response: 200 in 7.3051s
+INFO:     127.0.0.1:60116 - "POST /retrieval/rerank/with-context HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST http://localhost:8000/retrieval/rerank/with-context "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search?sf=code%2Cname&terms=I10&maxList=10 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 15:37:44,125 - api.access - INFO - Request: GET /health
+INFO:api.access:Request: GET /health
+2026-02-02 15:37:44,128 - api.access - INFO - Response: 200 in 0.0023s
+INFO:api.access:Response: 200 in 0.0023s
+INFO:     127.0.0.1:60154 - "GET /health HTTP/1.1" 200 OK
+2026-02-02 15:37:44,140 - api.access - INFO - Request: GET /health
+INFO:api.access:Request: GET /health
+2026-02-02 15:37:44,141 - api.access - INFO - Response: 200 in 0.0006s
+INFO:api.access:Response: 200 in 0.0006s
+INFO:     127.0.0.1:60156 - "GET /health HTTP/1.1" 200 OK
+2026-02-02 15:37:44,147 - api.access - INFO - Request: POST /agent/query
+INFO:api.access:Request: POST /agent/query
+2026-02-02 15:37:44,147 - api.access - INFO - Body: {
+  "query": "List all active conditions for patient 179713d4-6c3d-4397-81f4-687dc9d7e609.",
+  "patient_id": "179713d4-6c3d-4397-81f4-687dc9d7e609",
+  "session_id": "e2e-test-1"
+}
+INFO:api.access:Body: {
+  "query": "List all active conditions for patient 179713d4-6c3d-4397-81f4-687dc9d7e609.",
+  "patient_id": "179713d4-6c3d-4397-81f4-687dc9d7e609",
+  "session_id": "e2e-test-1"
+}
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 15:37:49,211 - api.access - INFO - Request: GET /agent/health
+INFO:api.access:Request: GET /agent/health
+2026-02-02 15:37:49,211 - api.access - INFO - Response: 200 in 0.0011s
+INFO:api.access:Response: 200 in 0.0011s
+INFO:     127.0.0.1:60171 - "GET /agent/health HTTP/1.1" 200 OK
+2026-02-02 15:37:49,213 - api.access - INFO - Request: GET /retrieval/rerank/health
+INFO:api.access:Request: GET /retrieval/rerank/health
+2026-02-02 15:37:49,214 - api.access - INFO - Response: 200 in 0.0010s
+INFO:api.access:Response: 200 in 0.0010s
+INFO:     127.0.0.1:60173 - "GET /retrieval/rerank/health HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 15:37:53,177 - api.access - INFO - Request: POST /retrieval/rerank/with-context
+INFO:api.access:Request: POST /retrieval/rerank/with-context
+2026-02-02 15:37:53,177 - api.access - INFO - Body: {
+  "query": "MedicationRequest/urn:uuid:c681883c-b263-eab78fc3b448",
+  "k_retrieve": 400,
+  "k_return": 100,
+  "filter_metadata": {
+    "patient_id": "179713d4-6c3d-4397-81f4-687dc9d7e609"
+  },
+  "include_full_json": true
+}
+INFO:api.access:Body: {
+  "query": "MedicationRequest/urn:uuid:c681883c-b263-eab78fc3b448",
+  "k_retrieve": 400,
+  "k_return": 100,
+  "filter_metadata": {
+    "patient_id": "179713d4-6c3d-4397-81f4-687dc9d7e609"
+  },
+  "include_full_json": true
+}
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 15:37:55,879 - api.access - INFO - Request: POST /retrieval/rerank/with-context
+INFO:api.access:Request: POST /retrieval/rerank/with-context
+2026-02-02 15:37:55,879 - api.access - INFO - Body: {
+  "query": "active conditions",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "179713d4-6c3d-4397-81f4-687dc9d7e609"
+  },
+  "include_full_json": true
+}
+INFO:api.access:Body: {
+  "query": "active conditions",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "179713d4-6c3d-4397-81f4-687dc9d7e609"
+  },
+  "include_full_json": true
+}
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-37' coro=<queue_worker() running at /Users/raph/Documents/hc_ai/api/database/postgres.py:727> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+Warning: Only found 2/50 results after filtering from 5000 candidates (patient_id=179713d4-6c3d-4397-81f4-687dc9d7e609)
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 19.12it/s]
+2026-02-02 15:38:01,279 - api.access - INFO - Response: 200 in 8.1014s
+INFO:api.access:Response: 200 in 8.1014s
+INFO:     127.0.0.1:60187 - "POST /retrieval/rerank/with-context HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST http://localhost:8000/retrieval/rerank/with-context "HTTP/1.1 200 OK"
+Warning: Only found 4/50 results after filtering from 5000 candidates (patient_id=179713d4-6c3d-4397-81f4-687dc9d7e609)
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  4.93it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  4.93it/s]
+2026-02-02 15:38:02,233 - api.access - INFO - Response: 200 in 6.3536s
+INFO:api.access:Response: 200 in 6.3536s
+INFO:     127.0.0.1:60204 - "POST /retrieval/rerank/with-context HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST http://localhost:8000/retrieval/rerank/with-context "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search?sf=code%2Cname&terms=E11.9&maxList=10 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search?sf=code%2Cname&terms=E11.9&maxList=10 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 15:38:22,882 - api.access - INFO - Response: 200 in 61.8117s
+INFO:api.access:Response: 200 in 61.8117s
+Warning: Failed to store session turn: Float types are not supported. Use Decimal types instead.
+INFO:     127.0.0.1:60109 - "POST /agent/query HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 15:38:28,312 - api.access - INFO - Response: 200 in 44.1650s
+INFO:api.access:Response: 200 in 44.1650s
+Warning: Failed to store session turn: Float types are not supported. Use Decimal types instead.
+INFO:     127.0.0.1:60158 - "POST /agent/query HTTP/1.1" 200 OK
+2026-02-02 15:38:28,342 - api.access - INFO - Request: POST /agent/query
+INFO:api.access:Request: POST /agent/query
+2026-02-02 15:38:28,342 - api.access - INFO - Body: {
+  "query": "What was patient 179713d4-6c3d-4397-81f4-687dc9d7e609's weight on 2010-12-07?",
+  "patient_id": "179713d4-6c3d-4397-81f4-687dc9d7e609",
+  "session_id": "e2e-test-2"
+}
+INFO:api.access:Body: {
+  "query": "What was patient 179713d4-6c3d-4397-81f4-687dc9d7e609's weight on 2010-12-07?",
+  "patient_id": "179713d4-6c3d-4397-81f4-687dc9d7e609",
+  "session_id": "e2e-test-2"
+}
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://loinc.regenstrief.org/searchapi/loincs?query=37106-4 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 15:38:41,295 - api.access - INFO - Request: POST /retrieval/rerank/with-context
+INFO:api.access:Request: POST /retrieval/rerank/with-context
+2026-02-02 15:38:41,295 - api.access - INFO - Body: {
+  "query": "weight on 2010-12-07",
+  "k_retrieve": 20,
+  "k_return": 1,
+  "filter_metadata": {
+    "patient_id": "179713d4-6c3d-4397-81f4-687dc9d7e609"
+  },
+  "include_full_json": true
+}
+INFO:api.access:Body: {
+  "query": "weight on 2010-12-07",
+  "k_retrieve": 20,
+  "k_return": 1,
+  "filter_metadata": {
+    "patient_id": "179713d4-6c3d-4397-81f4-687dc9d7e609"
+  },
+  "include_full_json": true
+}
+Warning: Only found 5/50 results after filtering from 5000 candidates (patient_id=179713d4-6c3d-4397-81f4-687dc9d7e609)
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  7.08it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  7.07it/s]
+2026-02-02 15:38:46,030 - api.access - INFO - Response: 200 in 4.7358s
+INFO:api.access:Response: 200 in 4.7358s
+INFO:     127.0.0.1:60283 - "POST /retrieval/rerank/with-context HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST http://localhost:8000/retrieval/rerank/with-context "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search?sf=code%2Cname&terms=I10&maxList=10 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 15:39:02,895 - api.access - INFO - Request: POST /retrieval/rerank/with-context
+INFO:api.access:Request: POST /retrieval/rerank/with-context
+2026-02-02 15:39:02,895 - api.access - INFO - Body: {
+  "query": "Patient weight on 2010-12-07",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "179713d4-6c3d-4397-81f4-687dc9d7e609"
+  },
+  "include_full_json": true
+}
+INFO:api.access:Body: {
+  "query": "Patient weight on 2010-12-07",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "179713d4-6c3d-4397-81f4-687dc9d7e609"
+  },
+  "include_full_json": true
+}
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-138' coro=<queue_worker() running at /Users/raph/Documents/hc_ai/api/database/postgres.py:727> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-168' coro=<queue_worker() running at /Users/raph/Documents/hc_ai/api/database/postgres.py:727> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-333' coro=<queue_worker() running at /Users/raph/Documents/hc_ai/api/database/postgres.py:727> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+Warning: Only found 5/50 results after filtering from 5000 candidates (patient_id=179713d4-6c3d-4397-81f4-687dc9d7e609)
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  9.35it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  9.34it/s]
+2026-02-02 15:39:07,787 - api.access - INFO - Response: 200 in 4.8919s
+INFO:api.access:Response: 200 in 4.8919s
+INFO:     127.0.0.1:60305 - "POST /retrieval/rerank/with-context HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST http://localhost:8000/retrieval/rerank/with-context "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search?sf=code%2Cname&terms=E11.9&maxList=10 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 15:39:20,747 - api.access - INFO - Request: POST /retrieval/rerank/with-context
+INFO:api.access:Request: POST /retrieval/rerank/with-context
+2026-02-02 15:39:20,747 - api.access - INFO - Body: {
+  "query": "weight on 2010-12-07 for patient f1d2d1e2-4a03-43cb-8f06-f68c90e96cc8",
+  "k_retrieve": 20,
+  "k_return": 1,
+  "filter_metadata": {
+    "patient_id": "f1d2d1e2-4a03-43cb-8f06-f68c90e96cc8"
+  },
+  "include_full_json": true
+}
+INFO:api.access:Body: {
+  "query": "weight on 2010-12-07 for patient f1d2d1e2-4a03-43cb-8f06-f68c90e96cc8",
+  "k_retrieve": 20,
+  "k_return": 1,
+  "filter_metadata": {
+    "patient_id": "f1d2d1e2-4a03-43cb-8f06-f68c90e96cc8"
+  },
+  "include_full_json": true
+}
+Warning: Only found 1/50 results after filtering from 5000 candidates (patient_id=f1d2d1e2-4a03-43cb-8f06-f68c90e96cc8)
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 36.91it/s]
+2026-02-02 15:39:24,768 - api.access - INFO - Response: 200 in 4.0218s
+INFO:api.access:Response: 200 in 4.0218s
+INFO:     127.0.0.1:60323 - "POST /retrieval/rerank/with-context HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST http://localhost:8000/retrieval/rerank/with-context "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search?sf=code%2Cname&terms=I10&maxList=10 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 15:39:38,008 - api.access - INFO - Request: POST /retrieval/rerank/with-context
+INFO:api.access:Request: POST /retrieval/rerank/with-context
+2026-02-02 15:39:38,008 - api.access - INFO - Body: {
+  "query": "weight on 2010-12-07",
+  "k_retrieve": 20,
+  "k_return": 1,
+  "filter_metadata": {
+    "patient_id": "179713d4-6c3d-4397-81f4-687dc9d7e609"
+  },
+  "include_full_json": true
+}
+INFO:api.access:Body: {
+  "query": "weight on 2010-12-07",
+  "k_retrieve": 20,
+  "k_return": 1,
+  "filter_metadata": {
+    "patient_id": "179713d4-6c3d-4397-81f4-687dc9d7e609"
+  },
+  "include_full_json": true
+}
+2026-02-02 15:39:41,942 - api.access - INFO - Response: 200 in 3.9337s
+INFO:api.access:Response: 200 in 3.9337s
+Warning: Only found 5/50 results after filtering from 5000 candidates (patient_id=179713d4-6c3d-4397-81f4-687dc9d7e609)
+INFO:     127.0.0.1:60339 - "POST /retrieval/rerank/with-context HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST http://localhost:8000/retrieval/rerank/with-context "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search?sf=code%2Cname&terms=E11.9&maxList=10 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 15:39:57,207 - api.access - INFO - Request: POST /retrieval/rerank/with-context
+INFO:api.access:Request: POST /retrieval/rerank/with-context
+2026-02-02 15:39:57,207 - api.access - INFO - Body: {
+  "query": "179713d4-6c3d-4397-81f4-687dc9d7e609",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "179713d4-6c3d-4397-81f4-687dc9d7e609"
+  },
+  "include_full_json": true
+}
+INFO:api.access:Body: {
+  "query": "179713d4-6c3d-4397-81f4-687dc9d7e609",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "179713d4-6c3d-4397-81f4-687dc9d7e609"
+  },
+  "include_full_json": true
+}
+Warning: Only found 2/50 results after filtering from 5000 candidates (patient_id=179713d4-6c3d-4397-81f4-687dc9d7e609)
+Batches:   0%|          | 0/2 [00:00<?, ?it/s]Batches:  50%|█████     | 1/2 [00:00<00:00,  1.34it/s]Batches: 100%|██████████| 2/2 [00:00<00:00,  2.47it/s]Batches: 100%|██████████| 2/2 [00:00<00:00,  2.19it/s]
+2026-02-02 15:40:02,722 - api.access - INFO - Response: 200 in 5.5142s
+INFO:api.access:Response: 200 in 5.5142s
+INFO:     127.0.0.1:60356 - "POST /retrieval/rerank/with-context HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST http://localhost:8000/retrieval/rerank/with-context "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://loinc.regenstrief.org/searchapi/loincs?query=8480-6 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 15:40:16,330 - api.access - INFO - Request: POST /retrieval/rerank/with-context
+INFO:api.access:Request: POST /retrieval/rerank/with-context
+2026-02-02 15:40:16,330 - api.access - INFO - Body: {
+  "query": "weight on 2010-12-07",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "179713d4-6c3d-4397-81f4-687dc9d7e609"
+  },
+  "include_full_json": true
+}
+INFO:api.access:Body: {
+  "query": "weight on 2010-12-07",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "179713d4-6c3d-4397-81f4-687dc9d7e609"
+  },
+  "include_full_json": true
+}
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-391' coro=<queue_worker() running at /Users/raph/Documents/hc_ai/api/database/postgres.py:727> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-449' coro=<queue_worker() running at /Users/raph/Documents/hc_ai/api/database/postgres.py:727> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-507' coro=<queue_worker() running at /Users/raph/Documents/hc_ai/api/database/postgres.py:727> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-566' coro=<queue_worker() running at /Users/raph/Documents/hc_ai/api/database/postgres.py:727> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+2026-02-02 15:40:20,653 - api.access - INFO - Response: 200 in 4.3227s
+INFO:api.access:Response: 200 in 4.3227s
+Warning: Only found 5/50 results after filtering from 5000 candidates (patient_id=179713d4-6c3d-4397-81f4-687dc9d7e609)
+INFO:     127.0.0.1:60371 - "POST /retrieval/rerank/with-context HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST http://localhost:8000/retrieval/rerank/with-context "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 15:40:35,922 - api.access - INFO - Request: POST /retrieval/rerank/with-context
+INFO:api.access:Request: POST /retrieval/rerank/with-context
+2026-02-02 15:40:35,922 - api.access - INFO - Body: {
+  "query": "weight on 2010-12-07",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "179713d4-6c3d-4397-81f4-687dc9d7e609"
+  },
+  "include_full_json": true
+}
+INFO:api.access:Body: {
+  "query": "weight on 2010-12-07",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "179713d4-6c3d-4397-81f4-687dc9d7e609"
+  },
+  "include_full_json": true
+}
+2026-02-02 15:40:40,145 - api.access - INFO - Response: 200 in 4.2234s
+INFO:api.access:Response: 200 in 4.2234s
+Warning: Only found 5/50 results after filtering from 5000 candidates (patient_id=179713d4-6c3d-4397-81f4-687dc9d7e609)
+INFO:     127.0.0.1:60398 - "POST /retrieval/rerank/with-context HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST http://localhost:8000/retrieval/rerank/with-context "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 15:40:48,228 - api.access - INFO - Response: 500 in 139.8863s
+INFO:api.access:Response: 500 in 139.8863s
+Error in agent query [request_id=135796ee-e55e-4460-a87d-26bdd3b89e9a]: GraphRecursionError: Recursion limit of 15 reached without hitting a stop condition. You can increase the limit by setting the `recursion_limit` config key.
+For troubleshooting, visit: https://docs.langchain.com/oss/python/langgraph/errors/GRAPH_RECURSION_LIMIT
+Traceback: Traceback (most recent call last):
+  File "/Users/raph/Documents/hc_ai/api/agent/router.py", line 82, in query_agent
+    result = await asyncio.wait_for(
+             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.13/Frameworks/Python.framework/Versions/3.11/lib/python3.11/asyncio/tasks.py", line 489, in wait_for
+    return fut.result()
+           ^^^^^^^^^^^^
+  File "/Users/raph/Documents/hc_ai/.venv/lib/python3.11/site-packages/langgraph/pregel/main.py", line 3158, in ainvoke
+    async for chunk in self.astream(
+  File "/Users/raph/Documents/hc_ai/.venv/lib/python3.11/site-packages/langgraph/pregel/main.py", line 3014, in astream
+    raise GraphRecursionError(msg)
+langgraph.errors.GraphRecursionError: Recursion limit of 15 reached without hitting a stop condition. You can increase the limit by setting the `recursion_limit` config key.
+For troubleshooting, visit: https://docs.langchain.com/oss/python/langgraph/errors/GRAPH_RECURSION_LIMIT
+
+INFO:     127.0.0.1:60270 - "POST /agent/query HTTP/1.1" 500 Internal Server Error
+2026-02-02 15:40:48,255 - api.access - INFO - Request: POST /agent/query
+INFO:api.access:Request: POST /agent/query
+2026-02-02 15:40:48,256 - api.access - INFO - Body: {
+  "query": "Patient 179713d4-6c3d-4397-81f4-687dc9d7e609 is taking Warfarin. Can they also take Aspirin for a headache?",
+  "patient_id": "179713d4-6c3d-4397-81f4-687dc9d7e609",
+  "session_id": "e2e-test-3"
+}
+INFO:api.access:Body: {
+  "query": "Patient 179713d4-6c3d-4397-81f4-687dc9d7e609 is taking Warfarin. Can they also take Aspirin for a headache?",
+  "patient_id": "179713d4-6c3d-4397-81f4-687dc9d7e609",
+  "session_id": "e2e-test-3"
+}
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search?sf=code%2Cname&terms=I46.9&maxList=10 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://rxnav.nlm.nih.gov/REST/rxcui.json?name=Aspirin "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 15:40:56,571 - api.access - INFO - Response: 500 in 8.3157s
+INFO:api.access:Response: 500 in 8.3157s
+Error in agent query [request_id=f34f6e35-6c64-40cb-98d3-46661b90d0ab]: GraphRecursionError: Recursion limit of 15 reached without hitting a stop condition. You can increase the limit by setting the `recursion_limit` config key.
+For troubleshooting, visit: https://docs.langchain.com/oss/python/langgraph/errors/GRAPH_RECURSION_LIMIT
+Traceback: Traceback (most recent call last):
+  File "/Users/raph/Documents/hc_ai/api/agent/router.py", line 82, in query_agent
+    result = await asyncio.wait_for(
+             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.13/Frameworks/Python.framework/Versions/3.11/lib/python3.11/asyncio/tasks.py", line 489, in wait_for
+    return fut.result()
+           ^^^^^^^^^^^^
+  File "/Users/raph/Documents/hc_ai/.venv/lib/python3.11/site-packages/langgraph/pregel/main.py", line 3158, in ainvoke
+    async for chunk in self.astream(
+  File "/Users/raph/Documents/hc_ai/.venv/lib/python3.11/site-packages/langgraph/pregel/main.py", line 2971, in astream
+    async for _ in runner.atick(
+  File "/Users/raph/Documents/hc_ai/.venv/lib/python3.11/site-packages/langgraph/pregel/_runner.py", line 304, in atick
+    await arun_with_retry(
+  File "/Users/raph/Documents/hc_ai/.venv/lib/python3.11/site-packages/langgraph/pregel/_retry.py", line 137, in arun_with_retry
+    return await task.proc.ainvoke(task.input, config)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/raph/Documents/hc_ai/.venv/lib/python3.11/site-packages/langgraph/_internal/_runnable.py", line 705, in ainvoke
+    input = await asyncio.create_task(
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/raph/Documents/hc_ai/.venv/lib/python3.11/site-packages/langgraph/_internal/_runnable.py", line 473, in ainvoke
+    ret = await self.afunc(*args, **kwargs)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/raph/Documents/hc_ai/api/agent/multi_agent_graph.py", line 340, in _validator_node
+    result = await agent.ainvoke({"messages": messages}, config={"recursion_limit": max_iter})
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/raph/Documents/hc_ai/.venv/lib/python3.11/site-packages/langgraph/pregel/main.py", line 3158, in ainvoke
+    async for chunk in self.astream(
+  File "/Users/raph/Documents/hc_ai/.venv/lib/python3.11/site-packages/langgraph/pregel/main.py", line 3014, in astream
+    raise GraphRecursionError(msg)
+langgraph.errors.GraphRecursionError: Recursion limit of 15 reached without hitting a stop condition. You can increase the limit by setting the `recursion_limit` config key.
+For troubleshooting, visit: https://docs.langchain.com/oss/python/langgraph/errors/GRAPH_RECURSION_LIMIT
+During task with name 'validator' and id '13d44924-f245-3861-7d68-b36758b75b67'
+
+INFO:     127.0.0.1:60408 - "POST /agent/query HTTP/1.1" 500 Internal Server Error
+2026-02-02 15:40:56,592 - api.access - INFO - Request: POST /agent/query
+INFO:api.access:Request: POST /agent/query
+2026-02-02 15:40:56,592 - api.access - INFO - Body: {
+  "query": "What is the latest creatinine lab result for patient 179713d4-6c3d-4397-81f4-687dc9d7e609?",
+  "patient_id": "179713d4-6c3d-4397-81f4-687dc9d7e609",
+  "session_id": "e2e-test-4"
+}
+INFO:api.access:Body: {
+  "query": "What is the latest creatinine lab result for patient 179713d4-6c3d-4397-81f4-687dc9d7e609?",
+  "patient_id": "179713d4-6c3d-4397-81f4-687dc9d7e609",
+  "session_id": "e2e-test-4"
+}
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 15:40:58,537 - api.access - INFO - Request: POST /retrieval/rerank/with-context
+INFO:api.access:Request: POST /retrieval/rerank/with-context
+2026-02-02 15:40:58,538 - api.access - INFO - Body: {
+  "query": "latest creatinine lab result for patient 179713d4-6c3d-4397-81f4-687dc9d7e609",
+  "k_retrieve": 20,
+  "k_return": 1,
+  "filter_metadata": {
+    "patient_id": "179713d4-6c3d-4397-81f4-687dc9d7e609"
+  },
+  "include_full_json": true
+}
+INFO:api.access:Body: {
+  "query": "latest creatinine lab result for patient 179713d4-6c3d-4397-81f4-687dc9d7e609",
+  "k_retrieve": 20,
+  "k_return": 1,
+  "filter_metadata": {
+    "patient_id": "179713d4-6c3d-4397-81f4-687dc9d7e609"
+  },
+  "include_full_json": true
+}
+Warning: Only found 7/50 results after filtering from 5000 candidates (patient_id=179713d4-6c3d-4397-81f4-687dc9d7e609)
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  6.46it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  6.45it/s]
+2026-02-02 15:41:02,618 - api.access - INFO - Response: 200 in 4.0807s
+INFO:api.access:Response: 200 in 4.0807s
+INFO:     127.0.0.1:60422 - "POST /retrieval/rerank/with-context HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST http://localhost:8000/retrieval/rerank/with-context "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search?sf=code%2Cname&terms=E11.9&maxList=10 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 15:41:13,168 - api.access - INFO - Response: 200 in 16.5758s
+INFO:api.access:Response: 200 in 16.5758s
+Warning: Failed to store session turn: Float types are not supported. Use Decimal types instead.
+INFO:     127.0.0.1:60420 - "POST /agent/query HTTP/1.1" 200 OK
+2026-02-02 16:17:32,526 - api.access - INFO - Request: GET /agent/health
+INFO:api.access:Request: GET /agent/health
+2026-02-02 16:17:32,572 - api.access - INFO - Response: 200 in 0.0567s
+INFO:api.access:Response: 200 in 0.0567s
+INFO:     127.0.0.1:63116 - "GET /agent/health HTTP/1.1" 200 OK
+2026-02-02 16:17:32,585 - api.access - INFO - Request: POST /agent/query
+INFO:api.access:Request: POST /agent/query
+2026-02-02 16:17:32,587 - api.access - INFO - Body: {
+  "query": "What active conditions does patient 179713d4-6c3d-4397-81f4-687dc9d7e609 have?",
+  "session_id": "golden-candidate-0",
+  "patient_id": "179713d4-6c3d-4397-81f4-687dc9d7e609"
+}
+INFO:api.access:Body: {
+  "query": "What active conditions does patient 179713d4-6c3d-4397-81f4-687dc9d7e609 have?",
+  "session_id": "golden-candidate-0",
+  "patient_id": "179713d4-6c3d-4397-81f4-687dc9d7e609"
+}
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 16:17:39,164 - api.access - INFO - Request: POST /retrieval/rerank/with-context
+INFO:api.access:Request: POST /retrieval/rerank/with-context
+2026-02-02 16:17:39,164 - api.access - INFO - Body: {
+  "query": "active conditions for patient 179713d4-6c3d-4397-81f4-687dc9d7e609",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "179713d4-6c3d-4397-81f4-687dc9d7e609"
+  },
+  "include_full_json": true
+}
+INFO:api.access:Body: {
+  "query": "active conditions for patient 179713d4-6c3d-4397-81f4-687dc9d7e609",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "179713d4-6c3d-4397-81f4-687dc9d7e609"
+  },
+  "include_full_json": true
+}
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-625' coro=<queue_worker() running at /Users/raph/Documents/hc_ai/api/database/postgres.py:727> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-682' coro=<queue_worker() running at /Users/raph/Documents/hc_ai/api/database/postgres.py:727> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-820' coro=<queue_worker() running at /Users/raph/Documents/hc_ai/api/database/postgres.py:727> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+2026-02-02 16:17:46,417 - api.access - INFO - Response: 200 in 7.2534s
+INFO:api.access:Response: 200 in 7.2534s
+Warning: Only found 1/50 results after filtering from 5000 candidates (patient_id=179713d4-6c3d-4397-81f4-687dc9d7e609)
+INFO:     127.0.0.1:63127 - "POST /retrieval/rerank/with-context HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST http://localhost:8000/retrieval/rerank/with-context "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search?sf=code%2Cname&terms=I10&maxList=10 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 16:18:00,157 - api.access - INFO - Response: 200 in 27.5714s
+INFO:api.access:Response: 200 in 27.5714s
+Warning: Failed to store session turn: Float types are not supported. Use Decimal types instead.
+INFO:     127.0.0.1:63118 - "POST /agent/query HTTP/1.1" 200 OK
+2026-02-02 16:18:00,189 - api.access - INFO - Request: GET /agent/health
+INFO:api.access:Request: GET /agent/health
+2026-02-02 16:18:00,190 - api.access - INFO - Response: 200 in 0.0014s
+INFO:api.access:Response: 200 in 0.0014s
+INFO:     127.0.0.1:63193 - "GET /agent/health HTTP/1.1" 200 OK
+2026-02-02 16:18:00,204 - api.access - INFO - Request: POST /agent/query
+INFO:api.access:Request: POST /agent/query
+2026-02-02 16:18:00,204 - api.access - INFO - Body: {
+  "query": "List all medications prescribed to the patient.",
+  "session_id": "golden-candidate-1",
+  "patient_id": "0000d346-2e09-428f-b37b-b9d5182e313f"
+}
+INFO:api.access:Body: {
+  "query": "List all medications prescribed to the patient.",
+  "session_id": "golden-candidate-1",
+  "patient_id": "0000d346-2e09-428f-b37b-b9d5182e313f"
+}
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 16:18:00,786 - api.access - INFO - Request: POST /retrieval/rerank/with-context
+INFO:api.access:Request: POST /retrieval/rerank/with-context
+2026-02-02 16:18:00,787 - api.access - INFO - Body: {
+  "query": "medications prescribed to patient",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "include_full_json": true
+}
+INFO:api.access:Body: {
+  "query": "medications prescribed to patient",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "include_full_json": true
+}
+Batches:   0%|          | 0/2 [00:00<?, ?it/s]Batches:  50%|█████     | 1/2 [00:00<00:00,  1.49it/s]Batches: 100%|██████████| 2/2 [00:00<00:00,  2.90it/s]Batches: 100%|██████████| 2/2 [00:00<00:00,  2.54it/s]
+2026-02-02 16:18:05,923 - api.access - INFO - Response: 200 in 5.1364s
+INFO:api.access:Response: 200 in 5.1364s
+INFO:     127.0.0.1:63199 - "POST /retrieval/rerank/with-context HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST http://localhost:8000/retrieval/rerank/with-context "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search?sf=code%2Cname&terms=E11.9&maxList=10 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search?sf=code%2Cname&terms=E11.9&maxList=10 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 16:18:24,350 - api.access - INFO - Response: 200 in 24.1463s
+INFO:api.access:Response: 200 in 24.1463s
+Warning: Failed to store session turn: Float types are not supported. Use Decimal types instead.
+INFO:     127.0.0.1:63195 - "POST /agent/query HTTP/1.1" 200 OK
+2026-02-02 16:18:24,369 - api.access - INFO - Request: GET /agent/health
+INFO:api.access:Request: GET /agent/health
+2026-02-02 16:18:24,369 - api.access - INFO - Response: 200 in 0.0005s
+INFO:api.access:Response: 200 in 0.0005s
+INFO:     127.0.0.1:63295 - "GET /agent/health HTTP/1.1" 200 OK
+2026-02-02 16:18:24,378 - api.access - INFO - Request: POST /agent/query
+INFO:api.access:Request: POST /agent/query
+2026-02-02 16:18:24,378 - api.access - INFO - Body: {
+  "query": "What was the patient's body weight on 2010-12-07?",
+  "session_id": "golden-candidate-2",
+  "patient_id": "0000d346-2e09-428f-b37b-b9d5182e313f"
+}
+INFO:api.access:Body: {
+  "query": "What was the patient's body weight on 2010-12-07?",
+  "session_id": "golden-candidate-2",
+  "patient_id": "0000d346-2e09-428f-b37b-b9d5182e313f"
+}
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 16:18:33,529 - api.access - INFO - Request: POST /retrieval/rerank/with-context
+INFO:api.access:Request: POST /retrieval/rerank/with-context
+2026-02-02 16:18:33,530 - api.access - INFO - Body: {
+  "query": "Observation effectiveDateTime 2010-12-07",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "0000d346-2e09-428f-b37b-b9d5182e313f"
+  },
+  "include_full_json": true
+}
+INFO:api.access:Body: {
+  "query": "Observation effectiveDateTime 2010-12-07",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "0000d346-2e09-428f-b37b-b9d5182e313f"
+  },
+  "include_full_json": true
+}
+Warning: Only found 5/50 results after filtering from 5000 candidates (patient_id=0000d346-2e09-428f-b37b-b9d5182e313f)
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  9.33it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  9.31it/s]
+2026-02-02 16:18:39,170 - api.access - INFO - Response: 200 in 5.6409s
+INFO:api.access:Response: 200 in 5.6409s
+INFO:     127.0.0.1:63310 - "POST /retrieval/rerank/with-context HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST http://localhost:8000/retrieval/rerank/with-context "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search?sf=code%2Cname&terms=E11.9&maxList=10 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 16:18:55,907 - api.access - INFO - Response: 200 in 31.5289s
+INFO:api.access:Response: 200 in 31.5289s
+Warning: Failed to store session turn: Float types are not supported. Use Decimal types instead.
+INFO:     127.0.0.1:63297 - "POST /agent/query HTTP/1.1" 200 OK
+2026-02-02 16:18:55,931 - api.access - INFO - Request: GET /agent/health
+INFO:api.access:Request: GET /agent/health
+2026-02-02 16:18:55,931 - api.access - INFO - Response: 200 in 0.0005s
+INFO:api.access:Response: 200 in 0.0005s
+INFO:     127.0.0.1:63356 - "GET /agent/health HTTP/1.1" 200 OK
+2026-02-02 16:18:55,939 - api.access - INFO - Request: POST /agent/query
+INFO:api.access:Request: POST /agent/query
+2026-02-02 16:18:55,939 - api.access - INFO - Body: {
+  "query": "Does the patient have any recorded immunizations? If so, which ones?",
+  "session_id": "golden-candidate-3",
+  "patient_id": "0000d346-2e09-428f-b37b-b9d5182e313f"
+}
+INFO:api.access:Body: {
+  "query": "Does the patient have any recorded immunizations? If so, which ones?",
+  "session_id": "golden-candidate-3",
+  "patient_id": "0000d346-2e09-428f-b37b-b9d5182e313f"
+}
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 16:18:56,486 - api.access - INFO - Request: POST /retrieval/rerank
+INFO:api.access:Request: POST /retrieval/rerank
+2026-02-02 16:18:56,486 - api.access - INFO - Body: {
+  "query": "immunization",
+  "k_retrieve": 10,
+  "k_return": 5,
+  "filter_metadata": null
+}
+INFO:api.access:Body: {
+  "query": "immunization",
+  "k_retrieve": 10,
+  "k_return": 5,
+  "filter_metadata": null
+}
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  7.26it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  7.25it/s]
+2026-02-02 16:19:00,079 - api.access - INFO - Response: 200 in 3.5934s
+INFO:api.access:Response: 200 in 3.5934s
+INFO:     127.0.0.1:63361 - "POST /retrieval/rerank HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://loinc.regenstrief.org/searchapi/loincs?query=V05.0 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 16:19:05,710 - api.access - INFO - Response: 200 in 9.7709s
+INFO:api.access:Response: 200 in 9.7709s
+Warning: Failed to store session turn: Float types are not supported. Use Decimal types instead.
+INFO:     127.0.0.1:63358 - "POST /agent/query HTTP/1.1" 200 OK
+2026-02-02 16:19:05,724 - api.access - INFO - Request: GET /agent/health
+INFO:api.access:Request: GET /agent/health
+2026-02-02 16:19:05,725 - api.access - INFO - Response: 200 in 0.0006s
+INFO:api.access:Response: 200 in 0.0006s
+INFO:     127.0.0.1:63373 - "GET /agent/health HTTP/1.1" 200 OK
+2026-02-02 16:19:05,734 - api.access - INFO - Request: POST /agent/query
+INFO:api.access:Request: POST /agent/query
+2026-02-02 16:19:05,735 - api.access - INFO - Body: {
+  "query": "What was the result of the patient's eGFR test on 2010-12-07?",
+  "session_id": "golden-candidate-4",
+  "patient_id": "0000d346-2e09-428f-b37b-b9d5182e313f"
+}
+INFO:api.access:Body: {
+  "query": "What was the result of the patient's eGFR test on 2010-12-07?",
+  "session_id": "golden-candidate-4",
+  "patient_id": "0000d346-2e09-428f-b37b-b9d5182e313f"
+}
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-1204' coro=<queue_worker() running at /Users/raph/Documents/hc_ai/api/database/postgres.py:727> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 16:19:06,536 - api.access - INFO - Request: POST /retrieval/rerank
+INFO:api.access:Request: POST /retrieval/rerank
+2026-02-02 16:19:06,537 - api.access - INFO - Body: {
+  "query": "eGFR test result 2010-12-07",
+  "k_retrieve": 10,
+  "k_return": 5,
+  "filter_metadata": {
+    "patient_id": "f1d2d1e2-4a03-43cb-8f06-f68c90e96cc8"
+  }
+}
+INFO:api.access:Body: {
+  "query": "eGFR test result 2010-12-07",
+  "k_retrieve": 10,
+  "k_return": 5,
+  "filter_metadata": {
+    "patient_id": "f1d2d1e2-4a03-43cb-8f06-f68c90e96cc8"
+  }
+}
+2026-02-02 16:19:11,129 - api.access - INFO - Response: 200 in 4.5929s
+INFO:api.access:Response: 200 in 4.5929s
+Warning: Only found 0/50 results after filtering from 5000 candidates (patient_id=f1d2d1e2-4a03-43cb-8f06-f68c90e96cc8)
+INFO:     127.0.0.1:63377 - "POST /retrieval/rerank HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search?sf=code%2Cname&terms=Z99.2&maxList=10 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 16:19:16,982 - api.access - INFO - Response: 200 in 11.2476s
+INFO:api.access:Response: 200 in 11.2476s
+INFO:     127.0.0.1:63375 - "POST /agent/query HTTP/1.1" 200 OK
+2026-02-02 16:19:16,999 - api.access - INFO - Request: GET /agent/health
+INFO:api.access:Request: GET /agent/health
+2026-02-02 16:19:17,000 - api.access - INFO - Response: 200 in 0.0014s
+INFO:api.access:Response: 200 in 0.0014s
+INFO:     127.0.0.1:63386 - "GET /agent/health HTTP/1.1" 200 OK
+2026-02-02 16:19:17,007 - api.access - INFO - Request: POST /agent/query
+INFO:api.access:Request: POST /agent/query
+2026-02-02 16:19:17,007 - api.access - INFO - Body: {
+  "query": "Has the patient undergone any procedures? List them.",
+  "session_id": "golden-candidate-5",
+  "patient_id": "0000d346-2e09-428f-b37b-b9d5182e313f"
+}
+INFO:api.access:Body: {
+  "query": "Has the patient undergone any procedures? List them.",
+  "session_id": "golden-candidate-5",
+  "patient_id": "0000d346-2e09-428f-b37b-b9d5182e313f"
+}
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 16:19:17,499 - api.access - INFO - Request: POST /retrieval/rerank
+INFO:api.access:Request: POST /retrieval/rerank
+2026-02-02 16:19:17,500 - api.access - INFO - Body: {
+  "query": "procedures",
+  "k_retrieve": 10,
+  "k_return": 5,
+  "filter_metadata": null
+}
+INFO:api.access:Body: {
+  "query": "procedures",
+  "k_retrieve": 10,
+  "k_return": 5,
+  "filter_metadata": null
+}
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  5.02it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  5.02it/s]
+2026-02-02 16:19:20,732 - api.access - INFO - Response: 200 in 3.2326s
+INFO:api.access:Response: 200 in 3.2326s
+INFO:     127.0.0.1:63390 - "POST /retrieval/rerank HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-1343' coro=<queue_worker() running at /Users/raph/Documents/hc_ai/api/database/postgres.py:727> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search?sf=code%2Cname&terms=85548006&maxList=1 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search?sf=code%2Cname&terms=I10&maxList=10 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 16:19:30,129 - api.access - INFO - Request: POST /retrieval/rerank/with-context
+INFO:api.access:Request: POST /retrieval/rerank/with-context
+2026-02-02 16:19:30,130 - api.access - INFO - Body: {
+  "query": "Hypertensive heart disease AND Essential (primary) hypertension",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "0000d346-2e09-428f-b37b-b9d5182e313f"
+  },
+  "include_full_json": true
+}
+INFO:api.access:Body: {
+  "query": "Hypertensive heart disease AND Essential (primary) hypertension",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "0000d346-2e09-428f-b37b-b9d5182e313f"
+  },
+  "include_full_json": true
+}
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-897' coro=<queue_worker() running at /Users/raph/Documents/hc_ai/api/database/postgres.py:727> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-975' coro=<queue_worker() running at /Users/raph/Documents/hc_ai/api/database/postgres.py:727> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-1129' coro=<queue_worker() running at /Users/raph/Documents/hc_ai/api/database/postgres.py:727> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-1274' coro=<queue_worker() running at /Users/raph/Documents/hc_ai/api/database/postgres.py:727> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+Warning: Only found 2/50 results after filtering from 5000 candidates (patient_id=0000d346-2e09-428f-b37b-b9d5182e313f)
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 28.87it/s]
+2026-02-02 16:19:34,483 - api.access - INFO - Response: 200 in 4.3539s
+INFO:api.access:Response: 200 in 4.3539s
+INFO:     127.0.0.1:63406 - "POST /retrieval/rerank/with-context HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST http://localhost:8000/retrieval/rerank/with-context "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search?sf=code%2Cname&terms=E11.9&maxList=10 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 16:19:45,105 - api.access - INFO - Response: 200 in 28.0973s
+INFO:api.access:Response: 200 in 28.0973s
+Warning: Failed to store session turn: Float types are not supported. Use Decimal types instead.
+INFO:     127.0.0.1:63388 - "POST /agent/query HTTP/1.1" 200 OK
+2026-02-02 16:19:45,128 - api.access - INFO - Request: GET /agent/health
+INFO:api.access:Request: GET /agent/health
+2026-02-02 16:19:45,129 - api.access - INFO - Response: 200 in 0.0005s
+INFO:api.access:Response: 200 in 0.0005s
+INFO:     127.0.0.1:63429 - "GET /agent/health HTTP/1.1" 200 OK
+2026-02-02 16:19:45,139 - api.access - INFO - Request: POST /agent/query
+INFO:api.access:Request: POST /agent/query
+2026-02-02 16:19:45,139 - api.access - INFO - Body: {
+  "query": "What is the patient's Body Mass Index (BMI) as of December 2010?",
+  "session_id": "golden-candidate-6",
+  "patient_id": "0000d346-2e09-428f-b37b-b9d5182e313f"
+}
+INFO:api.access:Body: {
+  "query": "What is the patient's Body Mass Index (BMI) as of December 2010?",
+  "session_id": "golden-candidate-6",
+  "patient_id": "0000d346-2e09-428f-b37b-b9d5182e313f"
+}
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://loinc.regenstrief.org/searchapi/loincs?query=39156-5 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 16:19:58,712 - api.access - INFO - Response: 500 in 13.5733s
+INFO:api.access:Response: 500 in 13.5733s
+Error in agent query [request_id=13295cfc-f671-4b2c-8e7e-3e84342c5aa0]: GraphRecursionError: Recursion limit of 15 reached without hitting a stop condition. You can increase the limit by setting the `recursion_limit` config key.
+For troubleshooting, visit: https://docs.langchain.com/oss/python/langgraph/errors/GRAPH_RECURSION_LIMIT
+Traceback: Traceback (most recent call last):
+  File "/Users/raph/Documents/hc_ai/api/agent/router.py", line 82, in query_agent
+    result = await asyncio.wait_for(
+             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.13/Frameworks/Python.framework/Versions/3.11/lib/python3.11/asyncio/tasks.py", line 489, in wait_for
+    return fut.result()
+           ^^^^^^^^^^^^
+  File "/Users/raph/Documents/hc_ai/.venv/lib/python3.11/site-packages/langgraph/pregel/main.py", line 3158, in ainvoke
+    async for chunk in self.astream(
+  File "/Users/raph/Documents/hc_ai/.venv/lib/python3.11/site-packages/langgraph/pregel/main.py", line 2971, in astream
+    async for _ in runner.atick(
+  File "/Users/raph/Documents/hc_ai/.venv/lib/python3.11/site-packages/langgraph/pregel/_runner.py", line 304, in atick
+    await arun_with_retry(
+  File "/Users/raph/Documents/hc_ai/.venv/lib/python3.11/site-packages/langgraph/pregel/_retry.py", line 137, in arun_with_retry
+    return await task.proc.ainvoke(task.input, config)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/raph/Documents/hc_ai/.venv/lib/python3.11/site-packages/langgraph/_internal/_runnable.py", line 705, in ainvoke
+    input = await asyncio.create_task(
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/raph/Documents/hc_ai/.venv/lib/python3.11/site-packages/langgraph/_internal/_runnable.py", line 473, in ainvoke
+    ret = await self.afunc(*args, **kwargs)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/raph/Documents/hc_ai/api/agent/multi_agent_graph.py", line 340, in _validator_node
+    result = await agent.ainvoke({"messages": messages}, config={"recursion_limit": max_iter})
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/raph/Documents/hc_ai/.venv/lib/python3.11/site-packages/langgraph/pregel/main.py", line 3158, in ainvoke
+    async for chunk in self.astream(
+  File "/Users/raph/Documents/hc_ai/.venv/lib/python3.11/site-packages/langgraph/pregel/main.py", line 3014, in astream
+    raise GraphRecursionError(msg)
+langgraph.errors.GraphRecursionError: Recursion limit of 15 reached without hitting a stop condition. You can increase the limit by setting the `recursion_limit` config key.
+For troubleshooting, visit: https://docs.langchain.com/oss/python/langgraph/errors/GRAPH_RECURSION_LIMIT
+During task with name 'validator' and id 'ddf4ad09-3191-0fde-58a1-609011807964'
+
+INFO:     127.0.0.1:63431 - "POST /agent/query HTTP/1.1" 500 Internal Server Error
+2026-02-02 16:19:58,724 - api.access - INFO - Request: GET /agent/health
+INFO:api.access:Request: GET /agent/health
+2026-02-02 16:19:58,725 - api.access - INFO - Response: 200 in 0.0004s
+INFO:api.access:Response: 200 in 0.0004s
+INFO:     127.0.0.1:63447 - "GET /agent/health HTTP/1.1" 200 OK
+2026-02-02 16:19:58,762 - api.access - INFO - Request: POST /agent/query
+INFO:api.access:Request: POST /agent/query
+2026-02-02 16:19:58,763 - api.access - INFO - Body: {
+  "query": "What was the reason for the encounter on 2010-12-08?",
+  "session_id": "golden-candidate-7",
+  "patient_id": "0000d346-2e09-428f-b37b-b9d5182e313f"
+}
+INFO:api.access:Body: {
+  "query": "What was the reason for the encounter on 2010-12-08?",
+  "session_id": "golden-candidate-7",
+  "patient_id": "0000d346-2e09-428f-b37b-b9d5182e313f"
+}
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 16:19:59,299 - api.access - INFO - Request: POST /retrieval/rerank
+INFO:api.access:Request: POST /retrieval/rerank
+2026-02-02 16:19:59,299 - api.access - INFO - Body: {
+  "query": "reason for encounter on 2010-12-08",
+  "k_retrieve": 10,
+  "k_return": 1,
+  "filter_metadata": null
+}
+INFO:api.access:Body: {
+  "query": "reason for encounter on 2010-12-08",
+  "k_retrieve": 10,
+  "k_return": 1,
+  "filter_metadata": null
+}
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  5.46it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  5.46it/s]
+2026-02-02 16:20:02,390 - api.access - INFO - Response: 200 in 3.0908s
+INFO:api.access:Response: 200 in 3.0908s
+INFO:     127.0.0.1:63451 - "POST /retrieval/rerank HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search?sf=code%2Cname&terms=C34&maxList=10 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-1659' coro=<queue_worker() running at /Users/raph/Documents/hc_ai/api/database/postgres.py:727> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 16:20:09,015 - api.access - INFO - Request: POST /retrieval/rerank/with-context
+INFO:api.access:Request: POST /retrieval/rerank/with-context
+2026-02-02 16:20:09,015 - api.access - INFO - Body: {
+  "query": "suspected lung cancer",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "f1d2d1e2-4a03-43cb-8f06-f68c90e96cc8"
+  },
+  "include_full_json": true
+}
+INFO:api.access:Body: {
+  "query": "suspected lung cancer",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "f1d2d1e2-4a03-43cb-8f06-f68c90e96cc8"
+  },
+  "include_full_json": true
+}
+Warning: Only found 1/50 results after filtering from 5000 candidates (patient_id=f1d2d1e2-4a03-43cb-8f06-f68c90e96cc8)
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 43.27it/s]
+2026-02-02 16:20:13,405 - api.access - INFO - Response: 200 in 4.3907s
+INFO:api.access:Response: 200 in 4.3907s
+INFO:     127.0.0.1:63466 - "POST /retrieval/rerank/with-context HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST http://localhost:8000/retrieval/rerank/with-context "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search?sf=code%2Cname&terms=I10&maxList=10 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search?sf=code%2Cname&terms=Z55&maxList=10 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search?sf=code%2Cname&terms=S28.9&maxList=10 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 16:20:35,685 - api.access - INFO - Response: 200 in 36.9224s
+INFO:api.access:Response: 200 in 36.9224s
+Warning: Failed to store session turn: Float types are not supported. Use Decimal types instead.
+INFO:     127.0.0.1:63449 - "POST /agent/query HTTP/1.1" 200 OK
+2026-02-02 16:20:35,707 - api.access - INFO - Request: GET /agent/health
+INFO:api.access:Request: GET /agent/health
+2026-02-02 16:20:35,707 - api.access - INFO - Response: 200 in 0.0004s
+INFO:api.access:Response: 200 in 0.0004s
+INFO:     127.0.0.1:63496 - "GET /agent/health HTTP/1.1" 200 OK
+2026-02-02 16:20:35,715 - api.access - INFO - Request: POST /agent/query
+INFO:api.access:Request: POST /agent/query
+2026-02-02 16:20:35,715 - api.access - INFO - Body: {
+  "query": "What is the patient's Total Cholesterol level?",
+  "session_id": "golden-candidate-8",
+  "patient_id": "0000d346-2e09-428f-b37b-b9d5182e313f"
+}
+INFO:api.access:Body: {
+  "query": "What is the patient's Total Cholesterol level?",
+  "session_id": "golden-candidate-8",
+  "patient_id": "0000d346-2e09-428f-b37b-b9d5182e313f"
+}
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search?sf=code%2Cname&terms=E11.9&maxList=10 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 16:20:45,379 - api.access - INFO - Request: POST /retrieval/rerank/with-context
+INFO:api.access:Request: POST /retrieval/rerank/with-context
+2026-02-02 16:20:45,379 - api.access - INFO - Body: {
+  "query": "Observation/obs-total-cholesterol-2023-001",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "0000d346-2e09-428f-b37b-b9d5182e313f"
+  },
+  "include_full_json": true
+}
+INFO:api.access:Body: {
+  "query": "Observation/obs-total-cholesterol-2023-001",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "0000d346-2e09-428f-b37b-b9d5182e313f"
+  },
+  "include_full_json": true
+}
+Warning: Only found 3/50 results after filtering from 5000 candidates (patient_id=0000d346-2e09-428f-b37b-b9d5182e313f)
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 14.03it/s]
+2026-02-02 16:20:49,403 - api.access - INFO - Response: 200 in 4.0242s
+INFO:api.access:Response: 200 in 4.0242s
+INFO:     127.0.0.1:63505 - "POST /retrieval/rerank/with-context HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST http://localhost:8000/retrieval/rerank/with-context "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search?sf=code%2Cname&terms=E11.9&maxList=10 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 16:21:00,301 - api.access - INFO - Response: 200 in 24.5857s
+INFO:api.access:Response: 200 in 24.5857s
+Warning: Failed to store session turn: Float types are not supported. Use Decimal types instead.
+INFO:     127.0.0.1:63498 - "POST /agent/query HTTP/1.1" 200 OK
+2026-02-02 16:21:00,454 - api.access - INFO - Request: GET /agent/health
+INFO:api.access:Request: GET /agent/health
+2026-02-02 16:21:00,468 - api.access - INFO - Response: 200 in 0.0153s
+INFO:api.access:Response: 200 in 0.0153s
+INFO:     127.0.0.1:63526 - "GET /agent/health HTTP/1.1" 200 OK
+2026-02-02 16:21:00,488 - api.access - INFO - Request: POST /agent/query
+INFO:api.access:Request: POST /agent/query
+2026-02-02 16:21:00,488 - api.access - INFO - Body: {
+  "query": "Identify any vital signs recorded for this patient.",
+  "session_id": "golden-candidate-9",
+  "patient_id": "0000d346-2e09-428f-b37b-b9d5182e313f"
+}
+INFO:api.access:Body: {
+  "query": "Identify any vital signs recorded for this patient.",
+  "session_id": "golden-candidate-9",
+  "patient_id": "0000d346-2e09-428f-b37b-b9d5182e313f"
+}
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 16:21:01,300 - api.access - INFO - Request: POST /retrieval/rerank
+INFO:api.access:Request: POST /retrieval/rerank
+2026-02-02 16:21:01,300 - api.access - INFO - Body: {
+  "query": "vital signs",
+  "k_retrieve": 10,
+  "k_return": 5,
+  "filter_metadata": {
+    "patient_id": "f1d2d1e2-4a03-43cb-8f06-f68c90e96cc8"
+  }
+}
+INFO:api.access:Body: {
+  "query": "vital signs",
+  "k_retrieve": 10,
+  "k_return": 5,
+  "filter_metadata": {
+    "patient_id": "f1d2d1e2-4a03-43cb-8f06-f68c90e96cc8"
+  }
+}
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-1438' coro=<queue_worker() running at /Users/raph/Documents/hc_ai/api/database/postgres.py:727> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-1714' coro=<queue_worker() running at /Users/raph/Documents/hc_ai/api/database/postgres.py:727> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-1907' coro=<queue_worker() running at /Users/raph/Documents/hc_ai/api/database/postgres.py:727> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+Warning: Only found 1/50 results after filtering from 5000 candidates (patient_id=f1d2d1e2-4a03-43cb-8f06-f68c90e96cc8)
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 10.11it/s]
+2026-02-02 16:21:05,450 - api.access - INFO - Response: 200 in 4.1499s
+INFO:api.access:Response: 200 in 4.1499s
+INFO:     127.0.0.1:63531 - "POST /retrieval/rerank HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://loinc.regenstrief.org/searchapi/loincs?query=29463-7 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search?sf=code%2Cname&terms=I10&maxList=10 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 16:21:13,096 - api.access - INFO - Response: 200 in 12.6086s
+INFO:api.access:Response: 200 in 12.6086s
+Warning: Failed to store session turn: Float types are not supported. Use Decimal types instead.
+INFO:     127.0.0.1:63528 - "POST /agent/query HTTP/1.1" 200 OK
+2026-02-02 16:22:09,550 - api.access - INFO - Request: GET /agent/health
+INFO:api.access:Request: GET /agent/health
+2026-02-02 16:22:09,553 - api.access - INFO - Response: 200 in 0.0029s
+INFO:api.access:Response: 200 in 0.0029s
+INFO:     127.0.0.1:63619 - "GET /agent/health HTTP/1.1" 200 OK
+2026-02-02 16:22:09,563 - api.access - INFO - Request: POST /agent/query
+INFO:api.access:Request: POST /agent/query
+2026-02-02 16:22:09,563 - api.access - INFO - Body: {
+  "query": "What is the patient's Body Mass Index (BMI) as of December 2010?",
+  "session_id": "golden-retry-6",
+  "patient_id": "0000d346-2e09-428f-b37b-b9d5182e313f"
+}
+INFO:api.access:Body: {
+  "query": "What is the patient's Body Mass Index (BMI) as of December 2010?",
+  "session_id": "golden-retry-6",
+  "patient_id": "0000d346-2e09-428f-b37b-b9d5182e313f"
+}
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://loinc.regenstrief.org/searchapi/loincs?query=39156-5 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 16:22:22,970 - api.access - INFO - Response: 500 in 13.4069s
+INFO:api.access:Response: 500 in 13.4069s
+Error in agent query [request_id=ca9fce92-5d1e-4168-99e9-f25354f0d684]: GraphRecursionError: Recursion limit of 15 reached without hitting a stop condition. You can increase the limit by setting the `recursion_limit` config key.
+For troubleshooting, visit: https://docs.langchain.com/oss/python/langgraph/errors/GRAPH_RECURSION_LIMIT
+Traceback: Traceback (most recent call last):
+  File "/Users/raph/Documents/hc_ai/api/agent/router.py", line 82, in query_agent
+    result = await asyncio.wait_for(
+             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.13/Frameworks/Python.framework/Versions/3.11/lib/python3.11/asyncio/tasks.py", line 489, in wait_for
+    return fut.result()
+           ^^^^^^^^^^^^
+  File "/Users/raph/Documents/hc_ai/.venv/lib/python3.11/site-packages/langgraph/pregel/main.py", line 3158, in ainvoke
+    async for chunk in self.astream(
+  File "/Users/raph/Documents/hc_ai/.venv/lib/python3.11/site-packages/langgraph/pregel/main.py", line 2971, in astream
+    async for _ in runner.atick(
+  File "/Users/raph/Documents/hc_ai/.venv/lib/python3.11/site-packages/langgraph/pregel/_runner.py", line 304, in atick
+    await arun_with_retry(
+  File "/Users/raph/Documents/hc_ai/.venv/lib/python3.11/site-packages/langgraph/pregel/_retry.py", line 137, in arun_with_retry
+    return await task.proc.ainvoke(task.input, config)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/raph/Documents/hc_ai/.venv/lib/python3.11/site-packages/langgraph/_internal/_runnable.py", line 705, in ainvoke
+    input = await asyncio.create_task(
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/raph/Documents/hc_ai/.venv/lib/python3.11/site-packages/langgraph/_internal/_runnable.py", line 473, in ainvoke
+    ret = await self.afunc(*args, **kwargs)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/raph/Documents/hc_ai/api/agent/multi_agent_graph.py", line 340, in _validator_node
+    result = await agent.ainvoke({"messages": messages}, config={"recursion_limit": max_iter})
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/raph/Documents/hc_ai/.venv/lib/python3.11/site-packages/langgraph/pregel/main.py", line 3158, in ainvoke
+    async for chunk in self.astream(
+  File "/Users/raph/Documents/hc_ai/.venv/lib/python3.11/site-packages/langgraph/pregel/main.py", line 3014, in astream
+    raise GraphRecursionError(msg)
+langgraph.errors.GraphRecursionError: Recursion limit of 15 reached without hitting a stop condition. You can increase the limit by setting the `recursion_limit` config key.
+For troubleshooting, visit: https://docs.langchain.com/oss/python/langgraph/errors/GRAPH_RECURSION_LIMIT
+During task with name 'validator' and id '5b9b373e-18f5-f1d1-ffbe-9c31527ae3c3'
+
+INFO:     127.0.0.1:63621 - "POST /agent/query HTTP/1.1" 500 Internal Server Error
+2026-02-02 16:23:49,127 - api.access - INFO - Request: GET /agent/health
+INFO:api.access:Request: GET /agent/health
+2026-02-02 16:23:49,128 - api.access - INFO - Response: 200 in 0.0016s
+INFO:api.access:Response: 200 in 0.0016s
+INFO:     127.0.0.1:63759 - "GET /agent/health HTTP/1.1" 200 OK
+2026-02-02 16:23:49,135 - api.access - INFO - Request: POST /agent/query
+INFO:api.access:Request: POST /agent/query
+2026-02-02 16:23:49,135 - api.access - INFO - Body: {
+  "query": "Has patient d930e322-8c86-4c17-8ce8-217cb252e2e4 undergone any procedures? List them.",
+  "session_id": "golden-run-19-0",
+  "patient_id": "d930e322-8c86-4c17-8ce8-217cb252e2e4"
+}
+INFO:api.access:Body: {
+  "query": "Has patient d930e322-8c86-4c17-8ce8-217cb252e2e4 undergone any procedures? List them.",
+  "session_id": "golden-run-19-0",
+  "patient_id": "d930e322-8c86-4c17-8ce8-217cb252e2e4"
+}
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 16:23:50,351 - api.access - INFO - Request: POST /retrieval/rerank
+INFO:api.access:Request: POST /retrieval/rerank
+2026-02-02 16:23:50,351 - api.access - INFO - Body: {
+  "query": "procedures for patient d930e322-8c86-4c17-8ce8-217cb252e2e4",
+  "k_retrieve": 10,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "d930e322-8c86-4c17-8ce8-217cb252e2e4"
+  }
+}
+INFO:api.access:Body: {
+  "query": "procedures for patient d930e322-8c86-4c17-8ce8-217cb252e2e4",
+  "k_retrieve": 10,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "d930e322-8c86-4c17-8ce8-217cb252e2e4"
+  }
+}
+Warning: Only found 2/50 results after filtering from 5000 candidates (patient_id=d930e322-8c86-4c17-8ce8-217cb252e2e4)
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 19.03it/s]
+2026-02-02 16:23:55,871 - api.access - INFO - Response: 200 in 5.5202s
+INFO:api.access:Response: 200 in 5.5202s
+INFO:     127.0.0.1:63765 - "POST /retrieval/rerank HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 16:24:03,920 - api.access - INFO - Response: 200 in 14.7854s
+INFO:api.access:Response: 200 in 14.7854s
+Warning: Failed to store session turn: Float types are not supported. Use Decimal types instead.
+INFO:     127.0.0.1:63761 - "POST /agent/query HTTP/1.1" 200 OK
+2026-02-02 16:24:03,932 - api.access - INFO - Request: GET /agent/health
+INFO:api.access:Request: GET /agent/health
+2026-02-02 16:24:03,932 - api.access - INFO - Response: 200 in 0.0008s
+INFO:api.access:Response: 200 in 0.0008s
+INFO:     127.0.0.1:63795 - "GET /agent/health HTTP/1.1" 200 OK
+2026-02-02 16:24:03,942 - api.access - INFO - Request: POST /agent/query
+INFO:api.access:Request: POST /agent/query
+2026-02-02 16:24:03,943 - api.access - INFO - Body: {
+  "query": "What is patient 3f89ff20-09aa-40e7-a359-389863c7e574's blood pressure history?",
+  "session_id": "golden-run-19-1",
+  "patient_id": "3f89ff20-09aa-40e7-a359-389863c7e574"
+}
+INFO:api.access:Body: {
+  "query": "What is patient 3f89ff20-09aa-40e7-a359-389863c7e574's blood pressure history?",
+  "session_id": "golden-run-19-1",
+  "patient_id": "3f89ff20-09aa-40e7-a359-389863c7e574"
+}
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search?sf=code%2Cname&terms=I10&maxList=10 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 16:24:15,520 - api.access - INFO - Response: 200 in 11.5776s
+INFO:api.access:Response: 200 in 11.5776s
+INFO:     127.0.0.1:63797 - "POST /agent/query HTTP/1.1" 200 OK
+2026-02-02 16:24:15,537 - api.access - INFO - Request: GET /agent/health
+INFO:api.access:Request: GET /agent/health
+2026-02-02 16:24:15,537 - api.access - INFO - Response: 200 in 0.0005s
+INFO:api.access:Response: 200 in 0.0005s
+INFO:     127.0.0.1:63809 - "GET /agent/health HTTP/1.1" 200 OK
+2026-02-02 16:24:15,548 - api.access - INFO - Request: POST /agent/query
+INFO:api.access:Request: POST /agent/query
+2026-02-02 16:24:15,548 - api.access - INFO - Body: {
+  "query": "List all encounters for patient 3e80196f-06df-4568-a5e5-480b742b8639 in chronological order.",
+  "session_id": "golden-run-19-2",
+  "patient_id": "3e80196f-06df-4568-a5e5-480b742b8639"
+}
+INFO:api.access:Body: {
+  "query": "List all encounters for patient 3e80196f-06df-4568-a5e5-480b742b8639 in chronological order.",
+  "session_id": "golden-run-19-2",
+  "patient_id": "3e80196f-06df-4568-a5e5-480b742b8639"
+}
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search?sf=code%2Cname&terms=E11.9&maxList=10 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 16:24:27,974 - api.access - INFO - Request: POST /retrieval/rerank/with-context
+INFO:api.access:Request: POST /retrieval/rerank/with-context
+2026-02-02 16:24:27,974 - api.access - INFO - Body: {
+  "query": "FHIR resources in output",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "f1d2d1e2-4a03-43cb-8f06-f68c90e96cc8"
+  },
+  "include_full_json": true
+}
+INFO:api.access:Body: {
+  "query": "FHIR resources in output",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "f1d2d1e2-4a03-43cb-8f06-f68c90e96cc8"
+  },
+  "include_full_json": true
+}
+2026-02-02 16:24:33,085 - api.access - INFO - Response: 200 in 5.1114s
+INFO:api.access:Response: 200 in 5.1114s
+Warning: Only found 0/50 results after filtering from 5000 candidates (patient_id=f1d2d1e2-4a03-43cb-8f06-f68c90e96cc8)
+INFO:     127.0.0.1:63819 - "POST /retrieval/rerank/with-context HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST http://localhost:8000/retrieval/rerank/with-context "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 16:24:40,623 - api.access - INFO - Request: POST /retrieval/rerank/with-context
+INFO:api.access:Request: POST /retrieval/rerank/with-context
+2026-02-02 16:24:40,623 - api.access - INFO - Body: {
+  "query": "Encounters",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "3e80196f-06df-4568-a5e5-480b742b8639"
+  },
+  "include_full_json": true
+}
+INFO:api.access:Body: {
+  "query": "Encounters",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "3e80196f-06df-4568-a5e5-480b742b8639"
+  },
+  "include_full_json": true
+}
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-1980' coro=<queue_worker() running at /Users/raph/Documents/hc_ai/api/database/postgres.py:727> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-2194' coro=<queue_worker() running at /Users/raph/Documents/hc_ai/api/database/postgres.py:727> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-2369' coro=<queue_worker() running at /Users/raph/Documents/hc_ai/api/database/postgres.py:727> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+Warning: Only found 19/50 results after filtering from 5000 candidates (patient_id=3e80196f-06df-4568-a5e5-480b742b8639)
+Batches:   0%|          | 0/2 [00:00<?, ?it/s]Batches:  50%|█████     | 1/2 [00:00<00:00,  1.59it/s]Batches: 100%|██████████| 2/2 [00:00<00:00,  3.01it/s]Batches: 100%|██████████| 2/2 [00:00<00:00,  2.66it/s]
+2026-02-02 16:24:46,827 - api.access - INFO - Response: 200 in 6.2037s
+INFO:api.access:Response: 200 in 6.2037s
+INFO:     127.0.0.1:63859 - "POST /retrieval/rerank/with-context HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST http://localhost:8000/retrieval/rerank/with-context "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search?sf=code%2Cname&terms=J02.0&maxList=10 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 16:24:58,496 - api.access - INFO - Request: POST /retrieval/rerank/with-context
+INFO:api.access:Request: POST /retrieval/rerank/with-context
+2026-02-02 16:24:58,496 - api.access - INFO - Body: {
+  "query": "urn:uuid:3e80196f-06df-4568-a5e5-480b742b8639",
+  "k_retrieve": 20,
+  "k_return": 1,
+  "include_full_json": true
+}
+INFO:api.access:Body: {
+  "query": "urn:uuid:3e80196f-06df-4568-a5e5-480b742b8639",
+  "k_retrieve": 20,
+  "k_return": 1,
+  "include_full_json": true
+}
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  2.93it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  2.93it/s]
+2026-02-02 16:25:02,010 - api.access - INFO - Response: 200 in 3.5141s
+INFO:api.access:Response: 200 in 3.5141s
+INFO:     127.0.0.1:63913 - "POST /retrieval/rerank/with-context HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST http://localhost:8000/retrieval/rerank/with-context "HTTP/1.1 200 OK"
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-2483' coro=<queue_worker() running at /Users/raph/Documents/hc_ai/api/database/postgres.py:727> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search?sf=code%2Cname&terms=I10&maxList=10 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 16:25:19,364 - api.access - INFO - Request: POST /retrieval/rerank/with-context
+INFO:api.access:Request: POST /retrieval/rerank/with-context
+2026-02-02 16:25:19,364 - api.access - INFO - Body: {
+  "query": "patient_id = 3e80196f-06df-4568-a5e5-480b742b8639",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "3e80196f-06df-4568-a5e5-480b742b8639"
+  },
+  "include_full_json": true
+}
+INFO:api.access:Body: {
+  "query": "patient_id = 3e80196f-06df-4568-a5e5-480b742b8639",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "3e80196f-06df-4568-a5e5-480b742b8639"
+  },
+  "include_full_json": true
+}
+Warning: Only found 12/50 results after filtering from 5000 candidates (patient_id=3e80196f-06df-4568-a5e5-480b742b8639)
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  6.02it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  6.02it/s]
+2026-02-02 16:25:23,124 - api.access - INFO - Response: 200 in 3.7602s
+INFO:api.access:Response: 200 in 3.7602s
+INFO:     127.0.0.1:63926 - "POST /retrieval/rerank/with-context HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST http://localhost:8000/retrieval/rerank/with-context "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search?sf=code%2Cname&terms=Acute+viral+pharyngitis+%28disorder%29&maxList=1 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search?sf=code%2Cname&terms=J02.0&maxList=10 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search?sf=code%2Cname&terms=E11.9&maxList=10 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 16:25:55,115 - api.access - INFO - Request: POST /retrieval/rerank/with-context
+INFO:api.access:Request: POST /retrieval/rerank/with-context
+2026-02-02 16:25:55,115 - api.access - INFO - Body: {
+  "query": "encounter",
+  "k_retrieve": 20,
+  "k_return": 1,
+  "filter_metadata": {
+    "patient_id": "3e80196f-06df-4568-a5e5-480b742b8639"
+  },
+  "include_full_json": true
+}
+INFO:api.access:Body: {
+  "query": "encounter",
+  "k_retrieve": 20,
+  "k_return": 1,
+  "filter_metadata": {
+    "patient_id": "3e80196f-06df-4568-a5e5-480b742b8639"
+  },
+  "include_full_json": true
+}
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  3.21it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  3.21it/s]
+2026-02-02 16:25:59,596 - api.access - INFO - Response: 200 in 4.4808s
+INFO:api.access:Response: 200 in 4.4808s
+INFO:     127.0.0.1:63972 - "POST /retrieval/rerank/with-context HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST http://localhost:8000/retrieval/rerank/with-context "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 16:26:03,451 - api.access - INFO - Response: 500 in 107.9025s
+INFO:api.access:Response: 500 in 107.9025s
+Error in agent query [request_id=324fbf29-05df-4578-9912-7bafb6a2ebb4]: GraphRecursionError: Recursion limit of 15 reached without hitting a stop condition. You can increase the limit by setting the `recursion_limit` config key.
+For troubleshooting, visit: https://docs.langchain.com/oss/python/langgraph/errors/GRAPH_RECURSION_LIMIT
+Traceback: Traceback (most recent call last):
+  File "/Users/raph/Documents/hc_ai/api/agent/router.py", line 82, in query_agent
+    result = await asyncio.wait_for(
+             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.13/Frameworks/Python.framework/Versions/3.11/lib/python3.11/asyncio/tasks.py", line 489, in wait_for
+    return fut.result()
+           ^^^^^^^^^^^^
+  File "/Users/raph/Documents/hc_ai/.venv/lib/python3.11/site-packages/langgraph/pregel/main.py", line 3158, in ainvoke
+    async for chunk in self.astream(
+  File "/Users/raph/Documents/hc_ai/.venv/lib/python3.11/site-packages/langgraph/pregel/main.py", line 3014, in astream
+    raise GraphRecursionError(msg)
+langgraph.errors.GraphRecursionError: Recursion limit of 15 reached without hitting a stop condition. You can increase the limit by setting the `recursion_limit` config key.
+For troubleshooting, visit: https://docs.langchain.com/oss/python/langgraph/errors/GRAPH_RECURSION_LIMIT
+
+INFO:     127.0.0.1:63811 - "POST /agent/query HTTP/1.1" 500 Internal Server Error
+2026-02-02 16:26:03,464 - api.access - INFO - Request: GET /agent/health
+INFO:api.access:Request: GET /agent/health
+2026-02-02 16:26:03,464 - api.access - INFO - Response: 200 in 0.0003s
+INFO:api.access:Response: 200 in 0.0003s
+INFO:     127.0.0.1:63993 - "GET /agent/health HTTP/1.1" 200 OK
+2026-02-02 16:26:03,476 - api.access - INFO - Request: POST /agent/query
+INFO:api.access:Request: POST /agent/query
+2026-02-02 16:26:03,476 - api.access - INFO - Body: {
+  "query": "What lab results are on file for patient c19e653d-f0d3-4a08-817a-ad0da990a288?",
+  "session_id": "golden-run-19-3",
+  "patient_id": "c19e653d-f0d3-4a08-817a-ad0da990a288"
+}
+INFO:api.access:Body: {
+  "query": "What lab results are on file for patient c19e653d-f0d3-4a08-817a-ad0da990a288?",
+  "session_id": "golden-run-19-3",
+  "patient_id": "c19e653d-f0d3-4a08-817a-ad0da990a288"
+}
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 16:26:04,337 - api.access - INFO - Request: POST /retrieval/rerank/with-context
+INFO:api.access:Request: POST /retrieval/rerank/with-context
+2026-02-02 16:26:04,337 - api.access - INFO - Body: {
+  "query": "lab results for patient c19e653d-f0d3-4a08-817a-ad0da990a288",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "c19e653d-f0d3-4a08-817a-ad0da990a288"
+  },
+  "include_full_json": true
+}
+INFO:api.access:Body: {
+  "query": "lab results for patient c19e653d-f0d3-4a08-817a-ad0da990a288",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "c19e653d-f0d3-4a08-817a-ad0da990a288"
+  },
+  "include_full_json": true
+}
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-2422' coro=<queue_worker() running at /Users/raph/Documents/hc_ai/api/database/postgres.py:727> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-2542' coro=<queue_worker() running at /Users/raph/Documents/hc_ai/api/database/postgres.py:727> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-2681' coro=<queue_worker() running at /Users/raph/Documents/hc_ai/api/database/postgres.py:727> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+Warning: Only found 27/50 results after filtering from 5000 candidates (patient_id=c19e653d-f0d3-4a08-817a-ad0da990a288)
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  1.71it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  1.71it/s]
+2026-02-02 16:26:09,197 - api.access - INFO - Response: 200 in 4.8602s
+INFO:api.access:Response: 200 in 4.8602s
+INFO:     127.0.0.1:64002 - "POST /retrieval/rerank/with-context HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST http://localhost:8000/retrieval/rerank/with-context "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search?sf=code%2Cname&terms=J06.9&maxList=10 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 16:26:24,734 - api.access - INFO - Response: 200 in 21.2576s
+INFO:api.access:Response: 200 in 21.2576s
+Warning: Failed to store session turn: Float types are not supported. Use Decimal types instead.
+INFO:     127.0.0.1:63995 - "POST /agent/query HTTP/1.1" 200 OK
+2026-02-02 16:26:24,762 - api.access - INFO - Request: GET /agent/health
+INFO:api.access:Request: GET /agent/health
+2026-02-02 16:26:24,763 - api.access - INFO - Response: 200 in 0.0007s
+INFO:api.access:Response: 200 in 0.0007s
+INFO:     127.0.0.1:64034 - "GET /agent/health HTTP/1.1" 200 OK
+2026-02-02 16:26:24,772 - api.access - INFO - Request: POST /agent/query
+INFO:api.access:Request: POST /agent/query
+2026-02-02 16:26:24,772 - api.access - INFO - Body: {
+  "query": "Calculate the BMI for patient e149aa89-cc9e-483e-b78b-00f0433072e0 using their most recent height and weight.",
+  "session_id": "golden-run-19-4",
+  "patient_id": "e149aa89-cc9e-483e-b78b-00f0433072e0"
+}
+INFO:api.access:Body: {
+  "query": "Calculate the BMI for patient e149aa89-cc9e-483e-b78b-00f0433072e0 using their most recent height and weight.",
+  "session_id": "golden-run-19-4",
+  "patient_id": "e149aa89-cc9e-483e-b78b-00f0433072e0"
+}
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 16:26:30,878 - api.access - INFO - Request: POST /retrieval/rerank/with-context
+INFO:api.access:Request: POST /retrieval/rerank/with-context
+2026-02-02 16:26:30,878 - api.access - INFO - Body: {
+  "query": "BMI calculation",
+  "k_retrieve": 20,
+  "k_return": 1,
+  "filter_metadata": {
+    "patient_id": "f1d2d1e2-4a03-43cb-8f06-f68c90e96cc8"
+  },
+  "include_full_json": true
+}
+INFO:api.access:Body: {
+  "query": "BMI calculation",
+  "k_retrieve": 20,
+  "k_return": 1,
+  "filter_metadata": {
+    "patient_id": "f1d2d1e2-4a03-43cb-8f06-f68c90e96cc8"
+  },
+  "include_full_json": true
+}
+Warning: Only found 1/50 results after filtering from 5000 candidates (patient_id=f1d2d1e2-4a03-43cb-8f06-f68c90e96cc8)
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 33.15it/s]
+2026-02-02 16:26:34,831 - api.access - INFO - Response: 200 in 3.9533s
+INFO:api.access:Response: 200 in 3.9533s
+INFO:     127.0.0.1:64085 - "POST /retrieval/rerank/with-context HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST http://localhost:8000/retrieval/rerank/with-context "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://loinc.regenstrief.org/searchapi/loincs?query=39156-5 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://loinc.regenstrief.org/searchapi/loincs?query=8302-2 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://loinc.regenstrief.org/searchapi/loincs?query=29463-7 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 16:26:50,934 - api.access - INFO - Request: POST /retrieval/rerank/with-context
+INFO:api.access:Request: POST /retrieval/rerank/with-context
+2026-02-02 16:26:50,934 - api.access - INFO - Body: {
+  "query": "39156-5 OR 8302-2 OR 29463-7",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "f1d2d1e2-4a03-43cb-8f06-f68c90e96cc8"
+  },
+  "include_full_json": true
+}
+INFO:api.access:Body: {
+  "query": "39156-5 OR 8302-2 OR 29463-7",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "f1d2d1e2-4a03-43cb-8f06-f68c90e96cc8"
+  },
+  "include_full_json": true
+}
+2026-02-02 16:26:55,096 - api.access - INFO - Response: 200 in 4.1620s
+INFO:api.access:Response: 200 in 4.1620s
+Warning: Only found 0/50 results after filtering from 5000 candidates (patient_id=f1d2d1e2-4a03-43cb-8f06-f68c90e96cc8)
+INFO:     127.0.0.1:64119 - "POST /retrieval/rerank/with-context HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST http://localhost:8000/retrieval/rerank/with-context "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://loinc.regenstrief.org/searchapi/loincs?query=8302-2 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://loinc.regenstrief.org/searchapi/loincs?query=29463-7 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://loinc.regenstrief.org/searchapi/loincs?query=39156-5 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 16:27:01,422 - api.access - INFO - Response: 200 in 36.6501s
+INFO:api.access:Response: 200 in 36.6501s
+Warning: Failed to store session turn: Float types are not supported. Use Decimal types instead.
+INFO:     127.0.0.1:64036 - "POST /agent/query HTTP/1.1" 200 OK
+2026-02-02 16:27:01,438 - api.access - INFO - Request: GET /agent/health
+INFO:api.access:Request: GET /agent/health
+2026-02-02 16:27:01,438 - api.access - INFO - Response: 200 in 0.0005s
+INFO:api.access:Response: 200 in 0.0005s
+INFO:     127.0.0.1:64139 - "GET /agent/health HTTP/1.1" 200 OK
+2026-02-02 16:27:01,446 - api.access - INFO - Request: POST /agent/query
+INFO:api.access:Request: POST /agent/query
+2026-02-02 16:27:01,446 - api.access - INFO - Body: {
+  "query": "What conditions was patient 5dcb9365-483d-48d7-bc62-816221b3f8b7 diagnosed with in the past 2 years?",
+  "session_id": "golden-run-19-5",
+  "patient_id": "5dcb9365-483d-48d7-bc62-816221b3f8b7"
+}
+INFO:api.access:Body: {
+  "query": "What conditions was patient 5dcb9365-483d-48d7-bc62-816221b3f8b7 diagnosed with in the past 2 years?",
+  "session_id": "golden-run-19-5",
+  "patient_id": "5dcb9365-483d-48d7-bc62-816221b3f8b7"
+}
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 16:27:02,422 - api.access - INFO - Request: POST /retrieval/rerank
+INFO:api.access:Request: POST /retrieval/rerank
+2026-02-02 16:27:02,422 - api.access - INFO - Body: {
+  "query": "diagnosis of patient 5dcb9365-483d-48d7-bc62-816221b3f8b7 in past 2 years",
+  "k_retrieve": 10,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "5dcb9365-483d-48d7-bc62-816221b3f8b7"
+  }
+}
+INFO:api.access:Body: {
+  "query": "diagnosis of patient 5dcb9365-483d-48d7-bc62-816221b3f8b7 in past 2 years",
+  "k_retrieve": 10,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "5dcb9365-483d-48d7-bc62-816221b3f8b7"
+  }
+}
+Warning: Only found 7/50 results after filtering from 5000 candidates (patient_id=5dcb9365-483d-48d7-bc62-816221b3f8b7)
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  8.13it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  8.13it/s]
+2026-02-02 16:27:06,148 - api.access - INFO - Response: 200 in 3.7265s
+INFO:api.access:Response: 200 in 3.7265s
+INFO:     127.0.0.1:64146 - "POST /retrieval/rerank HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search?sf=code%2Cname&terms=E11.9&maxList=10 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search?sf=code%2Cname&terms=diabetes&maxList=5 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search?sf=code%2Cname&terms=E23.2&maxList=10 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search?sf=code%2Cname&terms=N25.1&maxList=10 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search?sf=code%2Cname&terms=P70.2&maxList=10 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search?sf=code%2Cname&terms=O24.92&maxList=10 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search?sf=code%2Cname&terms=Z83.3&maxList=10 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search?sf=code%2Cname&terms=Diabetes&maxList=5 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search?sf=code%2Cname&terms=E23.2&maxList=10 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search?sf=code%2Cname&terms=N25.1&maxList=10 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search?sf=code%2Cname&terms=P70.2&maxList=10 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search?sf=code%2Cname&terms=O24.92&maxList=10 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search?sf=code%2Cname&terms=Z83.3&maxList=10 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 16:27:44,327 - api.access - INFO - Request: POST /retrieval/rerank/with-context
+INFO:api.access:Request: POST /retrieval/rerank/with-context
+2026-02-02 16:27:44,328 - api.access - INFO - Body: {
+  "query": "conditions diagnosed in the past 2 years",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "5dcb9365-483d-48d7-bc62-816221b3f8b7"
+  },
+  "include_full_json": true
+}
+INFO:api.access:Body: {
+  "query": "conditions diagnosed in the past 2 years",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "5dcb9365-483d-48d7-bc62-816221b3f8b7"
+  },
+  "include_full_json": true
+}
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-2727' coro=<queue_worker() running at /Users/raph/Documents/hc_ai/api/database/postgres.py:727> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-2841' coro=<queue_worker() running at /Users/raph/Documents/hc_ai/api/database/postgres.py:727> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-2925' coro=<queue_worker() running at /Users/raph/Documents/hc_ai/api/database/postgres.py:727> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-3008' coro=<queue_worker() running at /Users/raph/Documents/hc_ai/api/database/postgres.py:727> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+Warning: Only found 8/50 results after filtering from 5000 candidates (patient_id=5dcb9365-483d-48d7-bc62-816221b3f8b7)
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  7.77it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  7.76it/s]
+2026-02-02 16:27:49,466 - api.access - INFO - Response: 200 in 5.1391s
+INFO:api.access:Response: 200 in 5.1391s
+INFO:     127.0.0.1:64186 - "POST /retrieval/rerank/with-context HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST http://localhost:8000/retrieval/rerank/with-context "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search?sf=code%2Cname&terms=E11.9&maxList=10 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 16:27:58,910 - api.access - INFO - Request: POST /retrieval/rerank
+INFO:api.access:Request: POST /retrieval/rerank
+2026-02-02 16:27:58,910 - api.access - INFO - Body: {
+  "query": "diabetes diagnosis",
+  "k_retrieve": 20,
+  "k_return": 1,
+  "filter_metadata": {
+    "patient_id": "5dcb9365-483d-48d7-bc62-816221b3f8b7"
+  }
+}
+INFO:api.access:Body: {
+  "query": "diabetes diagnosis",
+  "k_retrieve": 20,
+  "k_return": 1,
+  "filter_metadata": {
+    "patient_id": "5dcb9365-483d-48d7-bc62-816221b3f8b7"
+  }
+}
+Warning: Only found 30/50 results after filtering from 5000 candidates (patient_id=5dcb9365-483d-48d7-bc62-816221b3f8b7)
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  2.63it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  2.63it/s]
+2026-02-02 16:28:03,032 - api.access - INFO - Response: 200 in 4.1217s
+INFO:api.access:Response: 200 in 4.1217s
+INFO:     127.0.0.1:64223 - "POST /retrieval/rerank HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST http://localhost:8000/retrieval/rerank "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search?sf=code%2Cname&terms=E11&maxList=10 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 16:28:12,404 - api.access - INFO - Request: POST /retrieval/rerank/with-context
+INFO:api.access:Request: POST /retrieval/rerank/with-context
+2026-02-02 16:28:12,404 - api.access - INFO - Body: {
+  "query": "Condition/02319a24-653b-44ab-9258-b775b17d17e4",
+  "k_retrieve": 20,
+  "k_return": 1,
+  "filter_metadata": {
+    "patient_id": "f1d2d1e2-4a03-43cb-8f06-f68c90e96cc8"
+  },
+  "include_full_json": true
+}
+INFO:api.access:Body: {
+  "query": "Condition/02319a24-653b-44ab-9258-b775b17d17e4",
+  "k_retrieve": 20,
+  "k_return": 1,
+  "filter_metadata": {
+    "patient_id": "f1d2d1e2-4a03-43cb-8f06-f68c90e96cc8"
+  },
+  "include_full_json": true
+}
+Warning: Only found 1/50 results after filtering from 5000 candidates (patient_id=f1d2d1e2-4a03-43cb-8f06-f68c90e96cc8)
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 48.25it/s]
+2026-02-02 16:28:16,817 - api.access - INFO - Response: 200 in 4.4134s
+INFO:api.access:Response: 200 in 4.4134s
+INFO:     127.0.0.1:64246 - "POST /retrieval/rerank/with-context HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST http://localhost:8000/retrieval/rerank/with-context "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search?sf=code%2Cname&terms=I10&maxList=10 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 16:28:29,160 - api.access - INFO - Response: 200 in 87.7135s
+INFO:api.access:Response: 200 in 87.7135s
+Warning: Failed to store session turn: Float types are not supported. Use Decimal types instead.
+INFO:     127.0.0.1:64141 - "POST /agent/query HTTP/1.1" 200 OK
+2026-02-02 16:28:29,179 - api.access - INFO - Request: GET /agent/health
+INFO:api.access:Request: GET /agent/health
+2026-02-02 16:28:29,180 - api.access - INFO - Response: 200 in 0.0010s
+INFO:api.access:Response: 200 in 0.0010s
+INFO:     127.0.0.1:64263 - "GET /agent/health HTTP/1.1" 200 OK
+2026-02-02 16:28:29,188 - api.access - INFO - Request: POST /agent/query
+INFO:api.access:Request: POST /agent/query
+2026-02-02 16:28:29,188 - api.access - INFO - Body: {
+  "query": "Compare patient 3f89ff20-09aa-40e7-a359-389863c7e574's cholesterol levels across multiple visits.",
+  "session_id": "golden-run-19-6",
+  "patient_id": "3f89ff20-09aa-40e7-a359-389863c7e574"
+}
+INFO:api.access:Body: {
+  "query": "Compare patient 3f89ff20-09aa-40e7-a359-389863c7e574's cholesterol levels across multiple visits.",
+  "session_id": "golden-run-19-6",
+  "patient_id": "3f89ff20-09aa-40e7-a359-389863c7e574"
+}
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search?sf=code%2Cname&terms=E11.9&maxList=10 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 16:28:40,014 - api.access - INFO - Response: 200 in 10.8258s
+INFO:api.access:Response: 200 in 10.8258s
+INFO:     127.0.0.1:64265 - "POST /agent/query HTTP/1.1" 200 OK
+2026-02-02 16:28:40,032 - api.access - INFO - Request: GET /agent/health
+INFO:api.access:Request: GET /agent/health
+2026-02-02 16:28:40,032 - api.access - INFO - Response: 200 in 0.0005s
+INFO:api.access:Response: 200 in 0.0005s
+INFO:     127.0.0.1:64278 - "GET /agent/health HTTP/1.1" 200 OK
+2026-02-02 16:28:40,042 - api.access - INFO - Request: POST /agent/query
+INFO:api.access:Request: POST /agent/query
+2026-02-02 16:28:40,042 - api.access - INFO - Body: {
+  "query": "What is patient c19e653d-f0d3-4a08-817a-ad0da990a288's blood pressure history?",
+  "session_id": "golden-run-19-7",
+  "patient_id": "c19e653d-f0d3-4a08-817a-ad0da990a288"
+}
+INFO:api.access:Body: {
+  "query": "What is patient c19e653d-f0d3-4a08-817a-ad0da990a288's blood pressure history?",
+  "session_id": "golden-run-19-7",
+  "patient_id": "c19e653d-f0d3-4a08-817a-ad0da990a288"
+}
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search?sf=code%2Cname&terms=I10&maxList=10 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 16:28:55,709 - api.access - INFO - Response: 200 in 15.6672s
+INFO:api.access:Response: 200 in 15.6672s
+INFO:     127.0.0.1:64280 - "POST /agent/query HTTP/1.1" 200 OK
+2026-02-02 16:28:55,736 - api.access - INFO - Request: GET /agent/health
+INFO:api.access:Request: GET /agent/health
+2026-02-02 16:28:55,736 - api.access - INFO - Response: 200 in 0.0006s
+INFO:api.access:Response: 200 in 0.0006s
+INFO:     127.0.0.1:64315 - "GET /agent/health HTTP/1.1" 200 OK
+2026-02-02 16:28:55,745 - api.access - INFO - Request: POST /agent/query
+INFO:api.access:Request: POST /agent/query
+2026-02-02 16:28:55,745 - api.access - INFO - Body: {
+  "query": "List all encounters for patient 3f89ff20-09aa-40e7-a359-389863c7e574 in chronological order.",
+  "session_id": "golden-run-19-8",
+  "patient_id": "3f89ff20-09aa-40e7-a359-389863c7e574"
+}
+INFO:api.access:Body: {
+  "query": "List all encounters for patient 3f89ff20-09aa-40e7-a359-389863c7e574 in chronological order.",
+  "session_id": "golden-run-19-8",
+  "patient_id": "3f89ff20-09aa-40e7-a359-389863c7e574"
+}
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search?sf=code%2Cname&terms=I10&maxList=10 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search?sf=code%2Cname&terms=E11.9&maxList=10 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 16:29:18,278 - api.access - INFO - Request: POST /retrieval/rerank/with-context
+INFO:api.access:Request: POST /retrieval/rerank/with-context
+2026-02-02 16:29:18,278 - api.access - INFO - Body: {
+  "query": "patient_id:3f89ff20-09aa-40e7-a359-389863c7e574",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "3f89ff20-09aa-40e7-a359-389863c7e574"
+  },
+  "include_full_json": true
+}
+INFO:api.access:Body: {
+  "query": "patient_id:3f89ff20-09aa-40e7-a359-389863c7e574",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "3f89ff20-09aa-40e7-a359-389863c7e574"
+  },
+  "include_full_json": true
+}
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-3238' coro=<queue_worker() running at /Users/raph/Documents/hc_ai/api/database/postgres.py:727> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-3297' coro=<queue_worker() running at /Users/raph/Documents/hc_ai/api/database/postgres.py:727> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-3353' coro=<queue_worker() running at /Users/raph/Documents/hc_ai/api/database/postgres.py:727> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+Warning: Only found 2/50 results after filtering from 5000 candidates (patient_id=3f89ff20-09aa-40e7-a359-389863c7e574)
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 27.99it/s]
+2026-02-02 16:29:22,672 - api.access - INFO - Response: 200 in 4.3942s
+INFO:api.access:Response: 200 in 4.3942s
+INFO:     127.0.0.1:64339 - "POST /retrieval/rerank/with-context HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST http://localhost:8000/retrieval/rerank/with-context "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search?sf=code%2Cname&terms=E11.9&maxList=10 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 16:29:32,487 - api.access - INFO - Response: 200 in 36.7424s
+INFO:api.access:Response: 200 in 36.7424s
+Warning: Failed to store session turn: Float types are not supported. Use Decimal types instead.
+INFO:     127.0.0.1:64317 - "POST /agent/query HTTP/1.1" 200 OK
+2026-02-02 16:29:32,513 - api.access - INFO - Request: GET /agent/health
+INFO:api.access:Request: GET /agent/health
+2026-02-02 16:29:32,513 - api.access - INFO - Response: 200 in 0.0004s
+INFO:api.access:Response: 200 in 0.0004s
+INFO:     127.0.0.1:64352 - "GET /agent/health HTTP/1.1" 200 OK
+2026-02-02 16:29:32,526 - api.access - INFO - Request: POST /agent/query
+INFO:api.access:Request: POST /agent/query
+2026-02-02 16:29:32,527 - api.access - INFO - Body: {
+  "query": "Summarize the complete medical history for patient d930e322-8c86-4c17-8ce8-217cb252e2e4.",
+  "session_id": "golden-run-19-9",
+  "patient_id": "d930e322-8c86-4c17-8ce8-217cb252e2e4"
+}
+INFO:api.access:Body: {
+  "query": "Summarize the complete medical history for patient d930e322-8c86-4c17-8ce8-217cb252e2e4.",
+  "session_id": "golden-run-19-9",
+  "patient_id": "d930e322-8c86-4c17-8ce8-217cb252e2e4"
+}
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 16:29:41,590 - api.access - INFO - Response: 200 in 9.0643s
+INFO:api.access:Response: 200 in 9.0643s
+INFO:     127.0.0.1:64354 - "POST /agent/query HTTP/1.1" 200 OK
+2026-02-02 16:29:41,609 - api.access - INFO - Request: GET /agent/health
+INFO:api.access:Request: GET /agent/health
+2026-02-02 16:29:41,610 - api.access - INFO - Response: 200 in 0.0006s
+INFO:api.access:Response: 200 in 0.0006s
+INFO:     127.0.0.1:64362 - "GET /agent/health HTTP/1.1" 200 OK
+2026-02-02 16:29:41,618 - api.access - INFO - Request: POST /agent/query
+INFO:api.access:Request: POST /agent/query
+2026-02-02 16:29:41,619 - api.access - INFO - Body: {
+  "query": "What follow-up care recommendations exist for patient 723d6d77-8a55-424b-b4fc-99e3b48e7e73?",
+  "session_id": "golden-run-19-10",
+  "patient_id": "723d6d77-8a55-424b-b4fc-99e3b48e7e73"
+}
+INFO:api.access:Body: {
+  "query": "What follow-up care recommendations exist for patient 723d6d77-8a55-424b-b4fc-99e3b48e7e73?",
+  "session_id": "golden-run-19-10",
+  "patient_id": "723d6d77-8a55-424b-b4fc-99e3b48e7e73"
+}
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 16:29:42,321 - api.access - INFO - Request: POST /retrieval/rerank/with-context
+INFO:api.access:Request: POST /retrieval/rerank/with-context
+2026-02-02 16:29:42,321 - api.access - INFO - Body: {
+  "query": "follow-up care recommendations",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "723d6d77-8a55-424b-b4fc-99e3b48e7e73"
+  },
+  "include_full_json": true
+}
+INFO:api.access:Body: {
+  "query": "follow-up care recommendations",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "723d6d77-8a55-424b-b4fc-99e3b48e7e73"
+  },
+  "include_full_json": true
+}
+Warning: Only found 5/50 results after filtering from 5000 candidates (patient_id=723d6d77-8a55-424b-b4fc-99e3b48e7e73)
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 12.57it/s]
+2026-02-02 16:29:47,584 - api.access - INFO - Response: 200 in 5.2630s
+INFO:api.access:Response: 200 in 5.2630s
+INFO:     127.0.0.1:64367 - "POST /retrieval/rerank/with-context HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST http://localhost:8000/retrieval/rerank/with-context "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search?sf=code%2Cname&terms=J40&maxList=10 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 16:30:14,437 - api.access - INFO - Request: POST /retrieval/rerank/with-context
+INFO:api.access:Request: POST /retrieval/rerank/with-context
+2026-02-02 16:30:14,438 - api.access - INFO - Request: POST /retrieval/rerank/with-context
+INFO:api.access:Request: POST /retrieval/rerank/with-context
+2026-02-02 16:30:14,439 - api.access - INFO - Body: {
+  "query": "Patient/urn:uuid:723d6d77-8a55-424b-b4fc-99e3b48e7e73",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "723d6d77-8a55-424b-b4fc-99e3b48e7e73"
+  },
+  "include_full_json": true
+}
+INFO:api.access:Body: {
+  "query": "Patient/urn:uuid:723d6d77-8a55-424b-b4fc-99e3b48e7e73",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "723d6d77-8a55-424b-b4fc-99e3b48e7e73"
+  },
+  "include_full_json": true
+}
+2026-02-02 16:30:14,439 - api.access - INFO - Body: {
+  "query": "Encounter/urn:uuid:90a62995-8488-4e71-a74c-86dff68a78e4",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "723d6d77-8a55-424b-b4fc-99e3b48e7e73"
+  },
+  "include_full_json": true
+}
+INFO:api.access:Body: {
+  "query": "Encounter/urn:uuid:90a62995-8488-4e71-a74c-86dff68a78e4",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "723d6d77-8a55-424b-b4fc-99e3b48e7e73"
+  },
+  "include_full_json": true
+}
+2026-02-02 16:30:14,439 - api.access - INFO - Request: POST /retrieval/rerank/with-context
+INFO:api.access:Request: POST /retrieval/rerank/with-context
+2026-02-02 16:30:14,439 - api.access - INFO - Body: {
+  "query": "Patient/urn:uuid:723d6d77-8a55-424b-b4fc-99e3b48e7e73",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "723d6d77-8a55-424b-b4fc-99e3b48e7e73"
+  },
+  "include_full_json": true
+}
+INFO:api.access:Body: {
+  "query": "Patient/urn:uuid:723d6d77-8a55-424b-b4fc-99e3b48e7e73",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "723d6d77-8a55-424b-b4fc-99e3b48e7e73"
+  },
+  "include_full_json": true
+}
+2026-02-02 16:30:14,440 - api.access - INFO - Request: POST /retrieval/rerank/with-context
+INFO:api.access:Request: POST /retrieval/rerank/with-context
+2026-02-02 16:30:14,440 - api.access - INFO - Request: POST /retrieval/rerank/with-context
+INFO:api.access:Request: POST /retrieval/rerank/with-context
+2026-02-02 16:30:14,448 - api.access - INFO - Body: {
+  "query": "Encounter/urn:uuid:90a62995-8488-4e71-a74c-86dff68a78e4",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "723d6d77-8a55-424b-b4fc-99e3b48e7e73"
+  },
+  "include_full_json": true
+}
+INFO:api.access:Body: {
+  "query": "Encounter/urn:uuid:90a62995-8488-4e71-a74c-86dff68a78e4",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "723d6d77-8a55-424b-b4fc-99e3b48e7e73"
+  },
+  "include_full_json": true
+}
+2026-02-02 16:30:14,448 - api.access - INFO - Body: {
+  "query": "Encounter/urn:uuid:f545249a-52d6-4cbe-8abf-a69a960d7208",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "723d6d77-8a55-424b-b4fc-99e3b48e7e73"
+  },
+  "include_full_json": true
+}
+INFO:api.access:Body: {
+  "query": "Encounter/urn:uuid:f545249a-52d6-4cbe-8abf-a69a960d7208",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "723d6d77-8a55-424b-b4fc-99e3b48e7e73"
+  },
+  "include_full_json": true
+}
+2026-02-02 16:30:14,453 - api.access - INFO - Request: POST /retrieval/rerank/with-context
+INFO:api.access:Request: POST /retrieval/rerank/with-context
+2026-02-02 16:30:14,454 - api.access - INFO - Body: {
+  "query": "Observation/urn:uuid:12345678-1234-5678-9012-345678901234",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "723d6d77-8a55-424b-b4fc-99e3b48e7e73"
+  },
+  "include_full_json": true
+}
+INFO:api.access:Body: {
+  "query": "Observation/urn:uuid:12345678-1234-5678-9012-345678901234",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "723d6d77-8a55-424b-b4fc-99e3b48e7e73"
+  },
+  "include_full_json": true
+}
+2026-02-02 16:30:14,454 - api.access - INFO - Request: POST /retrieval/rerank/with-context
+INFO:api.access:Request: POST /retrieval/rerank/with-context
+2026-02-02 16:30:14,455 - api.access - INFO - Request: POST /retrieval/rerank/with-context
+INFO:api.access:Request: POST /retrieval/rerank/with-context
+2026-02-02 16:30:14,455 - api.access - INFO - Body: {
+  "query": "Condition/urn:uuid:56789012-3456-7890-1234-567890123456",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "723d6d77-8a55-424b-b4fc-99e3b48e7e73"
+  },
+  "include_full_json": true
+}
+INFO:api.access:Body: {
+  "query": "Condition/urn:uuid:56789012-3456-7890-1234-567890123456",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "723d6d77-8a55-424b-b4fc-99e3b48e7e73"
+  },
+  "include_full_json": true
+}
+2026-02-02 16:30:14,455 - api.access - INFO - Body: {
+  "query": "MedicationRequest/urn:uuid:90123456-7890-1234-5678-901234567890",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "723d6d77-8a55-424b-b4fc-99e3b48e7e73"
+  },
+  "include_full_json": true
+}
+INFO:api.access:Body: {
+  "query": "MedicationRequest/urn:uuid:90123456-7890-1234-5678-901234567890",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "723d6d77-8a55-424b-b4fc-99e3b48e7e73"
+  },
+  "include_full_json": true
+}
+Warning: Only found 11/50 results after filtering from 5000 candidates (patient_id=723d6d77-8a55-424b-b4fc-99e3b48e7e73)
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  2.92it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  2.92it/s]
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-3632' coro=<queue_worker() running at /Users/raph/Documents/hc_ai/api/database/postgres.py:727> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-3766' coro=<queue_worker() running at /Users/raph/Documents/hc_ai/api/database/postgres.py:727> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-3953' coro=<queue_worker() running at /Users/raph/Documents/hc_ai/api/database/postgres.py:727> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+Warning: Only found 1/50 results after filtering from 5000 candidates (patient_id=723d6d77-8a55-424b-b4fc-99e3b48e7e73)
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 47.96it/s]
+Warning: Only found 5/50 results after filtering from 5000 candidates (patient_id=723d6d77-8a55-424b-b4fc-99e3b48e7e73)
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 11.70it/s]
+Warning: Only found 5/50 results after filtering from 5000 candidates (patient_id=723d6d77-8a55-424b-b4fc-99e3b48e7e73)
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 11.68it/s]
+2026-02-02 16:30:28,843 - api.access - INFO - Response: 200 in 14.4060s
+INFO:api.access:Response: 200 in 14.4060s
+INFO:     127.0.0.1:64411 - "POST /retrieval/rerank/with-context HTTP/1.1" 200 OK
+2026-02-02 16:30:28,843 - api.access - INFO - Response: 200 in 14.4038s
+INFO:api.access:Response: 200 in 14.4038s
+INFO:     127.0.0.1:64418 - "POST /retrieval/rerank/with-context HTTP/1.1" 200 OK
+2026-02-02 16:30:28,844 - api.access - INFO - Response: 200 in 14.3902s
+INFO:api.access:Response: 200 in 14.3902s
+INFO:     127.0.0.1:64421 - "POST /retrieval/rerank/with-context HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST http://localhost:8000/retrieval/rerank/with-context "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:8000/retrieval/rerank/with-context "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:8000/retrieval/rerank/with-context "HTTP/1.1 200 OK"
+2026-02-02 16:30:28,876 - api.access - INFO - Response: 200 in 14.4377s
+INFO:api.access:Response: 200 in 14.4377s
+INFO:     127.0.0.1:64412 - "POST /retrieval/rerank/with-context HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST http://localhost:8000/retrieval/rerank/with-context "HTTP/1.1 200 OK"
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-3954' coro=<queue_worker() running at /Users/raph/Documents/hc_ai/api/database/postgres.py:727> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-3956' coro=<queue_worker() running at /Users/raph/Documents/hc_ai/api/database/postgres.py:727> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-3960' coro=<queue_worker() running at /Users/raph/Documents/hc_ai/api/database/postgres.py:727> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+Warning: Only found 5/50 results after filtering from 5000 candidates (patient_id=723d6d77-8a55-424b-b4fc-99e3b48e7e73)
+Warning: Only found 9/50 results after filtering from 5000 candidates (patient_id=723d6d77-8a55-424b-b4fc-99e3b48e7e73)
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  6.21it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  6.21it/s]
+Warning: Only found 1/50 results after filtering from 5000 candidates (patient_id=723d6d77-8a55-424b-b4fc-99e3b48e7e73)
+Warning: Only found 2/50 results after filtering from 5000 candidates (patient_id=723d6d77-8a55-424b-b4fc-99e3b48e7e73)
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 29.82it/s]
+2026-02-02 16:30:34,601 - api.access - INFO - Response: 200 in 20.1613s
+INFO:api.access:Response: 200 in 20.1613s
+INFO:     127.0.0.1:64417 - "POST /retrieval/rerank/with-context HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST http://localhost:8000/retrieval/rerank/with-context "HTTP/1.1 200 OK"
+2026-02-02 16:30:34,608 - api.access - INFO - Response: 200 in 20.1534s
+INFO:api.access:Response: 200 in 20.1534s
+INFO:     127.0.0.1:64423 - "POST /retrieval/rerank/with-context HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST http://localhost:8000/retrieval/rerank/with-context "HTTP/1.1 200 OK"
+2026-02-02 16:30:34,619 - api.access - INFO - Response: 200 in 20.1803s
+INFO:api.access:Response: 200 in 20.1803s
+INFO:     127.0.0.1:64413 - "POST /retrieval/rerank/with-context HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST http://localhost:8000/retrieval/rerank/with-context "HTTP/1.1 200 OK"
+2026-02-02 16:30:34,622 - api.access - INFO - Response: 200 in 20.1679s
+INFO:api.access:Response: 200 in 20.1679s
+INFO:     127.0.0.1:64422 - "POST /retrieval/rerank/with-context HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST http://localhost:8000/retrieval/rerank/with-context "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search?sf=code%2Cname&terms=I20&maxList=10 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 16:30:47,386 - api.access - INFO - Request: POST /retrieval/rerank/with-context
+INFO:api.access:Request: POST /retrieval/rerank/with-context
+2026-02-02 16:30:47,386 - api.access - INFO - Body: {
+  "query": "urn:uuid:723d6d77-8a55-424b-b4fc-99e3b48e7e73",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "include_full_json": true
+}
+INFO:api.access:Body: {
+  "query": "urn:uuid:723d6d77-8a55-424b-b4fc-99e3b48e7e73",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "include_full_json": true
+}
+Batches:   0%|          | 0/2 [00:00<?, ?it/s]Batches:  50%|█████     | 1/2 [00:00<00:00,  1.72it/s]Batches: 100%|██████████| 2/2 [00:00<00:00,  2.94it/s]Batches: 100%|██████████| 2/2 [00:00<00:00,  2.66it/s]
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-4054' coro=<queue_worker() running at /Users/raph/Documents/hc_ai/api/database/postgres.py:727> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-3958' coro=<queue_worker() running at /Users/raph/Documents/hc_ai/api/database/postgres.py:727> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-3959' coro=<queue_worker() running at /Users/raph/Documents/hc_ai/api/database/postgres.py:727> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-3955' coro=<queue_worker() running at /Users/raph/Documents/hc_ai/api/database/postgres.py:727> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-3957' coro=<queue_worker() running at /Users/raph/Documents/hc_ai/api/database/postgres.py:727> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+2026-02-02 16:30:53,393 - api.access - INFO - Response: 200 in 6.0076s
+INFO:api.access:Response: 200 in 6.0076s
+INFO:     127.0.0.1:64476 - "POST /retrieval/rerank/with-context HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST http://localhost:8000/retrieval/rerank/with-context "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search?sf=code%2Cname&terms=I20&maxList=10 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search?sf=code%2Cname&terms=I20&maxList=10 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 16:31:10,603 - api.access - INFO - Request: POST /retrieval/rerank/with-context
+INFO:api.access:Request: POST /retrieval/rerank/with-context
+2026-02-02 16:31:10,603 - api.access - INFO - Body: {
+  "query": "What are the patient's current medications?",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "f1d2d1e2-4a03-43cb-8f06-f68c90e96cc8"
+  },
+  "include_full_json": true
+}
+INFO:api.access:Body: {
+  "query": "What are the patient's current medications?",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "f1d2d1e2-4a03-43cb-8f06-f68c90e96cc8"
+  },
+  "include_full_json": true
+}
+Warning: Only found 5/50 results after filtering from 5000 candidates (patient_id=f1d2d1e2-4a03-43cb-8f06-f68c90e96cc8)
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 27.85it/s]
+2026-02-02 16:31:15,001 - api.access - INFO - Response: 200 in 4.3980s
+INFO:api.access:Response: 200 in 4.3980s
+INFO:     127.0.0.1:64501 - "POST /retrieval/rerank/with-context HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST http://localhost:8000/retrieval/rerank/with-context "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search?sf=code%2Cname&terms=I10&maxList=10 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 16:31:25,043 - api.access - INFO - Request: POST /retrieval/rerank/with-context
+INFO:api.access:Request: POST /retrieval/rerank/with-context
+2026-02-02 16:31:25,043 - api.access - INFO - Body: {
+  "query": "Bundle/12345",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "f1d2d1e2-4a03-43cb-8f06-f68c90e96cc8"
+  },
+  "include_full_json": true
+}
+INFO:api.access:Body: {
+  "query": "Bundle/12345",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "f1d2d1e2-4a03-43cb-8f06-f68c90e96cc8"
+  },
+  "include_full_json": true
+}
+2026-02-02 16:31:29,090 - api.access - INFO - Response: 200 in 4.0467s
+INFO:api.access:Response: 200 in 4.0467s
+Warning: Only found 0/50 results after filtering from 5000 candidates (patient_id=f1d2d1e2-4a03-43cb-8f06-f68c90e96cc8)
+INFO:     127.0.0.1:64511 - "POST /retrieval/rerank/with-context HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST http://localhost:8000/retrieval/rerank/with-context "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 16:31:35,419 - api.access - INFO - Request: POST /retrieval/rerank/with-context
+INFO:api.access:Request: POST /retrieval/rerank/with-context
+2026-02-02 16:31:35,420 - api.access - INFO - Body: {
+  "query": "Bundle/12345",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "f1d2d1e2-4a03-43cb-8f06-f68c90e96cc8"
+  },
+  "include_full_json": true
+}
+INFO:api.access:Body: {
+  "query": "Bundle/12345",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "f1d2d1e2-4a03-43cb-8f06-f68c90e96cc8"
+  },
+  "include_full_json": true
+}
+2026-02-02 16:31:39,737 - api.access - INFO - Response: 200 in 4.3172s
+INFO:api.access:Response: 200 in 4.3172s
+Warning: Only found 0/50 results after filtering from 5000 candidates (patient_id=f1d2d1e2-4a03-43cb-8f06-f68c90e96cc8)
+INFO:     127.0.0.1:64523 - "POST /retrieval/rerank/with-context HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST http://localhost:8000/retrieval/rerank/with-context "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 16:31:45,762 - api.access - INFO - Request: POST /retrieval/rerank/with-context
+INFO:api.access:Request: POST /retrieval/rerank/with-context
+2026-02-02 16:31:45,762 - api.access - INFO - Body: {
+  "query": "Bundle/12345",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "723d6d77-8a55-424b-b4fc-99e3b48e7e73"
+  },
+  "include_full_json": true
+}
+INFO:api.access:Body: {
+  "query": "Bundle/12345",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "723d6d77-8a55-424b-b4fc-99e3b48e7e73"
+  },
+  "include_full_json": true
+}
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-4152' coro=<queue_worker() running at /Users/raph/Documents/hc_ai/api/database/postgres.py:727> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-4210' coro=<queue_worker() running at /Users/raph/Documents/hc_ai/api/database/postgres.py:727> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-4264' coro=<queue_worker() running at /Users/raph/Documents/hc_ai/api/database/postgres.py:727> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+Warning: Only found 16/50 results after filtering from 5000 candidates (patient_id=723d6d77-8a55-424b-b4fc-99e3b48e7e73)
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  3.44it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  3.44it/s]
+2026-02-02 16:31:49,902 - api.access - INFO - Response: 200 in 4.1401s
+INFO:api.access:Response: 200 in 4.1401s
+INFO:     127.0.0.1:64541 - "POST /retrieval/rerank/with-context HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST http://localhost:8000/retrieval/rerank/with-context "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 16:31:54,860 - api.access - INFO - Response: 500 in 133.2419s
+INFO:api.access:Response: 500 in 133.2419s
+Error in agent query [request_id=6dc62bea-700f-4dfb-bd6f-f97edae53517]: GraphRecursionError: Recursion limit of 15 reached without hitting a stop condition. You can increase the limit by setting the `recursion_limit` config key.
+For troubleshooting, visit: https://docs.langchain.com/oss/python/langgraph/errors/GRAPH_RECURSION_LIMIT
+Traceback: Traceback (most recent call last):
+  File "/Users/raph/Documents/hc_ai/api/agent/router.py", line 82, in query_agent
+    result = await asyncio.wait_for(
+             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.13/Frameworks/Python.framework/Versions/3.11/lib/python3.11/asyncio/tasks.py", line 489, in wait_for
+    return fut.result()
+           ^^^^^^^^^^^^
+  File "/Users/raph/Documents/hc_ai/.venv/lib/python3.11/site-packages/langgraph/pregel/main.py", line 3158, in ainvoke
+    async for chunk in self.astream(
+  File "/Users/raph/Documents/hc_ai/.venv/lib/python3.11/site-packages/langgraph/pregel/main.py", line 3014, in astream
+    raise GraphRecursionError(msg)
+langgraph.errors.GraphRecursionError: Recursion limit of 15 reached without hitting a stop condition. You can increase the limit by setting the `recursion_limit` config key.
+For troubleshooting, visit: https://docs.langchain.com/oss/python/langgraph/errors/GRAPH_RECURSION_LIMIT
+
+INFO:     127.0.0.1:64364 - "POST /agent/query HTTP/1.1" 500 Internal Server Error
+2026-02-02 16:31:54,879 - api.access - INFO - Request: GET /agent/health
+INFO:api.access:Request: GET /agent/health
+2026-02-02 16:31:54,879 - api.access - INFO - Response: 200 in 0.0003s
+INFO:api.access:Response: 200 in 0.0003s
+INFO:     127.0.0.1:64556 - "GET /agent/health HTTP/1.1" 200 OK
+2026-02-02 16:31:54,886 - api.access - INFO - Request: POST /agent/query
+INFO:api.access:Request: POST /agent/query
+2026-02-02 16:31:54,886 - api.access - INFO - Body: {
+  "query": "What immunizations has patient 3f89ff20-09aa-40e7-a359-389863c7e574 received?",
+  "session_id": "golden-run-19-11",
+  "patient_id": "3f89ff20-09aa-40e7-a359-389863c7e574"
+}
+INFO:api.access:Body: {
+  "query": "What immunizations has patient 3f89ff20-09aa-40e7-a359-389863c7e574 received?",
+  "session_id": "golden-run-19-11",
+  "patient_id": "3f89ff20-09aa-40e7-a359-389863c7e574"
+}
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 16:31:55,747 - api.access - INFO - Request: POST /retrieval/rerank/with-context
+INFO:api.access:Request: POST /retrieval/rerank/with-context
+2026-02-02 16:31:55,747 - api.access - INFO - Body: {
+  "query": "immunizations for patient 3f89ff20-09aa-40e7-a359-389863c7e574",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "3f89ff20-09aa-40e7-a359-389863c7e574"
+  },
+  "include_full_json": true
+}
+INFO:api.access:Body: {
+  "query": "immunizations for patient 3f89ff20-09aa-40e7-a359-389863c7e574",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "3f89ff20-09aa-40e7-a359-389863c7e574"
+  },
+  "include_full_json": true
+}
+Warning: Only found 2/50 results after filtering from 5000 candidates (patient_id=3f89ff20-09aa-40e7-a359-389863c7e574)
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 12.73it/s]
+2026-02-02 16:31:59,481 - api.access - INFO - Response: 200 in 3.7345s
+INFO:api.access:Response: 200 in 3.7345s
+INFO:     127.0.0.1:64560 - "POST /retrieval/rerank/with-context HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST http://localhost:8000/retrieval/rerank/with-context "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search?sf=code%2Cname&terms=B94.8&maxList=10 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 16:32:07,452 - api.access - INFO - Request: POST /retrieval/rerank/with-context
+INFO:api.access:Request: POST /retrieval/rerank/with-context
+2026-02-02 16:32:07,452 - api.access - INFO - Body: {
+  "query": "Bundle/123",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "f1d2d1e2-4a03-43cb-8f06-f68c90e96cc8"
+  },
+  "include_full_json": true
+}
+INFO:api.access:Body: {
+  "query": "Bundle/123",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "f1d2d1e2-4a03-43cb-8f06-f68c90e96cc8"
+  },
+  "include_full_json": true
+}
+2026-02-02 16:32:11,187 - api.access - INFO - Response: 200 in 3.7350s
+INFO:api.access:Response: 200 in 3.7350s
+Warning: Only found 0/50 results after filtering from 5000 candidates (patient_id=f1d2d1e2-4a03-43cb-8f06-f68c90e96cc8)
+INFO:     127.0.0.1:64570 - "POST /retrieval/rerank/with-context HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST http://localhost:8000/retrieval/rerank/with-context "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search?sf=code%2Cname&terms=Z55&maxList=10 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 16:32:17,780 - api.access - INFO - Request: POST /retrieval/rerank/with-context
+INFO:api.access:Request: POST /retrieval/rerank/with-context
+2026-02-02 16:32:17,780 - api.access - INFO - Body: {
+  "query": "Bundle/123",
+  "k_retrieve": 20,
+  "k_return": 3,
+  "filter_metadata": {
+    "patient_id": "f1d2d1e2-4a03-43cb-8f06-f68c90e96cc8"
+  },
+  "include_full_json": true
+}
+INFO:api.access:Body: {
+  "query": "Bundle/123",
+  "k_retrieve": 20,
+  "k_return": 3,
+  "filter_metadata": {
+    "patient_id": "f1d2d1e2-4a03-43cb-8f06-f68c90e96cc8"
+  },
+  "include_full_json": true
+}
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-4318' coro=<queue_worker() running at /Users/raph/Documents/hc_ai/api/database/postgres.py:727> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-4363' coro=<queue_worker() running at /Users/raph/Documents/hc_ai/api/database/postgres.py:727> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-4421' coro=<queue_worker() running at /Users/raph/Documents/hc_ai/api/database/postgres.py:727> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+2026-02-02 16:32:21,552 - api.access - INFO - Response: 200 in 3.7718s
+INFO:api.access:Response: 200 in 3.7718s
+Warning: Only found 0/50 results after filtering from 5000 candidates (patient_id=f1d2d1e2-4a03-43cb-8f06-f68c90e96cc8)
+INFO:     127.0.0.1:64578 - "POST /retrieval/rerank/with-context HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST http://localhost:8000/retrieval/rerank/with-context "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search?sf=code%2Cname&terms=B94.8&maxList=10 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 16:32:29,546 - api.access - INFO - Request: POST /retrieval/rerank
+INFO:api.access:Request: POST /retrieval/rerank
+2026-02-02 16:32:29,546 - api.access - INFO - Body: {
+  "query": "Bundle/123",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "f1d2d1e2-4a03-43cb-8f06-f68c90e96cc8"
+  }
+}
+INFO:api.access:Body: {
+  "query": "Bundle/123",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "f1d2d1e2-4a03-43cb-8f06-f68c90e96cc8"
+  }
+}
+2026-02-02 16:32:32,670 - api.access - INFO - Response: 200 in 3.1236s
+INFO:api.access:Response: 200 in 3.1236s
+Warning: Only found 0/50 results after filtering from 5000 candidates (patient_id=f1d2d1e2-4a03-43cb-8f06-f68c90e96cc8)
+INFO:     127.0.0.1:64586 - "POST /retrieval/rerank HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST http://localhost:8000/retrieval/rerank "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search?sf=code%2Cname&terms=B94.8&maxList=10 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 16:32:38,309 - api.access - INFO - Request: POST /retrieval/rerank/with-context
+INFO:api.access:Request: POST /retrieval/rerank/with-context
+2026-02-02 16:32:38,309 - api.access - INFO - Body: {
+  "query": "Vaccination",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "3f89ff20-09aa-40e7-a359-389863c7e574"
+  },
+  "include_full_json": true
+}
+INFO:api.access:Body: {
+  "query": "Vaccination",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "3f89ff20-09aa-40e7-a359-389863c7e574"
+  },
+  "include_full_json": true
+}
+Warning: Only found 1/50 results after filtering from 5000 candidates (patient_id=3f89ff20-09aa-40e7-a359-389863c7e574)
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 60.61it/s]
+2026-02-02 16:32:42,279 - api.access - INFO - Response: 200 in 3.9698s
+INFO:api.access:Response: 200 in 3.9698s
+INFO:     127.0.0.1:64596 - "POST /retrieval/rerank/with-context HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST http://localhost:8000/retrieval/rerank/with-context "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 16:32:50,474 - api.access - INFO - Request: POST /retrieval/rerank/with-context
+INFO:api.access:Request: POST /retrieval/rerank/with-context
+2026-02-02 16:32:50,474 - api.access - INFO - Body: {
+  "query": "immunization",
+  "k_retrieve": 20,
+  "k_return": 1,
+  "filter_metadata": {
+    "patient_id": "3f89ff20-09aa-40e7-a359-389863c7e574"
+  },
+  "include_full_json": true
+}
+INFO:api.access:Body: {
+  "query": "immunization",
+  "k_retrieve": 20,
+  "k_return": 1,
+  "filter_metadata": {
+    "patient_id": "3f89ff20-09aa-40e7-a359-389863c7e574"
+  },
+  "include_full_json": true
+}
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-4476' coro=<queue_worker() running at /Users/raph/Documents/hc_ai/api/database/postgres.py:727> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-4531' coro=<queue_worker() running at /Users/raph/Documents/hc_ai/api/database/postgres.py:727> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-4586' coro=<queue_worker() running at /Users/raph/Documents/hc_ai/api/database/postgres.py:727> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+Warning: Only found 1/50 results after filtering from 5000 candidates (patient_id=3f89ff20-09aa-40e7-a359-389863c7e574)
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 16.06it/s]
+2026-02-02 16:32:54,366 - api.access - INFO - Response: 200 in 3.8920s
+INFO:api.access:Response: 200 in 3.8920s
+INFO:     127.0.0.1:64614 - "POST /retrieval/rerank/with-context HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST http://localhost:8000/retrieval/rerank/with-context "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search?sf=code%2Cname&terms=B94.9&maxList=10 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 16:33:02,015 - api.access - INFO - Request: POST /retrieval/rerank/with-context
+INFO:api.access:Request: POST /retrieval/rerank/with-context
+2026-02-02 16:33:02,015 - api.access - INFO - Body: {
+  "query": "Bundle/123",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "3f89ff20-09aa-40e7-a359-389863c7e574"
+  },
+  "include_full_json": true
+}
+INFO:api.access:Body: {
+  "query": "Bundle/123",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "3f89ff20-09aa-40e7-a359-389863c7e574"
+  },
+  "include_full_json": true
+}
+Warning: Only found 12/50 results after filtering from 5000 candidates (patient_id=3f89ff20-09aa-40e7-a359-389863c7e574)
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  4.61it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  4.60it/s]
+2026-02-02 16:33:05,500 - api.access - INFO - Response: 200 in 3.4845s
+INFO:api.access:Response: 200 in 3.4845s
+INFO:     127.0.0.1:64641 - "POST /retrieval/rerank/with-context HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST http://localhost:8000/retrieval/rerank/with-context "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search?sf=code%2Cname&terms=B91&maxList=10 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 16:33:14,816 - api.access - INFO - Request: POST /retrieval/rerank/with-context
+INFO:api.access:Request: POST /retrieval/rerank/with-context
+2026-02-02 16:33:14,816 - api.access - INFO - Body: {
+  "query": "Immunization",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "3f89ff20-09aa-40e7-a359-389863c7e574"
+  },
+  "include_full_json": true
+}
+INFO:api.access:Body: {
+  "query": "Immunization",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "3f89ff20-09aa-40e7-a359-389863c7e574"
+  },
+  "include_full_json": true
+}
+2026-02-02 16:33:18,199 - api.access - INFO - Response: 200 in 3.3822s
+INFO:api.access:Response: 200 in 3.3822s
+Warning: Only found 1/50 results after filtering from 5000 candidates (patient_id=3f89ff20-09aa-40e7-a359-389863c7e574)
+INFO:     127.0.0.1:64655 - "POST /retrieval/rerank/with-context HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST http://localhost:8000/retrieval/rerank/with-context "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 16:33:22,235 - api.access - INFO - Response: 500 in 87.3491s
+INFO:api.access:Response: 500 in 87.3491s
+Error in agent query [request_id=a04865de-11b7-4648-bf5c-653a9e255a99]: GraphRecursionError: Recursion limit of 15 reached without hitting a stop condition. You can increase the limit by setting the `recursion_limit` config key.
+For troubleshooting, visit: https://docs.langchain.com/oss/python/langgraph/errors/GRAPH_RECURSION_LIMIT
+Traceback: Traceback (most recent call last):
+  File "/Users/raph/Documents/hc_ai/api/agent/router.py", line 82, in query_agent
+    result = await asyncio.wait_for(
+             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.13/Frameworks/Python.framework/Versions/3.11/lib/python3.11/asyncio/tasks.py", line 489, in wait_for
+    return fut.result()
+           ^^^^^^^^^^^^
+  File "/Users/raph/Documents/hc_ai/.venv/lib/python3.11/site-packages/langgraph/pregel/main.py", line 3158, in ainvoke
+    async for chunk in self.astream(
+  File "/Users/raph/Documents/hc_ai/.venv/lib/python3.11/site-packages/langgraph/pregel/main.py", line 3014, in astream
+    raise GraphRecursionError(msg)
+langgraph.errors.GraphRecursionError: Recursion limit of 15 reached without hitting a stop condition. You can increase the limit by setting the `recursion_limit` config key.
+For troubleshooting, visit: https://docs.langchain.com/oss/python/langgraph/errors/GRAPH_RECURSION_LIMIT
+
+INFO:     127.0.0.1:64558 - "POST /agent/query HTTP/1.1" 500 Internal Server Error
+2026-02-02 16:33:22,257 - api.access - INFO - Request: GET /agent/health
+INFO:api.access:Request: GET /agent/health
+2026-02-02 16:33:22,258 - api.access - INFO - Response: 200 in 0.0004s
+INFO:api.access:Response: 200 in 0.0004s
+INFO:     127.0.0.1:64663 - "GET /agent/health HTTP/1.1" 200 OK
+2026-02-02 16:33:22,265 - api.access - INFO - Request: POST /agent/query
+INFO:api.access:Request: POST /agent/query
+2026-02-02 16:33:22,265 - api.access - INFO - Body: {
+  "query": "What is the trend in patient 72790c7f-7ee6-400f-aba9-b4bea77d929a's glucose levels over time?",
+  "session_id": "golden-run-19-12",
+  "patient_id": "72790c7f-7ee6-400f-aba9-b4bea77d929a"
+}
+INFO:api.access:Body: {
+  "query": "What is the trend in patient 72790c7f-7ee6-400f-aba9-b4bea77d929a's glucose levels over time?",
+  "session_id": "golden-run-19-12",
+  "patient_id": "72790c7f-7ee6-400f-aba9-b4bea77d929a"
+}
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://loinc.regenstrief.org/searchapi/loincs?query=Creatinine "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://loinc.regenstrief.org/searchapi/loincs?query=Sodium "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search?sf=code%2Cname&terms=Creatinine&maxList=5 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search?sf=code%2Cname&terms=Sodium&maxList=5 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search?sf=code%2Cname&terms=E11.9&maxList=10 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search?sf=code%2Cname&terms=E11.9&maxList=10 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 16:33:52,347 - api.access - INFO - Request: POST /retrieval/rerank/with-context
+INFO:api.access:Request: POST /retrieval/rerank/with-context
+2026-02-02 16:33:52,347 - api.access - INFO - Body: {
+  "query": "glucose level trend for patient 72790c7f-7ee6-400f-aba9-b4bea77d929a",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "72790c7f-7ee6-400f-aba9-b4bea77d929a"
+  },
+  "include_full_json": true
+}
+INFO:api.access:Body: {
+  "query": "glucose level trend for patient 72790c7f-7ee6-400f-aba9-b4bea77d929a",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "72790c7f-7ee6-400f-aba9-b4bea77d929a"
+  },
+  "include_full_json": true
+}
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-4643' coro=<queue_worker() running at /Users/raph/Documents/hc_ai/api/database/postgres.py:727> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-4701' coro=<queue_worker() running at /Users/raph/Documents/hc_ai/api/database/postgres.py:727> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-4758' coro=<queue_worker() running at /Users/raph/Documents/hc_ai/api/database/postgres.py:727> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+Warning: Only found 11/50 results after filtering from 5000 candidates (patient_id=72790c7f-7ee6-400f-aba9-b4bea77d929a)
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  2.05it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  2.05it/s]
+2026-02-02 16:34:01,243 - api.access - INFO - Response: 200 in 8.8963s
+INFO:api.access:Response: 200 in 8.8963s
+INFO:     127.0.0.1:64724 - "POST /retrieval/rerank/with-context HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST http://localhost:8000/retrieval/rerank/with-context "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search?sf=code%2Cname&terms=E11.9&maxList=10 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 16:34:09,979 - api.access - INFO - Request: POST /retrieval/rerank/with-context
+INFO:api.access:Request: POST /retrieval/rerank/with-context
+2026-02-02 16:34:09,979 - api.access - INFO - Body: {
+  "query": "Bundle/123",
+  "k_retrieve": 48,
+  "k_return": 12,
+  "filter_metadata": {
+    "patient_id": "72790c7f-7ee6-400f-aba9-b4bea77d929a"
+  },
+  "include_full_json": true
+}
+INFO:api.access:Body: {
+  "query": "Bundle/123",
+  "k_retrieve": 48,
+  "k_return": 12,
+  "filter_metadata": {
+    "patient_id": "72790c7f-7ee6-400f-aba9-b4bea77d929a"
+  },
+  "include_full_json": true
+}
+Warning: Only found 8/50 results after filtering from 5000 candidates (patient_id=72790c7f-7ee6-400f-aba9-b4bea77d929a)
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  5.72it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  5.72it/s]
+2026-02-02 16:34:16,454 - api.access - INFO - Response: 200 in 6.4748s
+INFO:api.access:Response: 200 in 6.4748s
+INFO:     127.0.0.1:64817 - "POST /retrieval/rerank/with-context HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST http://localhost:8000/retrieval/rerank/with-context "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search?sf=code%2Cname&terms=E11.9&maxList=10 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 16:34:26,289 - api.access - INFO - Response: 200 in 64.0247s
+INFO:api.access:Response: 200 in 64.0247s
+Warning: Failed to store session turn: Float types are not supported. Use Decimal types instead.
+INFO:     127.0.0.1:64665 - "POST /agent/query HTTP/1.1" 200 OK
+2026-02-02 16:34:26,310 - api.access - INFO - Request: GET /agent/health
+INFO:api.access:Request: GET /agent/health
+2026-02-02 16:34:26,310 - api.access - INFO - Response: 200 in 0.0007s
+INFO:api.access:Response: 200 in 0.0007s
+INFO:     127.0.0.1:64852 - "GET /agent/health HTTP/1.1" 200 OK
+2026-02-02 16:34:26,318 - api.access - INFO - Request: POST /agent/query
+INFO:api.access:Request: POST /agent/query
+2026-02-02 16:34:26,318 - api.access - INFO - Body: {
+  "query": "What is patient d0b81fcd-b4a2-43d9-99ac-8fe6dd6f4921's blood pressure history?",
+  "session_id": "golden-run-19-13",
+  "patient_id": "d0b81fcd-b4a2-43d9-99ac-8fe6dd6f4921"
+}
+INFO:api.access:Body: {
+  "query": "What is patient d0b81fcd-b4a2-43d9-99ac-8fe6dd6f4921's blood pressure history?",
+  "session_id": "golden-run-19-13",
+  "patient_id": "d0b81fcd-b4a2-43d9-99ac-8fe6dd6f4921"
+}
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search?sf=code%2Cname&terms=I10&maxList=10 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 16:34:37,938 - api.access - INFO - Request: POST /retrieval/rerank/with-context
+INFO:api.access:Request: POST /retrieval/rerank/with-context
+2026-02-02 16:34:37,938 - api.access - INFO - Body: {
+  "query": "patient_id=d0b81fcd-b4a2-43d9-99ac-8fe6dd6f4921",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "d0b81fcd-b4a2-43d9-99ac-8fe6dd6f4921"
+  },
+  "include_full_json": true
+}
+INFO:api.access:Body: {
+  "query": "patient_id=d0b81fcd-b4a2-43d9-99ac-8fe6dd6f4921",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "d0b81fcd-b4a2-43d9-99ac-8fe6dd6f4921"
+  },
+  "include_full_json": true
+}
+Warning: Only found 11/50 results after filtering from 5000 candidates (patient_id=d0b81fcd-b4a2-43d9-99ac-8fe6dd6f4921)
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  3.34it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  3.34it/s]
+2026-02-02 16:34:45,427 - api.access - INFO - Response: 200 in 7.4894s
+INFO:api.access:Response: 200 in 7.4894s
+INFO:     127.0.0.1:64868 - "POST /retrieval/rerank/with-context HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST http://localhost:8000/retrieval/rerank/with-context "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search?sf=code%2Cname&terms=I10&maxList=10 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 16:34:52,772 - api.access - INFO - Response: 200 in 26.4541s
+INFO:api.access:Response: 200 in 26.4541s
+Warning: Failed to store session turn: Float types are not supported. Use Decimal types instead.
+INFO:     127.0.0.1:64854 - "POST /agent/query HTTP/1.1" 200 OK
+2026-02-02 16:34:52,837 - api.access - INFO - Request: GET /agent/health
+INFO:api.access:Request: GET /agent/health
+2026-02-02 16:34:52,837 - api.access - INFO - Response: 200 in 0.0008s
+INFO:api.access:Response: 200 in 0.0008s
+INFO:     127.0.0.1:64898 - "GET /agent/health HTTP/1.1" 200 OK
+2026-02-02 16:34:52,846 - api.access - INFO - Request: POST /agent/query
+INFO:api.access:Request: POST /agent/query
+2026-02-02 16:34:52,846 - api.access - INFO - Body: {
+  "query": "What is patient 3e80196f-06df-4568-a5e5-480b742b8639's blood pressure history?",
+  "session_id": "golden-run-19-14",
+  "patient_id": "3e80196f-06df-4568-a5e5-480b742b8639"
+}
+INFO:api.access:Body: {
+  "query": "What is patient 3e80196f-06df-4568-a5e5-480b742b8639's blood pressure history?",
+  "session_id": "golden-run-19-14",
+  "patient_id": "3e80196f-06df-4568-a5e5-480b742b8639"
+}
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search?sf=code%2Cname&terms=I10&maxList=10 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 16:35:01,805 - api.access - INFO - Request: POST /retrieval/rerank/with-context
+INFO:api.access:Request: POST /retrieval/rerank/with-context
+2026-02-02 16:35:01,805 - api.access - INFO - Body: {
+  "query": "blood pressure",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "3e80196f-06df-4568-a5e5-480b742b8639"
+  },
+  "include_full_json": true
+}
+INFO:api.access:Body: {
+  "query": "blood pressure",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "3e80196f-06df-4568-a5e5-480b742b8639"
+  },
+  "include_full_json": true
+}
+Warning: Only found 1/50 results after filtering from 5000 candidates (patient_id=3e80196f-06df-4568-a5e5-480b742b8639)
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 13.15it/s]
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-4957' coro=<queue_worker() running at /Users/raph/Documents/hc_ai/api/database/postgres.py:727> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-5016' coro=<queue_worker() running at /Users/raph/Documents/hc_ai/api/database/postgres.py:727> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-5135' coro=<queue_worker() running at /Users/raph/Documents/hc_ai/api/database/postgres.py:727> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-5253' coro=<queue_worker() running at /Users/raph/Documents/hc_ai/api/database/postgres.py:727> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+2026-02-02 16:35:07,386 - api.access - INFO - Response: 200 in 5.5811s
+INFO:api.access:Response: 200 in 5.5811s
+INFO:     127.0.0.1:64919 - "POST /retrieval/rerank/with-context HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST http://localhost:8000/retrieval/rerank/with-context "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search?sf=code%2Cname&terms=I10&maxList=10 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 16:35:16,372 - api.access - INFO - Request: POST /retrieval/rerank/with-context
+INFO:api.access:Request: POST /retrieval/rerank/with-context
+2026-02-02 16:35:16,372 - api.access - INFO - Body: {
+  "query": "Observation",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "3e80196f-06df-4568-a5e5-480b742b8639"
+  },
+  "include_full_json": true
+}
+INFO:api.access:Body: {
+  "query": "Observation",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "3e80196f-06df-4568-a5e5-480b742b8639"
+  },
+  "include_full_json": true
+}
+Warning: Only found 0/50 results after filtering from 5000 candidates (patient_id=3e80196f-06df-4568-a5e5-480b742b8639)
+Batches:   0%|          | 0/2 [00:00<?, ?it/s]Batches:  50%|█████     | 1/2 [00:00<00:00,  1.11it/s]Batches: 100%|██████████| 2/2 [00:01<00:00,  1.85it/s]Batches: 100%|██████████| 2/2 [00:01<00:00,  1.68it/s]
+2026-02-02 16:35:22,293 - api.access - INFO - Response: 200 in 5.9211s
+INFO:api.access:Response: 200 in 5.9211s
+INFO:     127.0.0.1:64932 - "POST /retrieval/rerank/with-context HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST http://localhost:8000/retrieval/rerank/with-context "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search?sf=code%2Cname&terms=I10&maxList=10 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 16:35:37,086 - api.access - INFO - Response: 200 in 44.2399s
+INFO:api.access:Response: 200 in 44.2399s
+Warning: Failed to store session turn: Float types are not supported. Use Decimal types instead.
+INFO:     127.0.0.1:64900 - "POST /agent/query HTTP/1.1" 200 OK
+2026-02-02 16:35:37,109 - api.access - INFO - Request: GET /agent/health
+INFO:api.access:Request: GET /agent/health
+2026-02-02 16:35:37,109 - api.access - INFO - Response: 200 in 0.0006s
+INFO:api.access:Response: 200 in 0.0006s
+INFO:     127.0.0.1:64953 - "GET /agent/health HTTP/1.1" 200 OK
+2026-02-02 16:35:37,117 - api.access - INFO - Request: POST /agent/query
+INFO:api.access:Request: POST /agent/query
+2026-02-02 16:35:37,118 - api.access - INFO - Body: {
+  "query": "What diagnostic reports exist for patient 3e80196f-06df-4568-a5e5-480b742b8639?",
+  "session_id": "golden-run-19-15",
+  "patient_id": "3e80196f-06df-4568-a5e5-480b742b8639"
+}
+INFO:api.access:Body: {
+  "query": "What diagnostic reports exist for patient 3e80196f-06df-4568-a5e5-480b742b8639?",
+  "session_id": "golden-run-19-15",
+  "patient_id": "3e80196f-06df-4568-a5e5-480b742b8639"
+}
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 16:35:37,882 - api.access - INFO - Request: POST /retrieval/rerank
+INFO:api.access:Request: POST /retrieval/rerank
+2026-02-02 16:35:37,882 - api.access - INFO - Body: {
+  "query": "diagnostic reports",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "3e80196f-06df-4568-a5e5-480b742b8639"
+  }
+}
+INFO:api.access:Body: {
+  "query": "diagnostic reports",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "3e80196f-06df-4568-a5e5-480b742b8639"
+  }
+}
+Warning: Only found 46/50 results after filtering from 5000 candidates (patient_id=3e80196f-06df-4568-a5e5-480b742b8639)
+Batches:   0%|          | 0/2 [00:00<?, ?it/s]Batches:  50%|█████     | 1/2 [00:00<00:00,  1.71it/s]Batches: 100%|██████████| 2/2 [00:00<00:00,  2.71it/s]Batches: 100%|██████████| 2/2 [00:00<00:00,  2.49it/s]
+2026-02-02 16:35:43,376 - api.access - INFO - Response: 200 in 5.4949s
+INFO:api.access:Response: 200 in 5.4949s
+INFO:     127.0.0.1:64958 - "POST /retrieval/rerank HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST http://localhost:8000/retrieval/rerank "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search?sf=code%2Cname&terms=F32&maxList=10 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 16:35:53,124 - api.access - INFO - Response: 200 in 16.0063s
+INFO:api.access:Response: 200 in 16.0063s
+Warning: Failed to store session turn: Float types are not supported. Use Decimal types instead.
+INFO:     127.0.0.1:64955 - "POST /agent/query HTTP/1.1" 200 OK
+2026-02-02 16:35:53,160 - api.access - INFO - Request: GET /agent/health
+INFO:api.access:Request: GET /agent/health
+2026-02-02 16:35:53,161 - api.access - INFO - Response: 200 in 0.0010s
+INFO:api.access:Response: 200 in 0.0010s
+INFO:     127.0.0.1:64976 - "GET /agent/health HTTP/1.1" 200 OK
+2026-02-02 16:35:53,170 - api.access - INFO - Request: POST /agent/query
+INFO:api.access:Request: POST /agent/query
+2026-02-02 16:35:53,170 - api.access - INFO - Body: {
+  "query": "Has patient 3f89ff20-09aa-40e7-a359-389863c7e574 undergone any procedures? List them.",
+  "session_id": "golden-run-19-16",
+  "patient_id": "3f89ff20-09aa-40e7-a359-389863c7e574"
+}
+INFO:api.access:Body: {
+  "query": "Has patient 3f89ff20-09aa-40e7-a359-389863c7e574 undergone any procedures? List them.",
+  "session_id": "golden-run-19-16",
+  "patient_id": "3f89ff20-09aa-40e7-a359-389863c7e574"
+}
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 16:35:54,110 - api.access - INFO - Request: POST /retrieval/rerank
+INFO:api.access:Request: POST /retrieval/rerank
+2026-02-02 16:35:54,110 - api.access - INFO - Body: {
+  "query": "procedures for patient 3f89ff20-09aa-40e7-a359-389863c7e574",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "3f89ff20-09aa-40e7-a359-389863c7e574"
+  }
+}
+INFO:api.access:Body: {
+  "query": "procedures for patient 3f89ff20-09aa-40e7-a359-389863c7e574",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "3f89ff20-09aa-40e7-a359-389863c7e574"
+  }
+}
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-5311' coro=<queue_worker() running at /Users/raph/Documents/hc_ai/api/database/postgres.py:727> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-5390' coro=<queue_worker() running at /Users/raph/Documents/hc_ai/api/database/postgres.py:727> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+Warning: Only found 47/50 results after filtering from 5000 candidates (patient_id=3f89ff20-09aa-40e7-a359-389863c7e574)
+Batches:   0%|          | 0/2 [00:00<?, ?it/s]Batches:  50%|█████     | 1/2 [00:00<00:00,  1.12it/s]Batches: 100%|██████████| 2/2 [00:01<00:00,  2.13it/s]Batches: 100%|██████████| 2/2 [00:01<00:00,  1.87it/s]
+2026-02-02 16:36:00,651 - api.access - INFO - Response: 200 in 6.5422s
+INFO:api.access:Response: 200 in 6.5422s
+INFO:     127.0.0.1:64983 - "POST /retrieval/rerank HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST http://localhost:8000/retrieval/rerank "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search?sf=code%2Cname&terms=E11.9&maxList=10 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 16:36:12,328 - api.access - INFO - Response: 200 in 19.1577s
+INFO:api.access:Response: 200 in 19.1577s
+Warning: Failed to store session turn: Float types are not supported. Use Decimal types instead.
+INFO:     127.0.0.1:64978 - "POST /agent/query HTTP/1.1" 200 OK
+2026-02-02 16:36:12,357 - api.access - INFO - Request: GET /agent/health
+INFO:api.access:Request: GET /agent/health
+2026-02-02 16:36:12,358 - api.access - INFO - Response: 200 in 0.0004s
+INFO:api.access:Response: 200 in 0.0004s
+INFO:     127.0.0.1:65003 - "GET /agent/health HTTP/1.1" 200 OK
+2026-02-02 16:36:12,365 - api.access - INFO - Request: POST /agent/query
+INFO:api.access:Request: POST /agent/query
+2026-02-02 16:36:12,365 - api.access - INFO - Body: {
+  "query": "Compare patient 5dcb9365-483d-48d7-bc62-816221b3f8b7's cholesterol levels across multiple visits.",
+  "session_id": "golden-run-19-17",
+  "patient_id": "5dcb9365-483d-48d7-bc62-816221b3f8b7"
+}
+INFO:api.access:Body: {
+  "query": "Compare patient 5dcb9365-483d-48d7-bc62-816221b3f8b7's cholesterol levels across multiple visits.",
+  "session_id": "golden-run-19-17",
+  "patient_id": "5dcb9365-483d-48d7-bc62-816221b3f8b7"
+}
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search?sf=code%2Cname&terms=E11.9&maxList=10 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 16:36:23,030 - api.access - INFO - Request: POST /retrieval/rerank/with-context
+INFO:api.access:Request: POST /retrieval/rerank/with-context
+2026-02-02 16:36:23,030 - api.access - INFO - Body: {
+  "query": "Observation/123",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "5dcb9365-483d-48d7-bc62-816221b3f8b7"
+  },
+  "include_full_json": true
+}
+INFO:api.access:Body: {
+  "query": "Observation/123",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "5dcb9365-483d-48d7-bc62-816221b3f8b7"
+  },
+  "include_full_json": true
+}
+Warning: Only found 25/50 results after filtering from 5000 candidates (patient_id=5dcb9365-483d-48d7-bc62-816221b3f8b7)
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  2.15it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  2.14it/s]
+2026-02-02 16:36:28,162 - api.access - INFO - Response: 200 in 5.1320s
+INFO:api.access:Response: 200 in 5.1320s
+INFO:     127.0.0.1:65012 - "POST /retrieval/rerank/with-context HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST http://localhost:8000/retrieval/rerank/with-context "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search?sf=code%2Cname&terms=E11.9&maxList=10 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 16:36:35,426 - api.access - INFO - Request: POST /retrieval/rerank/with-context
+INFO:api.access:Request: POST /retrieval/rerank/with-context
+2026-02-02 16:36:35,426 - api.access - INFO - Body: {
+  "query": "blood type",
+  "k_retrieve": 20,
+  "k_return": 1,
+  "filter_metadata": {
+    "patient_id": "f1d2d1e2-4a03-43cb-8f06-f68c90e96cc8"
+  },
+  "include_full_json": true
+}
+INFO:api.access:Body: {
+  "query": "blood type",
+  "k_retrieve": 20,
+  "k_return": 1,
+  "filter_metadata": {
+    "patient_id": "f1d2d1e2-4a03-43cb-8f06-f68c90e96cc8"
+  },
+  "include_full_json": true
+}
+2026-02-02 16:36:40,269 - api.access - INFO - Response: 200 in 4.8433s
+INFO:api.access:Response: 200 in 4.8433s
+Warning: Only found 0/50 results after filtering from 5000 candidates (patient_id=f1d2d1e2-4a03-43cb-8f06-f68c90e96cc8)
+INFO:     127.0.0.1:65029 - "POST /retrieval/rerank/with-context HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST http://localhost:8000/retrieval/rerank/with-context "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search?sf=code%2Cname&terms=E11.9&maxList=10 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 16:36:47,563 - api.access - INFO - Request: POST /retrieval/rerank/with-context
+INFO:api.access:Request: POST /retrieval/rerank/with-context
+2026-02-02 16:36:47,563 - api.access - INFO - Body: {
+  "query": "cholesterol levels comparison for patient 5dcb9365-483d-48d7-bc62-816221b3f8b7",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "5dcb9365-483d-48d7-bc62-816221b3f8b7"
+  },
+  "include_full_json": true
+}
+INFO:api.access:Body: {
+  "query": "cholesterol levels comparison for patient 5dcb9365-483d-48d7-bc62-816221b3f8b7",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "5dcb9365-483d-48d7-bc62-816221b3f8b7"
+  },
+  "include_full_json": true
+}
+Warning: Only found 28/50 results after filtering from 5000 candidates (patient_id=5dcb9365-483d-48d7-bc62-816221b3f8b7)
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  1.64it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  1.64it/s]
+2026-02-02 16:36:53,453 - api.access - INFO - Response: 200 in 5.8908s
+INFO:api.access:Response: 200 in 5.8908s
+INFO:     127.0.0.1:65061 - "POST /retrieval/rerank/with-context HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST http://localhost:8000/retrieval/rerank/with-context "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search?sf=code%2Cname&terms=E11.9&maxList=10 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 16:37:06,532 - api.access - INFO - Request: POST /retrieval/rerank/with-context
+INFO:api.access:Request: POST /retrieval/rerank/with-context
+2026-02-02 16:37:06,533 - api.access - INFO - Body: {
+  "query": "patient 5dcb9365-483d-48d7-bc62-816221b3f8b7",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "5dcb9365-483d-48d7-bc62-816221b3f8b7"
+  },
+  "include_full_json": true
+}
+INFO:api.access:Body: {
+  "query": "patient 5dcb9365-483d-48d7-bc62-816221b3f8b7",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "5dcb9365-483d-48d7-bc62-816221b3f8b7"
+  },
+  "include_full_json": true
+}
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-5465' coro=<queue_worker() running at /Users/raph/Documents/hc_ai/api/database/postgres.py:727> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-5586' coro=<queue_worker() running at /Users/raph/Documents/hc_ai/api/database/postgres.py:727> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-5645' coro=<queue_worker() running at /Users/raph/Documents/hc_ai/api/database/postgres.py:727> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-5700' coro=<queue_worker() running at /Users/raph/Documents/hc_ai/api/database/postgres.py:727> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+Warning: Only found 4/50 results after filtering from 5000 candidates (patient_id=5dcb9365-483d-48d7-bc62-816221b3f8b7)
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  7.12it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  7.11it/s]
+2026-02-02 16:37:11,221 - api.access - INFO - Response: 200 in 4.6887s
+INFO:api.access:Response: 200 in 4.6887s
+INFO:     127.0.0.1:65090 - "POST /retrieval/rerank/with-context HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST http://localhost:8000/retrieval/rerank/with-context "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search?sf=code%2Cname&terms=E11.9&maxList=10 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 16:37:20,025 - api.access - INFO - Response: 200 in 67.6603s
+INFO:api.access:Response: 200 in 67.6603s
+Warning: Failed to store session turn: Float types are not supported. Use Decimal types instead.
+INFO:     127.0.0.1:65005 - "POST /agent/query HTTP/1.1" 200 OK
+2026-02-02 16:37:20,040 - api.access - INFO - Request: GET /agent/health
+INFO:api.access:Request: GET /agent/health
+2026-02-02 16:37:20,040 - api.access - INFO - Response: 200 in 0.0003s
+INFO:api.access:Response: 200 in 0.0003s
+INFO:     127.0.0.1:65101 - "GET /agent/health HTTP/1.1" 200 OK
+2026-02-02 16:37:20,046 - api.access - INFO - Request: POST /agent/query
+INFO:api.access:Request: POST /agent/query
+2026-02-02 16:37:20,046 - api.access - INFO - Body: {
+  "query": "What follow-up care recommendations exist for patient 5dcb9365-483d-48d7-bc62-816221b3f8b7?",
+  "session_id": "golden-run-19-18",
+  "patient_id": "5dcb9365-483d-48d7-bc62-816221b3f8b7"
+}
+INFO:api.access:Body: {
+  "query": "What follow-up care recommendations exist for patient 5dcb9365-483d-48d7-bc62-816221b3f8b7?",
+  "session_id": "golden-run-19-18",
+  "patient_id": "5dcb9365-483d-48d7-bc62-816221b3f8b7"
+}
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 16:37:20,754 - api.access - INFO - Request: POST /retrieval/rerank/with-context
+INFO:api.access:Request: POST /retrieval/rerank/with-context
+2026-02-02 16:37:20,754 - api.access - INFO - Body: {
+  "query": "follow-up care recommendations",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "5dcb9365-483d-48d7-bc62-816221b3f8b7"
+  },
+  "include_full_json": true
+}
+INFO:api.access:Body: {
+  "query": "follow-up care recommendations",
+  "k_retrieve": 40,
+  "k_return": 10,
+  "filter_metadata": {
+    "patient_id": "5dcb9365-483d-48d7-bc62-816221b3f8b7"
+  },
+  "include_full_json": true
+}
+Warning: Only found 6/50 results after filtering from 5000 candidates (patient_id=5dcb9365-483d-48d7-bc62-816221b3f8b7)
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 11.49it/s]
+2026-02-02 16:37:25,634 - api.access - INFO - Response: 200 in 4.8797s
+INFO:api.access:Response: 200 in 4.8797s
+INFO:     127.0.0.1:65106 - "POST /retrieval/rerank/with-context HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST http://localhost:8000/retrieval/rerank/with-context "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search?sf=code%2Cname&terms=E11.9&maxList=10 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://100.91.76.71:11434/api/chat "HTTP/1.1 200 OK"
+2026-02-02 16:37:34,613 - api.access - INFO - Response: 200 in 14.5665s
+INFO:api.access:Response: 200 in 14.5665s
+Warning: Failed to store session turn: Float types are not supported. Use Decimal types instead.
+INFO:     127.0.0.1:65103 - "POST /agent/query HTTP/1.1" 200 OK
