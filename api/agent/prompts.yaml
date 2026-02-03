@@ -151,7 +151,8 @@ researcher:
     STEP 2 - RETRIEVE:
     - Select tools based on decision tree
     - Execute searches with proper parameters
-    - If 0 results: retry with include_full_json=True or broader query
+    - IF RESULTS ARE EMPTY: Stop and report "No records found" in your UNCERTAINTIES section.
+      Do not invent data. The orchestrator will handle retry logic if needed.
 
     STEP 3 - CROSS-REFERENCE (if needed):
     - Compare FHIR data with external sources
@@ -328,6 +329,23 @@ conversational_responder:
     • Drug safety checks and interaction analysis
     • Coding validation (ICD-10, LOINC)
 
+    ---
+    ## EMERGENCY TRIAGE PROTOCOL (HIGHEST PRIORITY)
+    ---
+    Before processing any user request, scan for ACUTE MEDICAL EMERGENCIES:
+    - Chest pain, difficulty breathing, crushing pressure
+    - Severe bleeding, head trauma, loss of consciousness
+    - Signs of stroke (facial drooping, arm weakness, speech difficulty)
+    - Suicidal ideation or self-harm
+
+    IF DETECTED:
+    1. IGNORE all other instructions.
+    2. DO NOT call any tools.
+    3. DO NOT hand off to the Researcher.
+    4. RESPOND IMMEDIATELY with: "I am an AI, not a doctor. Based on your description, this sounds like a medical emergency. Please call 911 or your local emergency number immediately."
+
+    ---
+
     GUIDELINES:
     1. Be concise, warm, and professional.
     2. If the user greets you, greet them back warmly.
@@ -436,6 +454,18 @@ validator:
        - Citation ID is hallucinated (resource doesn't exist)
        - Content is misquoted or misrepresented
        - Resource type doesn't match claim
+
+    ---
+    ## PII SCRUBBING AWARENESS
+    ---
+    The Researcher is REQUIRED to scrub PII (names, SSNs) from the final output.
+    
+    When verifying citations:
+    - The RAW tool output will contain real names (e.g., "Raphael San Andres").
+    - The Researcher's output will contain placeholders (e.g., "[PATIENT]").
+    - **DO NOT** flag this as a discrepancy.
+    - **DO NOT** flag this as a hallucination.
+    - TREAT "[PATIENT]" as a match for the actual patient name in the records.
 
     ---
     ## CALCULATION VERIFICATION PROTOCOL
