@@ -402,43 +402,42 @@ async def search_similar_chunks(
     filter_metadata: Optional[Dict[str, Any]] = None
 ) -> List[Document]:
     """
-    Search for similar chunks using semantic similarity.
-    
+    Search for similar chunks using semantic similarity with SQL-level filtering.
+
     Args:
         query: Search query text
         k: Number of results to return
         filter_metadata: Optional metadata filters (filters on JSON metadata column)
-    
+
     Returns:
         List of similar Document objects
     """
     try:
-        vector_store = await initialize_vector_store()
-        
-        # Database uses snake_case - no conversion needed
-        # If filtering by patient_id, retrieve a very large pool since semantic similarity
-        # might not align with patient_id - we need to cast a wide net
+        # If we have a patient_id filter, use SQL-level filtering for accuracy
+        # This ensures we search WITHIN the patient's documents, not across all
         if filter_metadata and filter_metadata.get("patient_id"):
-            # Retrieve a large number to increase chances of finding patient's chunks
-            retrieve_k = min(max(k * 100, 1000), 5000)  # Cap at 5000 for performance
-        elif filter_metadata:
-            # Other filters - retrieve more but not as much
+            return await _search_similar_with_sql_filter(query, k, filter_metadata)
+
+        # For non-patient-specific searches, use the standard vector store
+        vector_store = await initialize_vector_store()
+
+        if filter_metadata:
+            # Other filters - retrieve more and filter in Python
             retrieve_k = max(k * 20, 100)
         else:
             retrieve_k = k
-        
+
         # Perform similarity search
         results = await vector_store.asimilarity_search(
             query=query,
             k=retrieve_k,
         )
-        
+
         # Filter results in Python if filter_metadata is provided
         if filter_metadata and results:
             filtered_results = []
             for doc in results:
                 doc_metadata = doc.metadata or {}
-                # Check if all filter conditions match
                 matches = True
                 for key, value in filter_metadata.items():
                     doc_value = doc_metadata.get(key)
@@ -447,16 +446,131 @@ async def search_similar_chunks(
                         break
                 if matches:
                     filtered_results.append(doc)
-            
-            # If we didn't find enough matches, log a warning
-            if len(filtered_results) < k and filter_metadata:
-                print(f"Warning: Only found {len(filtered_results)}/{k} results after filtering from {len(results)} candidates (patient_id={filter_metadata.get('patient_id', 'N/A')})")
-            
             return filtered_results[:k]
-        
+
         return results[:k]
     except Exception as e:
         print(f"Error searching chunks: {e}")
+        return []
+
+
+async def _search_similar_with_sql_filter(
+    query: str,
+    k: int,
+    filter_metadata: Dict[str, Any]
+) -> List[Document]:
+    """
+    Perform semantic similarity search with SQL-level metadata filtering.
+
+    This is more accurate than post-filtering because it searches WITHIN
+    the filtered set rather than filtering after retrieval.
+    """
+    global _engine
+
+    if _engine is None:
+        await initialize_vector_store()
+
+    if not _engine:
+        return []
+
+    # Get the query embedding
+    query_embedding = get_chunk_embedding(query)
+    if not query_embedding:
+        print(f"Warning: Could not get embedding for query: {query[:50]}...")
+        return []
+
+    # Convert embedding to PostgreSQL array format
+    embedding_str = "[" + ",".join(str(x) for x in query_embedding) + "]"
+
+    # Build SQL query with pgvector similarity and metadata filter
+    # Using cosine distance operator <=> for similarity
+    # Build WHERE clause with metadata filters
+    where_clauses = []
+    params: Dict[str, Any] = {"k": k}
+
+    for key, value in filter_metadata.items():
+        param_name = f"meta_{key}"
+        where_clauses.append(f"langchain_metadata->>'{key}' = :{param_name}")
+        params[param_name] = value
+
+    where_sql = " AND ".join(where_clauses) if where_clauses else "1=1"
+
+    # Use raw SQL with the embedding directly interpolated (safe since we generate it)
+    sql = f"""
+        SELECT
+            langchain_id,
+            content,
+            langchain_metadata,
+            1 - (embedding <=> '{embedding_str}'::vector) as similarity
+        FROM "{SCHEMA_NAME}"."{TABLE_NAME}"
+        WHERE {where_sql}
+        ORDER BY embedding <=> '{embedding_str}'::vector
+        LIMIT :k
+    """
+
+    try:
+        async with _engine.begin() as conn:
+            result = await conn.execute(text(sql), params)
+            rows = result.fetchall()
+
+        documents = []
+        for row in rows:
+            doc_id, content, metadata, similarity = row
+            # Parse metadata if it's a string
+            if isinstance(metadata, str):
+                metadata = json.loads(metadata)
+
+            doc = Document(
+                page_content=content,
+                metadata=metadata or {},
+                id=str(doc_id)
+            )
+            doc.metadata["_similarity_score"] = float(similarity) if similarity else 0.0
+            documents.append(doc)
+
+        return documents
+    except Exception as e:
+        print(f"Error in SQL similarity search: {e}")
+        # Fallback to the old method
+        return await _search_similar_fallback(query, k, filter_metadata)
+
+
+async def _search_similar_fallback(
+    query: str,
+    k: int,
+    filter_metadata: Dict[str, Any]
+) -> List[Document]:
+    """
+    Fallback similarity search using vector store with post-filtering.
+    Used when SQL-level filtering fails.
+    """
+    try:
+        vector_store = await initialize_vector_store()
+        # Retrieve a large pool and filter
+        retrieve_k = min(max(k * 100, 1000), 5000)
+
+        results = await vector_store.asimilarity_search(
+            query=query,
+            k=retrieve_k,
+        )
+
+        filtered_results = []
+        for doc in results:
+            doc_metadata = doc.metadata or {}
+            matches = True
+            for key, value in filter_metadata.items():
+                if doc_metadata.get(key) != value:
+                    matches = False
+                    break
+            if matches:
+                filtered_results.append(doc)
+
+        if len(filtered_results) < k:
+            print(f"Warning: Fallback search found {len(filtered_results)}/{k} results (patient_id={filter_metadata.get('patient_id', 'N/A')})")
+
+        return filtered_results[:k]
+    except Exception as e:
+        print(f"Error in fallback similarity search: {e}")
         return []
 
 
