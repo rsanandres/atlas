@@ -70,10 +70,7 @@ async def query_agent(payload: AgentQueryRequest) -> AgentQueryResponse:
 
         # store = get_session_store() # Already initialized above
         agent = get_agent()
-        max_iterations = int(os.getenv("AGENT_MAX_ITERATIONS", "15"))
-        # Set recursion_limit higher than max_iterations to allow for the full loop cycle
-        # Each iteration = researcher + validator = 2 steps, plus respond node
-        graph_recursion_limit = int(os.getenv("GRAPH_RECURSION_LIMIT", "35"))
+        recursion_limit = int(os.getenv("AGENT_RECURSION_LIMIT", "50"))
         agent_timeout = int(os.getenv("AGENT_TIMEOUT_SECONDS", "300"))  # Default 5 minutes
 
         state = {
@@ -89,7 +86,7 @@ async def query_agent(payload: AgentQueryRequest) -> AgentQueryResponse:
         # Add timeout handling for agent invocation
         try:
             result = await asyncio.wait_for(
-                agent.ainvoke(state, config={"recursion_limit": graph_recursion_limit}),
+                agent.ainvoke(state, config={"recursion_limit": recursion_limit}),
                 timeout=agent_timeout
             )
         except asyncio.TimeoutError:
@@ -142,20 +139,19 @@ async def query_agent(payload: AgentQueryRequest) -> AgentQueryResponse:
         raise
     except GraphRecursionError as e:
         # Agent hit max iterations - return graceful response with what we know
-        print(f"Agent hit recursion limit [request_id={request_id}] (graph_recursion_limit={graph_recursion_limit}): {str(e)}")
+        print(f"Agent hit recursion limit [request_id={request_id}] (recursion_limit={recursion_limit}): {str(e)}")
         return AgentQueryResponse(
             query=payload.query,
-            response=f"I was unable to find a complete answer after {max_iterations} attempts. "
-                     f"The search may have encountered issues with the query or data availability. "
-                     f"Please try rephrasing your question with more specific clinical terms "
-                     f"(e.g., 'active conditions' instead of patient name).",
+            response="I was unable to find a complete answer due to processing limits. "
+                     "The search may have encountered issues with the query or data availability. "
+                     "Please try rephrasing your question with more specific clinical terms.",
             sources=[],
             tool_calls=[],
             session_id=payload.session_id,
             validation_result="MAX_ITERATIONS",
             researcher_output=None,
-            validator_output=f"Reached maximum iterations ({max_iterations}). Could not validate response.",
-            iteration_count=max_iterations,
+            validator_output=f"Reached recursion limit ({recursion_limit}). Could not complete response.",
+            iteration_count=recursion_limit,
         )
     except Exception as e:
         # Log the full error for debugging with request context
@@ -189,10 +185,7 @@ async def query_agent_stream(payload: AgentQueryRequest):
             
             # store = get_session_store() # Already initialized above
             agent = get_agent()
-            max_iterations = int(os.getenv("AGENT_MAX_ITERATIONS", "15"))
-            # Set recursion_limit higher than max_iterations to allow for the full loop cycle
-            # Each iteration = researcher + validator = 2 steps, plus respond node
-            graph_recursion_limit = int(os.getenv("GRAPH_RECURSION_LIMIT", "35"))
+            recursion_limit = int(os.getenv("AGENT_RECURSION_LIMIT", "50"))
             agent_timeout = int(os.getenv("AGENT_TIMEOUT_SECONDS", "300"))  # Default 5 minutes
 
             state = {
@@ -218,7 +211,7 @@ async def query_agent_stream(payload: AgentQueryRequest):
             try:
                 async for event in agent.astream_events(
                     state,
-                    config={"recursion_limit": graph_recursion_limit}
+                    config={"recursion_limit": recursion_limit}
                 ):
                     event_count += 1
                     # print(f"[STREAM {request_id}] Event {event_count}: {event.get('event')} - {event.get('name', 'unknown')}")
@@ -299,17 +292,19 @@ async def query_agent_stream(payload: AgentQueryRequest):
                 result = accumulated_state
                 
             except GraphRecursionError as e:
-                # Agent hit max iterations - return graceful response with what we have
-                current_iter = accumulated_state.get("iteration_count", max_iterations)
-                print(f"[STREAM {request_id}] Agent hit recursion limit (graph_recursion_limit={graph_recursion_limit}): {str(e)}")
-                yield f"data: {json.dumps({'type': 'max_iterations', 'message': f'Reached maximum iterations ({current_iter})', 'iteration_count': current_iter})}\n\n"
+                # Agent hit recursion limit - return graceful response with what we have
+                current_iter = accumulated_state.get("iteration_count", 0)
+                print(f"[STREAM {request_id}] Agent hit recursion limit (recursion_limit={recursion_limit}): {str(e)}")
+                yield f"data: {json.dumps({'type': 'max_iterations', 'message': f'Reached recursion limit', 'iteration_count': current_iter})}\n\n"
 
-                # Return a helpful response instead of an error
-                graceful_response = (
-                    f"I was unable to find a complete answer after {current_iter} attempts. "
-                    f"The search may have encountered issues with the query or data availability. "
-                    f"Please try rephrasing your question with more specific clinical terms."
-                )
+                # Check if we have partial results
+                if accumulated_state.get("researcher_output"):
+                    graceful_response = f"Here is what I found (processing was limited):\n\n{accumulated_state['researcher_output']}"
+                else:
+                    graceful_response = (
+                        "I was unable to find a complete answer due to processing limits. "
+                        "Please try rephrasing your question with more specific clinical terms."
+                    )
                 # Use 'complete' type for consistency with normal flow (frontend handles 'complete', not 'final')
                 yield f"data: {json.dumps({'type': 'complete', 'response': graceful_response, 'validation_result': 'MAX_ITERATIONS', 'sources': [], 'tool_calls': [], 'iteration_count': current_iter})}\n\n"
                 return

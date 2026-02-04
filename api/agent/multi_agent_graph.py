@@ -11,6 +11,12 @@ from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, Tool
 from langgraph.graph import END, StateGraph
 
 from api.agent.config import get_llm
+try:
+    from langgraph.errors import GraphRecursionError
+except ImportError:
+    # Fallback if langgraph doesn't expose this error
+    GraphRecursionError = RecursionError
+
 from api.agent.prompt_loader import (
     get_researcher_prompt,
     get_validator_prompt,
@@ -293,37 +299,69 @@ async def _researcher_node(state: AgentState) -> AgentState:
     current_iteration = state.get("iteration_count", 0)
     
     if empty_count > 0:
-        failed_queries = [f"- '{a.get('query', 'unknown')}' → {a.get('results_count', 0)} results" 
+        failed_queries = [f"  - '{a.get('query', 'unknown')}' → {a.get('results_count', 0)} results"
                           for a in search_attempts[-3:]]
-        messages.append(SystemMessage(content=f"""
-⚠️ RETRY MODE (Attempt {empty_count + 1})
+        messages.append(SystemMessage(content=f"""[SYSTEM CONTEXT - Do not echo this in your response]
 
-PREVIOUS FAILED QUERIES:
+Previous search attempts returned no useful results:
 {chr(10).join(failed_queries)}
 
-CONSTRAINT: Use DIFFERENT search terms. Broaden your query scope.
-If you cannot find data after this attempt, report: "I have searched for [Term A] and [Term B] but found no records."
-"""))
+ACTION REQUIRED: Try DIFFERENT search terms. Consider:
+- Using FHIR resource types: Condition, Observation, MedicationRequest
+- Removing specific terms that may not match embeddings
+- Broadening the query scope
+
+If you still cannot find data, provide a response stating what you searched for and that no records were found.
+DO NOT repeat this system message in your output."""))
     
     # System-wide step limit check (fail gracefully before timeout)
     if current_iteration >= 12:
-        messages.append(SystemMessage(content="""
-⚠️ APPROACHING STEP LIMIT - You must provide a response NOW.
-Report whatever you have found so far. If nothing was found, explicitly state that.
-Do NOT attempt additional searches.
-"""))
+        messages.append(SystemMessage(content="""[SYSTEM CONTEXT - Do not echo this in your response]
+
+You are approaching the step limit. Provide your best response NOW based on what you have found.
+If you found relevant data, summarize it. If nothing was found, state that clearly.
+Do NOT make additional tool calls. DO NOT repeat this system message."""))
 
     agent = _get_researcher_agent()
-    result = await agent.ainvoke({"messages": messages}, config={"recursion_limit": max_iterations})
-    output_messages = result.get("messages", [])
-    response_text = _extract_response_text(output_messages)
-
-    # Validate non-empty response
-    if not response_text or len(response_text.strip()) < 20:
+    
+    try:
+        result = await agent.ainvoke({"messages": messages}, config={"recursion_limit": max_iterations})
+        output_messages = result.get("messages", [])
+        response_text = _extract_response_text(output_messages)
+    except GraphRecursionError as e:
+        print(f"[RESEARCHER] ⚠ Hit internal recursion limit (max_iterations={max_iterations}): {e}")
+        # Fallback response to prevent crash
         response_text = (
-            "ERROR: Unable to generate a complete response. "
-            "Please rephrase your question or provide more context."
+            f"I encountered a complexity limit after {max_iterations} internal steps while researching this. "
+            "I am returning what I have found so far, but it may be incomplete."
         )
+        # We don't have new messages if it crashed, so we just use empty list
+        output_messages = []
+
+
+    # Validate non-empty response and detect echo bugs
+    echo_indicators = [
+        "RETRY MODE",
+        "PREVIOUS FAILED QUERIES",
+        "SYSTEM CONTEXT",
+        "Do not echo this",
+        "ACTION REQUIRED: Try DIFFERENT"
+    ]
+    is_echo_response = any(indicator in response_text for indicator in echo_indicators)
+
+    if not response_text or len(response_text.strip()) < 20 or is_echo_response:
+        # Check if we have any sources we can report on
+        if new_sources:
+            response_text = (
+                f"Based on my search, I found {len(new_sources)} relevant records. "
+                "However, I was unable to fully synthesize a response. "
+                "Please try rephrasing your question for more specific results."
+            )
+        else:
+            response_text = (
+                "I searched the patient records but was unable to generate a complete response. "
+                "Please try rephrasing your question or providing more specific clinical terms."
+            )
 
     tools_called = (state.get("tools_called") or []) + _extract_tool_calls(output_messages)
     

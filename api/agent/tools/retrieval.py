@@ -109,13 +109,28 @@ async def search_patient_records(
         include_full_json: Whether to include full document JSON
     """
     from api.agent.tools.argument_validators import validate_patient_id
-    
+
+    # Store original query before any modifications
+    original_query = query
+
+    # Handle empty query - return helpful error instead of 422
+    if not query or not query.strip():
+        return RetrievalResponse(
+            query="",
+            original_query=original_query,
+            chunks=[],
+            count=0,
+            success=False,
+            error="Query cannot be empty. Please provide a search term like 'Condition', 'Observation', or 'MedicationRequest'.",
+        ).model_dump()
+
     if patient_id:
         # Validate patient_id format (catches ICD-10/UUID confusion)
         is_valid, error_msg = validate_patient_id(patient_id)
         if not is_valid:
             return RetrievalResponse(
                 query=query,
+                original_query=original_query,
                 chunks=[],
                 count=0,
                 success=False,
@@ -123,17 +138,22 @@ async def search_patient_records(
             ).model_dump()
 
         # Strip patient name from query - names don't match old embeddings
-        query = strip_patient_name_from_query(query, patient_id)
+        cleaned_query = strip_patient_name_from_query(query, patient_id)
+
+        # If query becomes empty after stripping, use a generic FHIR resource query
+        if not cleaned_query or not cleaned_query.strip():
+            cleaned_query = "Condition Observation MedicationRequest"
 
         payload = {
-            "query": query,
+            "query": cleaned_query,
             "k_retrieve": max(k_chunks * 4, 20),
             "k_return": k_chunks,
         }
         payload["filter_metadata"] = {"patient_id": patient_id}
     else:
+        cleaned_query = query
         payload = {
-            "query": query,
+            "query": cleaned_query,
             "k_retrieve": max(k_chunks * 4, 20),
             "k_return": k_chunks,
         }
@@ -147,7 +167,8 @@ async def search_patient_records(
 
     if include_full_json:
         response = RetrievalResponse(
-            query=data.get("query", query),
+            query=cleaned_query,
+            original_query=original_query if original_query != cleaned_query else None,
             chunks=[
                 ChunkResult(
                     id=str(item.get("id", "")),
@@ -162,7 +183,8 @@ async def search_patient_records(
         response["full_documents"] = data.get("full_documents", [])
         return response
     return RetrievalResponse(
-        query=data.get("query", query),
+        query=cleaned_query,
+        original_query=original_query if original_query != cleaned_query else None,
         chunks=[
             ChunkResult(
                 id=str(item.get("id", "")),
@@ -199,13 +221,28 @@ async def retrieve_patient_data(
     """
     from api.agent.tools.argument_validators import validate_patient_id
     from api.database.postgres import hybrid_search, search_similar_chunks
-    
+
+    # Store original query before any modifications
+    original_query = query
+
+    # Handle empty query - return helpful error instead of crashing
+    if not query or not query.strip():
+        return RetrievalResponse(
+            query="",
+            original_query=original_query,
+            chunks=[],
+            count=0,
+            success=False,
+            error="Query cannot be empty. Please provide a search term like 'Condition', 'Observation', or 'MedicationRequest'.",
+        ).model_dump()
+
     if patient_id:
         # Validate patient_id format (catches ICD-10/UUID confusion)
         is_valid, error_msg = validate_patient_id(patient_id)
         if not is_valid:
             return RetrievalResponse(
                 query=query,
+                original_query=original_query,
                 chunks=[],
                 count=0,
                 success=False,
@@ -213,29 +250,39 @@ async def retrieve_patient_data(
             ).model_dump()
 
         # Strip patient name from query - names don't match old embeddings
-        query = strip_patient_name_from_query(query, patient_id)
+        cleaned_query = strip_patient_name_from_query(query, patient_id)
+
+        # If query becomes empty after stripping, use a generic FHIR resource query
+        if not cleaned_query or not cleaned_query.strip():
+            cleaned_query = "Condition Observation MedicationRequest"
 
         filter_metadata = {"patient_id": patient_id}
     else:
+        cleaned_query = query
         filter_metadata = None
 
     # Use hybrid search (BM25 + semantic) or semantic-only
     if use_hybrid:
         candidates = await hybrid_search(
-            query, 
-            k=k_retrieve, 
+            cleaned_query,
+            k=k_retrieve,
             filter_metadata=filter_metadata,
             bm25_weight=0.3,
             semantic_weight=0.7,
         )
     else:
-        candidates = await search_similar_chunks(query, k=k_retrieve, filter_metadata=filter_metadata)
-    
+        candidates = await search_similar_chunks(cleaned_query, k=k_retrieve, filter_metadata=filter_metadata)
+
     if not candidates:
-        return RetrievalResponse(query=query, chunks=[], count=0).model_dump()
+        return RetrievalResponse(
+            query=cleaned_query,
+            original_query=original_query if original_query != cleaned_query else None,
+            chunks=[],
+            count=0
+        ).model_dump()
 
     reranker = _get_reranker()
-    scored = reranker.rerank_with_scores(query, candidates)
+    scored = reranker.rerank_with_scores(cleaned_query, candidates)
     top_docs = scored[:k_return]
     chunks = [
         ChunkResult(
@@ -246,4 +293,9 @@ async def retrieve_patient_data(
         )
         for doc, score in top_docs
     ]
-    return RetrievalResponse(query=query, chunks=chunks, count=len(chunks)).model_dump()
+    return RetrievalResponse(
+        query=cleaned_query,
+        original_query=original_query if original_query != cleaned_query else None,
+        chunks=chunks,
+        count=len(chunks)
+    ).model_dump()

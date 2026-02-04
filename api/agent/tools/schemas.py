@@ -18,7 +18,8 @@ class ChunkResult(BaseModel):
 
 
 class RetrievalResponse(ToolResponse):
-    query: str
+    query: str  # Cleaned query used for search
+    original_query: Optional[str] = None  # Original query before name stripping
     chunks: List[ChunkResult] = Field(default_factory=list)
     count: int = 0
 
