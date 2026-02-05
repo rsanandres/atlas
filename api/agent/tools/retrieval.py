@@ -59,9 +59,74 @@ def strip_patient_name_from_query(query: str, patient_id: Optional[str] = None) 
 
     return original_query
 
+
+# Keyword-to-resource-type mapping for automatic query intent detection
+RESOURCE_TYPE_KEYWORDS = {
+    "Condition": [
+        "condition", "conditions", "diagnosis", "diagnoses", "diagnosed",
+        "disease", "diseases", "problem", "problems", "illness", "illnesses",
+        "disorder", "disorders", "ailment", "ailments", "sickness",
+    ],
+    "Observation": [
+        "observation", "observations", "lab", "labs", "laboratory",
+        "test", "tests", "result", "results", "measurement", "measurements",
+        "vital", "vitals", "blood pressure", "heart rate", "temperature",
+        "weight", "height", "bmi", "glucose", "cholesterol", "hemoglobin",
+    ],
+    "MedicationRequest": [
+        "medication", "medications", "medicine", "medicines", "drug", "drugs",
+        "prescription", "prescriptions", "prescribed", "rx", "pharma",
+    ],
+    "Procedure": [
+        "procedure", "procedures", "surgery", "surgeries", "surgical",
+        "operation", "operations", "intervention", "interventions",
+    ],
+    "Immunization": [
+        "immunization", "immunizations", "vaccine", "vaccines", "vaccination",
+        "vaccinations", "immunized", "vaccinated", "shot", "shots",
+    ],
+    "Encounter": [
+        "encounter", "encounters", "visit", "visits", "appointment",
+        "appointments", "admission", "admissions", "hospitalization",
+    ],
+    "DiagnosticReport": [
+        "report", "reports", "diagnostic", "diagnostics", "imaging",
+        "radiology", "xray", "x-ray", "mri", "ct scan", "ultrasound",
+    ],
+}
+
+
+def detect_resource_type_from_query(query: str) -> Optional[str]:
+    """
+    Detect FHIR resource type from keywords in the query.
+
+    Args:
+        query: User's search query
+
+    Returns:
+        FHIR resource type string if detected, None otherwise
+    """
+    if not query:
+        return None
+
+    query_lower = query.lower()
+
+    # Check each resource type's keywords
+    for resource_type, keywords in RESOURCE_TYPE_KEYWORDS.items():
+        for keyword in keywords:
+            # Match whole words to avoid partial matches
+            # e.g., "medication" shouldn't match in "premedication"
+            pattern = r'\b' + re.escape(keyword) + r'\b'
+            if re.search(pattern, query_lower):
+                return resource_type
+
+    return None
+
+
 from api.database.postgres import search_similar_chunks
 from api.retrieval.cross_encoder import Reranker
 from api.agent.tools.schemas import ChunkResult, RetrievalResponse
+from api.agent.tools.context import get_patient_context
 
 
 _RERANKER_INSTANCE: Optional[Reranker] = None
@@ -101,14 +166,24 @@ async def search_patient_records(
 ) -> Dict[str, Any]:
     """
     Call reranker service for chunks, optionally fetch full JSON context.
-    
+
     Args:
         query: Search query string
-        patient_id: Patient UUID like "f1d2d1e2-4a03-43cb-8f06-f68c90e96cc8" (NOT an ICD-10 code!)
-        k_chunks: Number of chunks to return
+        patient_id: Patient UUID (NOT an ICD-10 code!) - use the patient_id from context
+        k_chunks: Number of chunks to return (default: 10)
         include_full_json: Whether to include full document JSON
     """
     from api.agent.tools.argument_validators import validate_patient_id
+
+    # ALWAYS use patient_id from context when available - this prevents LLM from
+    # hallucinating wrong patient IDs. The context is set from the frontend selection.
+    context_patient_id = get_patient_context()
+    if context_patient_id:
+        if patient_id and patient_id != context_patient_id:
+            print(f"[RETRIEVAL] Overriding LLM patient_id ({patient_id[:8]}...) with context ({context_patient_id[:8]}...)")
+        patient_id = context_patient_id
+    elif not patient_id:
+        print("[RETRIEVAL] Warning: No patient_id provided and none in context")
 
     # Store original query before any modifications
     original_query = query
@@ -144,19 +219,30 @@ async def search_patient_records(
         if not cleaned_query or not cleaned_query.strip():
             cleaned_query = "Condition Observation MedicationRequest"
 
+        # Auto-detect resource type from query keywords
+        detected_resource_type = detect_resource_type_from_query(original_query)
+
         payload = {
             "query": cleaned_query,
             "k_retrieve": max(k_chunks * 4, 20),
             "k_return": k_chunks,
         }
-        payload["filter_metadata"] = {"patient_id": patient_id}
+        filter_metadata = {"patient_id": patient_id}
+        if detected_resource_type:
+            filter_metadata["resource_type"] = detected_resource_type
+        payload["filter_metadata"] = filter_metadata
     else:
         cleaned_query = query
+        # Auto-detect resource type from query keywords
+        detected_resource_type = detect_resource_type_from_query(query)
+
         payload = {
             "query": cleaned_query,
             "k_retrieve": max(k_chunks * 4, 20),
             "k_return": k_chunks,
         }
+        if detected_resource_type:
+            payload["filter_metadata"] = {"resource_type": detected_resource_type}
     if include_full_json:
         payload["include_full_json"] = True
     path = "/rerank/with-context" if include_full_json else "/rerank"
@@ -208,19 +294,29 @@ async def retrieve_patient_data(
 ) -> Dict[str, Any]:
     """
     Direct retrieval from PostgreSQL with hybrid search and cross-encoder reranking.
-    
+
     Uses BM25 (keyword) + semantic (vector) hybrid search for better coverage,
     then reranks with cross-encoder for final results.
-    
+
     Args:
         query: Search query string
-        patient_id: Patient UUID like "f1d2d1e2-4a03-43cb-8f06-f68c90e96cc8" (NOT an ICD-10 code!)
+        patient_id: Patient UUID (NOT an ICD-10 code!) - use the patient_id from context
         k_retrieve: Number of candidates to retrieve before reranking
         k_return: Number of results to return after reranking
         use_hybrid: If True, use BM25+semantic hybrid search. If False, semantic only.
     """
     from api.agent.tools.argument_validators import validate_patient_id
     from api.database.postgres import hybrid_search, search_similar_chunks
+
+    # ALWAYS use patient_id from context when available - this prevents LLM from
+    # hallucinating wrong patient IDs. The context is set from the frontend selection.
+    context_patient_id = get_patient_context()
+    if context_patient_id:
+        if patient_id and patient_id != context_patient_id:
+            print(f"[RETRIEVAL] Overriding LLM patient_id ({patient_id[:8]}...) with context ({context_patient_id[:8]}...)")
+        patient_id = context_patient_id
+    elif not patient_id:
+        print("[RETRIEVAL] Warning: No patient_id provided and none in context")
 
     # Store original query before any modifications
     original_query = query
@@ -256,10 +352,17 @@ async def retrieve_patient_data(
         if not cleaned_query or not cleaned_query.strip():
             cleaned_query = "Condition Observation MedicationRequest"
 
+        # Auto-detect resource type from query keywords
+        detected_resource_type = detect_resource_type_from_query(original_query)
+
         filter_metadata = {"patient_id": patient_id}
+        if detected_resource_type:
+            filter_metadata["resource_type"] = detected_resource_type
     else:
         cleaned_query = query
-        filter_metadata = None
+        # Auto-detect resource type from query keywords
+        detected_resource_type = detect_resource_type_from_query(query)
+        filter_metadata = {"resource_type": detected_resource_type} if detected_resource_type else None
 
     # Use hybrid search (BM25 + semantic) or semantic-only
     if use_hybrid:
@@ -267,8 +370,8 @@ async def retrieve_patient_data(
             cleaned_query,
             k=k_retrieve,
             filter_metadata=filter_metadata,
-            bm25_weight=0.3,
-            semantic_weight=0.7,
+            bm25_weight=0.5,
+            semantic_weight=0.5,
         )
     else:
         candidates = await search_similar_chunks(cleaned_query, k=k_retrieve, filter_metadata=filter_metadata)

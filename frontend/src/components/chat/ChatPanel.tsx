@@ -1,7 +1,7 @@
 'use client';
 
-import { Box, Typography, IconButton, Tooltip, alpha, Switch, FormControlLabel } from '@mui/material';
-import { Trash2, Menu, Bug } from 'lucide-react';
+import { Box, Typography, IconButton, Tooltip, alpha, Switch, FormControlLabel, Chip } from '@mui/material';
+import { Trash2, Menu, Bug, User } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Message } from '@/types';
 import { MessageList } from './MessageList';
@@ -10,6 +10,12 @@ import { ThinkingPanel } from './ThinkingPanel';
 import { glassStyle } from '@/theme/theme';
 import { useDebugMode } from '@/hooks/useDebugMode';
 import { StreamingState } from '@/hooks/useChat';
+
+// Patient type for selection
+interface SelectedPatient {
+  id: string;
+  name: string;
+}
 
 interface ChatPanelProps {
   messages: Message[];
@@ -20,7 +26,8 @@ interface ChatPanelProps {
   onClear: () => void;
   onOpenSessions?: () => void;
   streamingState?: StreamingState;
-  externalInput?: string; // Added prop
+  externalInput?: string;
+  selectedPatient?: SelectedPatient | null;
 }
 
 export function ChatPanel({
@@ -32,9 +39,11 @@ export function ChatPanel({
   onClear,
   onOpenSessions,
   streamingState,
-  externalInput, // Destructure
+  externalInput,
+  selectedPatient,
 }: ChatPanelProps) {
   const { debugMode, toggleDebugMode } = useDebugMode();
+  const isPatientSelected = !!selectedPatient;
 
   return (
     <motion.div
@@ -69,9 +78,20 @@ export function ChatPanel({
             <Typography variant="h6" sx={{ fontWeight: 600 }}>
               Atlas Chat
             </Typography>
-            <Typography variant="caption" color="text.secondary">
-              RAG-powered clinical assistant
-            </Typography>
+            {selectedPatient ? (
+              <Chip
+                icon={<User size={12} />}
+                label={selectedPatient.name}
+                size="small"
+                color="primary"
+                variant="outlined"
+                sx={{ mt: 0.5, height: 22, fontSize: '0.7rem' }}
+              />
+            ) : (
+              <Typography variant="caption" color="text.secondary">
+                Select a patient to begin
+              </Typography>
+            )}
           </Box>
           <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
             {/* Debug Mode Toggle */}
@@ -128,8 +148,43 @@ export function ChatPanel({
           </Box>
         </Box>
 
-        {/* Messages */}
-        <MessageList messages={messages} debugMode={debugMode} />
+        {/* Messages or Patient Selection Prompt */}
+        {!isPatientSelected ? (
+          <Box
+            sx={{
+              flex: 1,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              p: 4,
+              textAlign: 'center',
+            }}
+          >
+            <Box
+              sx={{
+                width: 64,
+                height: 64,
+                borderRadius: '50%',
+                bgcolor: (theme) => alpha(theme.palette.primary.main, 0.1),
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                mb: 2,
+              }}
+            >
+              <User size={32} style={{ opacity: 0.6 }} />
+            </Box>
+            <Typography variant="h6" sx={{ mb: 1, fontWeight: 500 }}>
+              Select a Patient
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 300 }}>
+              Choose a patient from the Reference panel on the right to start analyzing their clinical data.
+            </Typography>
+          </Box>
+        ) : (
+          <MessageList messages={messages} debugMode={debugMode} />
+        )}
 
         {/* Thinking Panel (Debug Mode) - persists after completion to show progress */}
         {debugMode && streamingState && (
@@ -142,7 +197,14 @@ export function ChatPanel({
         )}
 
         {/* Input */}
-        <ChatInput onSend={onSend} onStop={onStop} isLoading={isLoading} disabled={!!error} externalInput={externalInput} />
+        <ChatInput
+          onSend={onSend}
+          onStop={onStop}
+          isLoading={isLoading}
+          disabled={!!error || !isPatientSelected}
+          externalInput={externalInput}
+          placeholder={isPatientSelected ? "Ask about clinical data..." : "Select a patient first..."}
+        />
       </Box>
     </motion.div>
   );

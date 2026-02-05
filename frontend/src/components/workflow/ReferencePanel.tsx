@@ -93,12 +93,20 @@ const RECOMMENDED_PROMPTS = [
     "Does the patient have any known allergies?"
 ];
 
-interface ReferencePanelProps {
-    onCopy: (text: string) => void;
-    onPromptSelect?: (text: string) => void; // Added prop
+// Patient type for selection
+interface SelectedPatient {
+    id: string;
+    name: string;
 }
 
-export function ReferencePanel({ onCopy, onPromptSelect }: ReferencePanelProps) {
+interface ReferencePanelProps {
+    onCopy: (text: string) => void;
+    onPromptSelect?: (text: string) => void;
+    selectedPatient?: SelectedPatient | null;
+    onPatientSelect?: (patient: SelectedPatient | null) => void;
+}
+
+export function ReferencePanel({ onCopy, onPromptSelect, selectedPatient, onPatientSelect }: ReferencePanelProps) {
     const [modalOpen, setModalOpen] = useState(false);
     const [modalTab, setModalTab] = useState(0);
     const [selectedJson, setSelectedJson] = useState<any>(null);
@@ -201,22 +209,49 @@ export function ReferencePanel({ onCopy, onPromptSelect }: ReferencePanelProps) 
 
             {/* Personas Section */}
             <Box>
-                <Typography variant="subtitle2" sx={{ mb: 1.5, display: 'flex', alignItems: 'center', gap: 1, color: 'text.secondary', fontWeight: 600 }}>
-                    <User size={16} />
-                    Verified Test Patients
-                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
+                    <Typography variant="subtitle2" sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'text.secondary', fontWeight: 600 }}>
+                        <User size={16} />
+                        {selectedPatient ? 'Selected Patient' : 'Select a Patient'}
+                    </Typography>
+                    {selectedPatient && onPatientSelect && (
+                        <Button
+                            size="small"
+                            variant="text"
+                            onClick={() => onPatientSelect(null)}
+                            sx={{ fontSize: '0.7rem', minWidth: 'auto', p: 0.5 }}
+                        >
+                            Clear
+                        </Button>
+                    )}
+                </Box>
+                {selectedPatient && (
+                    <Chip
+                        label={`Active: ${selectedPatient.name}`}
+                        color="primary"
+                        size="small"
+                        sx={{ mb: 1.5, fontWeight: 600 }}
+                    />
+                )}
                 <Stack spacing={2}>
-                    {PERSONAS.map((p) => (
+                    {PERSONAS.map((p) => {
+                        const isSelected = selectedPatient?.id === p.id;
+                        return (
                         <Card
                             key={p.id}
                             variant="outlined"
                             sx={{
-                                bgcolor: (theme) => alpha(theme.palette.background.paper, 0.4),
+                                bgcolor: (theme) => isSelected
+                                    ? alpha(theme.palette.primary.main, 0.15)
+                                    : alpha(theme.palette.background.paper, 0.4),
                                 backdropFilter: 'blur(10px)',
-                                borderColor: 'divider',
+                                borderColor: isSelected ? 'primary.main' : 'divider',
+                                borderWidth: isSelected ? 2 : 1,
                                 transition: 'all 0.2s',
                                 '&:hover': {
-                                    bgcolor: (theme) => alpha(theme.palette.background.paper, 0.6),
+                                    bgcolor: (theme) => isSelected
+                                        ? alpha(theme.palette.primary.main, 0.2)
+                                        : alpha(theme.palette.background.paper, 0.6),
                                     borderColor: 'primary.main',
                                     transform: 'translateY(-2px)',
                                     boxShadow: 2
@@ -251,12 +286,33 @@ export function ReferencePanel({ onCopy, onPromptSelect }: ReferencePanelProps) 
                                 </Tooltip>
                             </Box>
 
-                            <CardActionArea onClick={() => handleOpenModal(p.data)} sx={{ p: 1.5, pr: 6 }}>
+                            <CardActionArea
+                                onClick={() => {
+                                    // Primary action: select patient for queries
+                                    if (onPatientSelect) {
+                                        onPatientSelect(isSelected ? null : { id: p.id, name: p.name });
+                                    } else {
+                                        // Fallback: open modal if no selection handler
+                                        handleOpenModal(p.data);
+                                    }
+                                }}
+                                sx={{ p: 1.5, pr: 6 }}
+                            >
                                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
                                     <Box>
-                                        <Typography variant="subtitle2" fontWeight="bold">
-                                            {p.name}
-                                        </Typography>
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                            <Typography variant="subtitle2" fontWeight="bold">
+                                                {p.name}
+                                            </Typography>
+                                            {isSelected && (
+                                                <Chip
+                                                    label="Selected"
+                                                    size="small"
+                                                    color="primary"
+                                                    sx={{ height: 18, fontSize: '0.6rem' }}
+                                                />
+                                            )}
+                                        </Box>
                                         <Typography variant="caption" color="text.secondary">
                                             {p.age} years old • {p.description}
                                         </Typography>
@@ -277,28 +333,49 @@ export function ReferencePanel({ onCopy, onPromptSelect }: ReferencePanelProps) 
                                     )}
                                 </Box>
 
-                                <Typography
-                                    variant="caption"
-                                    sx={{
-                                        display: 'block',
-                                        mt: 1.5,
-                                        fontFamily: 'monospace',
-                                        bgcolor: 'action.hover',
-                                        p: 0.5,
-                                        borderRadius: 1,
-                                        fontSize: '0.65rem',
-                                        wordBreak: 'break-all'
-                                    }}
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleCopy(p.id, "ID");
-                                    }}
-                                >
-                                    ID: {p.id}
-                                </Typography>
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1.5 }}>
+                                    <Typography
+                                        variant="caption"
+                                        sx={{
+                                            fontFamily: 'monospace',
+                                            bgcolor: 'action.hover',
+                                            p: 0.5,
+                                            borderRadius: 1,
+                                            fontSize: '0.65rem',
+                                            wordBreak: 'break-all',
+                                            flex: 1
+                                        }}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleCopy(p.id, "ID");
+                                        }}
+                                    >
+                                        ID: {p.id}
+                                    </Typography>
+                                    <Typography
+                                        variant="caption"
+                                        component="span"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleOpenModal(p.data);
+                                        }}
+                                        sx={{
+                                            fontSize: '0.65rem',
+                                            ml: 1,
+                                            color: 'primary.main',
+                                            cursor: 'pointer',
+                                            '&:hover': {
+                                                textDecoration: 'underline'
+                                            }
+                                        }}
+                                    >
+                                        View Data
+                                    </Typography>
+                                </Box>
                             </CardActionArea>
                         </Card>
-                    ))}
+                    );
+                    })}
                 </Stack>
             </Box>
 

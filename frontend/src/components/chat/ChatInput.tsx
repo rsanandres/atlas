@@ -10,10 +10,11 @@ interface ChatInputProps {
   onStop?: () => void;
   isLoading: boolean;
   disabled?: boolean;
-  externalInput?: string; // Added externalInput
+  externalInput?: string;
+  placeholder?: string;
 }
 
-export function ChatInput({ onSend, onStop, isLoading, disabled, externalInput }: ChatInputProps) {
+export function ChatInput({ onSend, onStop, isLoading, disabled, externalInput, placeholder }: ChatInputProps) {
   const [input, setInput] = useState('');
 
   // Update input when externalInput changes
@@ -63,7 +64,7 @@ export function ChatInput({ onSend, onStop, isLoading, disabled, externalInput }
           fullWidth
           multiline
           maxRows={4}
-          placeholder="Ask about clinical data..."
+          placeholder={placeholder || "Ask about clinical data..."}
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}

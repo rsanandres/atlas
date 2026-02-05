@@ -15,9 +15,19 @@ import { useLeadCapture } from '@/hooks/useLeadCapture';
 import { useSessions } from '@/hooks/useSessions';
 import { getMockCostBreakdown } from '@/services/mockData';
 
+// Patient type for selection
+interface SelectedPatient {
+  id: string;
+  name: string;
+}
+
 export default function Home() {
   const { activeSessionId } = useSessions();
-  const { messages, isLoading, error, sendMessage, stopGeneration, clearChat, getLastResponse, messageCount, streamingState } = useChat(activeSessionId);
+
+  // Patient selection state - persists across messages
+  const [selectedPatient, setSelectedPatient] = useState<SelectedPatient | null>(null);
+
+  const { messages, isLoading, error, sendMessage, stopGeneration, clearChat, getLastResponse, messageCount, streamingState } = useChat(activeSessionId, selectedPatient?.id);
   const { pipeline, lastToolCalls, isProcessing, startProcessing, updateFromResponse } = useWorkflow();
   const {
     serviceHealth,
@@ -69,6 +79,7 @@ export default function Home() {
             onClear={clearChat}
             streamingState={streamingState}
             externalInput={chatInput}
+            selectedPatient={selectedPatient}
           />
         }
         workflowPanel={
@@ -79,6 +90,8 @@ export default function Home() {
             isProcessing={isProcessing}
             lastQuery={displayQuery}
             onPromptSelect={setChatInput}
+            selectedPatient={selectedPatient}
+            onPatientSelect={setSelectedPatient}
           />
         }
         observabilityPanel={

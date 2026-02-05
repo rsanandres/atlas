@@ -36,6 +36,7 @@ from api.agent.tools import (
     search_patient_records,
     validate_icd10_code,
 )
+from api.agent.tools.context import set_patient_context
 
 # Import session store for automatic history injection
 try:
@@ -255,14 +256,19 @@ def _load_conversation_history(session_id: str, patient_id: Optional[str] = None
 
 async def _researcher_node(state: AgentState) -> AgentState:
     max_iterations = int(os.getenv("AGENT_MAX_ITERATIONS", "15"))
-    system_prompt = get_researcher_prompt(state.get("patient_id"))
-    
+    patient_id = state.get("patient_id")
+
+    # Set patient context for auto-injection into tool calls
+    # This allows tools to get patient_id even if LLM doesn't pass it explicitly
+    set_patient_context(patient_id)
+
+    system_prompt = get_researcher_prompt(patient_id)
+
     # Build messages list with conversation history
     messages = [SystemMessage(content=system_prompt)]
-    
+
     # Automatically inject conversation history if session_id is available
     session_id = state.get("session_id")
-    patient_id = state.get("patient_id")
     print(f"[RESEARCHER] Session ID: {session_id}, Patient ID: {patient_id}")
     if session_id:
         history_messages = _load_conversation_history(session_id, patient_id=patient_id, limit=10)
@@ -468,9 +474,10 @@ async def _validator_node(state: AgentState) -> AgentState:
     max_iter = int(os.getenv("AGENT_MAX_ITERATIONS", "15"))
     remaining = max_iter - current_iter
 
-    if remaining > 2:
+    # Balanced tier distribution: ~1/3 strict, ~1/3 relaxed, ~1/3 emergency
+    if remaining > 5:
         strictness_tier = "TIER_STRICT"
-    elif remaining > 0:
+    elif remaining > 2:
         strictness_tier = "TIER_RELAXED"
     else:
         strictness_tier = "TIER_EMERGENCY"
@@ -478,13 +485,36 @@ async def _validator_node(state: AgentState) -> AgentState:
     # Run Guardrails AI validation first (if enabled)
     researcher_output = state.get("researcher_output", "")
     guardrails_valid, guardrails_error = validate_output(researcher_output)
-    
+
     if not guardrails_valid:
         # Auto-fail with guardrails error
         return {
             **state,
             "validator_output": f"Guardrails validation failed:\n{guardrails_error}",
             "validation_result": "FAIL",
+            "tools_called": state.get("tools_called") or [],
+            "sources": state.get("sources", []),
+        }
+
+    # Fast-path: Detect incomplete/fallback responses and avoid wasting validation cycles
+    _INCOMPLETE_MARKERS = [
+        "unable to generate a complete response",
+        "unable to generate complete response",
+        "could not find any",
+        "no results found",
+        "please try rephrasing",
+        "please rephrase your question",
+    ]
+    researcher_lower = researcher_output.lower()
+    is_incomplete = any(marker in researcher_lower for marker in _INCOMPLETE_MARKERS)
+
+    if is_incomplete and strictness_tier != "TIER_STRICT":
+        # Don't waste tool calls validating an empty response - just pass it through
+        # User deserves to know we couldn't find data rather than looping forever
+        return {
+            **state,
+            "validator_output": "Response indicates no data found. Passing to user (not harmful).",
+            "validation_result": "PASS",
             "tools_called": state.get("tools_called") or [],
             "sources": state.get("sources", []),
         }

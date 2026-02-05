@@ -47,7 +47,7 @@ const initialStreamingState: StreamingState = {
   steps: [],
 };
 
-export function useChat(sessionId?: string) {
+export function useChat(sessionId?: string, patientId?: string) {
   // const { userId } = useUser(); // Get userId from useSessions to avoid duplicate hooks if possible, or keep it
   const {
     activeSessionId,
@@ -246,6 +246,7 @@ export function useChat(sessionId?: string) {
           query: content.trim(),
           session_id: sessionToUse,
           user_id: userId,
+          patient_id: patientId,
         },
         {
           onStatus: (message) => {
@@ -394,7 +395,7 @@ export function useChat(sessionId?: string) {
       );
       setIsLoading(false);
     }
-  }, [isLoading, effectiveSessionId, userId, messageCount, updateSession, createNewSession, resetStreamingState]);
+  }, [isLoading, effectiveSessionId, userId, patientId, messageCount, updateSession, createNewSession, resetStreamingState]);
 
   const clearChat = useCallback(() => {
     setMessages([]);

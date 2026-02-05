@@ -9,16 +9,24 @@ import { ReferencePanel } from './ReferencePanel';
 import { DocumentationPanel } from './DocumentationPanel';
 import { glassStyle } from '@/theme/theme';
 
+// Patient type for selection
+interface SelectedPatient {
+  id: string;
+  name: string;
+}
+
 interface WorkflowPanelProps {
   pipeline: PipelineStepType[];
   toolCalls: string[];
   lastResponse: Message | null;
   isProcessing: boolean;
   lastQuery?: string;
-  onPromptSelect?: (text: string) => void; // Added prop
+  onPromptSelect?: (text: string) => void;
+  selectedPatient?: SelectedPatient | null;
+  onPatientSelect?: (patient: SelectedPatient | null) => void;
 }
 
-export function WorkflowPanel({ pipeline, toolCalls, lastResponse, isProcessing, lastQuery, onPromptSelect }: WorkflowPanelProps) {
+export function WorkflowPanel({ pipeline, toolCalls, lastResponse, isProcessing, lastQuery, onPromptSelect, selectedPatient, onPatientSelect }: WorkflowPanelProps) {
   const [tabIndex, setTabIndex] = useState(0);
   const sources = lastResponse?.sources || [];
   const hasActivity = pipeline.some(s => s.status === 'completed' || s.status === 'active');
@@ -171,7 +179,12 @@ export function WorkflowPanel({ pipeline, toolCalls, lastResponse, isProcessing,
             </Box>
           ) : tabIndex === 1 ? (
             // Reference View
-            <ReferencePanel onCopy={handleCopyFeedback} onPromptSelect={onPromptSelect} />
+            <ReferencePanel
+              onCopy={handleCopyFeedback}
+              onPromptSelect={onPromptSelect}
+              selectedPatient={selectedPatient}
+              onPatientSelect={onPatientSelect}
+            />
           ) : (
             // Documentation View
             <DocumentationPanel />
