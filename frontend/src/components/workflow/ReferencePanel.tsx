@@ -1,10 +1,10 @@
-import { useState } from 'react';
-import { Box, Typography, Card, CardContent, Chip, IconButton, Button, Stack, Tooltip, Dialog, DialogTitle, DialogContent, DialogActions, Tabs, Tab, List, ListItem, ListItemText, Divider, CardActionArea, Grid, TextField } from '@mui/material';
-import { Copy, User, Activity, AlertCircle, MessageSquare, FileText, FileJson, X, Pill, Stethoscope, Calendar, Thermometer, Syringe, ClipboardList, Microscope } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Box, Typography, Card, CardContent, Chip, IconButton, Button, Stack, Tooltip, Dialog, DialogTitle, DialogContent, DialogActions, Tabs, Tab, List, ListItem, ListItemText, Divider, CardActionArea, Grid, TextField, CircularProgress } from '@mui/material';
+import { Copy, User, Activity, AlertCircle, MessageSquare, FileText, FileJson, X, Pill, Stethoscope, Calendar, Thermometer, Syringe, ClipboardList, Microscope, Database, RefreshCw } from 'lucide-react';
 import { alpha } from '@mui/material/styles';
 import dynamic from 'next/dynamic';
 
-// Import Persona Data
+// Import Persona Data (fallback for detailed view)
 import larsonJson from '../../data/personas/larson.json';
 import ziemeJson from '../../data/personas/zieme.json';
 import christiansenJson from '../../data/personas/christiansen.json';
@@ -16,75 +16,79 @@ import amayaJson from '../../data/personas/abbott_amaya.json';
 
 // Import Utils
 import { getConditions, getMedications, getAllergies, getEncounters, getObservations, getImmunizations, getProcedures, getCarePlans } from '../../utils/fhirUtils';
+import { listPatients, PatientSummary } from '../../services/agentApi';
 
 const JsonView = dynamic(() => import('@microlink/react-json-view'), { ssr: false });
 
-const PERSONAS = [
-    {
-        name: "Danial Larson", // Cleaned name
-        id: "5e81d5b2-af01-4367-9b2e-0cdf479094a4",
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type FhirBundle = any;
+
+// Local persona data with full FHIR bundles for detailed view
+// Maps patient IDs to their local JSON data
+const LOCAL_PERSONA_DATA: Record<string, { name: string; age: number; conditions: string[]; description: string; data: FhirBundle }> = {
+    "5e81d5b2-af01-4367-9b2e-0cdf479094a4": {
+        name: "Danial Larson",
         age: 65,
         conditions: ["Recurrent rectal polyp", "Hypertension", "Chronic kidney disease"],
         description: "Older male with multiple chronic conditions.",
         data: larsonJson
     },
-    {
-        name: "Ron Zieme", // Cleaned name
-        id: "d8d9460b-4cb6-47f9-a94f-9e58390204b2",
+    "d8d9460b-4cb6-47f9-a94f-9e58390204b2": {
+        name: "Ron Zieme",
         age: 86,
         conditions: ["Hypertension", "Fibromyalgia", "Osteoporosis", "Coronary Heart Disease"],
         description: "Elderly female with complex history including MI and heart disease.",
         data: ziemeJson
     },
-    {
-        name: "Doug Christiansen", // Cleaned name
-        id: "0beb6802-3353-4144-8ae3-97176bce86c3",
+    "0beb6802-3353-4144-8ae3-97176bce86c3": {
+        name: "Doug Christiansen",
         age: 24,
         conditions: ["Chronic sinusitis"],
         description: "Young adult with chronic sinus issues.",
         data: christiansenJson
     },
-    {
-        name: "Jamie Hegmann", // Cleaned name
-        id: "6a4168a1-2cfd-4269-8139-8a4a663adfe7",
+    "6a4168a1-2cfd-4269-8139-8a4a663adfe7": {
+        name: "Jamie Hegmann",
         age: 71,
         conditions: ["Coronary Heart Disease", "Myocardial Infarction History"],
         description: "Female patient with significant cardiac history.",
         data: hegmannJson
     },
-    {
-        name: "Carlo Herzog", // Cleaned name
-        id: "7f7ad77a-5dd5-4df0-ba36-f4f1e4b6d368",
+    "7f7ad77a-5dd5-4df0-ba36-f4f1e4b6d368": {
+        name: "Carlo Herzog",
         age: 23,
         conditions: ["Childhood asthma", "Allergic rhinitis", "Nut allergy"],
         description: "Young male with multiple allergies and asthma.",
         data: herzogJson
     },
-    {
+    "53fcaff1-eb44-4257-819b-50b47f311edf": {
         name: "Adam Abbott",
-        id: "53fcaff1-eb44-4257-819b-50b47f311edf",
         age: 31,
         conditions: ["Normal Pregnancy"],
         description: "Young female with active pregnancy.",
         data: adamJson
     },
-    {
+    "f883318e-9a81-4f77-9cff-5318a00b777f": {
         name: "Alva Abbott",
-        id: "f883318e-9a81-4f77-9cff-5318a00b777f",
         age: 67,
         conditions: ["Prediabetes"],
         description: "Older male managing prediabetes.",
         data: alvaJson
     },
-    {
+    "4b7098a8-13b8-4916-a379-6ae2c8a70a8a": {
         name: "Amaya Abbott",
-        id: "4b7098a8-13b8-4916-a379-6ae2c8a70a8a",
         age: 69,
         conditions: ["Hypertension", "Chronic sinusitis", "Concussion History"],
         description: "Older male with hypertension and history of head injury.",
         data: amayaJson
     }
-];
+};
+
+// Convert to array format for backward compatibility
+const PERSONAS = Object.entries(LOCAL_PERSONA_DATA).map(([id, data]) => ({
+    id,
+    ...data
+}));
 
 const RECOMMENDED_PROMPTS = [
     "What are the patient's active conditions?",
@@ -109,8 +113,51 @@ interface ReferencePanelProps {
 export function ReferencePanel({ onCopy, onPromptSelect, selectedPatient, onPatientSelect }: ReferencePanelProps) {
     const [modalOpen, setModalOpen] = useState(false);
     const [modalTab, setModalTab] = useState(0);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const [selectedJson, setSelectedJson] = useState<any>(null);
     const [sortOrder, setSortOrder] = useState<'default' | 'newest' | 'oldest'>('default');
+
+    // Live patient data from API
+    const [livePatients, setLivePatients] = useState<PatientSummary[]>([]);
+    const [isLoadingPatients, setIsLoadingPatients] = useState(false);
+    const [patientsError, setPatientsError] = useState<string | null>(null);
+
+    // Fetch live patients from database
+    const fetchPatients = async () => {
+        setIsLoadingPatients(true);
+        setPatientsError(null);
+        try {
+            const patients = await listPatients();
+            setLivePatients(patients);
+        } catch (err) {
+            console.error('Failed to fetch patients:', err);
+            setPatientsError('Failed to load patients from database');
+        } finally {
+            setIsLoadingPatients(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchPatients();
+    }, []);
+
+    // Merge live patients with local data for rich display
+    const displayPatients = livePatients.length > 0
+        ? livePatients.map(liveP => {
+            const localData = LOCAL_PERSONA_DATA[liveP.id];
+            return {
+                id: liveP.id,
+                name: localData?.name || liveP.name,
+                age: localData?.age,
+                conditions: localData?.conditions || [],
+                description: localData?.description || `${liveP.chunk_count} records • ${liveP.resource_types.length} resource types`,
+                data: localData?.data,
+                chunk_count: liveP.chunk_count,
+                resource_types: liveP.resource_types,
+                isLive: true,
+            };
+        })
+        : PERSONAS.map(p => ({ ...p, isLive: false, chunk_count: 0, resource_types: [] as string[] }));
 
     const handleCopy = (text: string, label: string) => {
         navigator.clipboard.writeText(text);
@@ -145,7 +192,7 @@ export function ReferencePanel({ onCopy, onPromptSelect, selectedPatient, onPati
 
     // Find selected patient data for collapsed view
     const selectedPatientData = selectedPatient
-        ? PERSONAS.find(p => p.id === selectedPatient.id)
+        ? displayPatients.find(p => p.id === selectedPatient.id)
         : null;
 
     return (
@@ -157,17 +204,44 @@ export function ReferencePanel({ onCopy, onPromptSelect, selectedPatient, onPati
                     <Typography variant="subtitle2" sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'text.secondary', fontWeight: 600 }}>
                         <User size={16} />
                         {selectedPatient ? 'Selected Patient' : 'Step 1: Select a Patient'}
+                        {livePatients.length > 0 && (
+                            <Chip
+                                label={`${livePatients.length} in DB`}
+                                size="small"
+                                icon={<Database size={12} />}
+                                sx={{ height: 18, fontSize: '0.6rem', ml: 0.5 }}
+                                color="success"
+                            />
+                        )}
                     </Typography>
-                    {selectedPatient && onPatientSelect && (
-                        <Button
-                            size="small"
-                            variant="text"
-                            onClick={() => onPatientSelect(null)}
-                            sx={{ fontSize: '0.7rem', minWidth: 'auto', p: 0.5 }}
-                        >
-                            Change
-                        </Button>
-                    )}
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        {!selectedPatient && (
+                            <Tooltip title="Refresh patient list">
+                                <IconButton
+                                    size="small"
+                                    onClick={fetchPatients}
+                                    disabled={isLoadingPatients}
+                                    sx={{ p: 0.5 }}
+                                >
+                                    {isLoadingPatients ? (
+                                        <CircularProgress size={14} />
+                                    ) : (
+                                        <RefreshCw size={14} />
+                                    )}
+                                </IconButton>
+                            </Tooltip>
+                        )}
+                        {selectedPatient && onPatientSelect && (
+                            <Button
+                                size="small"
+                                variant="text"
+                                onClick={() => onPatientSelect(null)}
+                                sx={{ fontSize: '0.7rem', minWidth: 'auto', p: 0.5 }}
+                            >
+                                Change
+                            </Button>
+                        )}
+                    </Box>
                 </Box>
 
                 {/* Collapsed view when patient is selected */}
@@ -202,24 +276,43 @@ export function ReferencePanel({ onCopy, onPromptSelect, selectedPatient, onPati
                                         {selectedPatient.name}
                                     </Typography>
                                     <Typography variant="caption" color="text.secondary">
-                                        {selectedPatientData.age} yrs • {selectedPatientData.conditions[0]}
+                                        {selectedPatientData.age ? `${selectedPatientData.age} yrs` : ''}
+                                        {selectedPatientData.age && selectedPatientData.conditions?.[0] ? ' • ' : ''}
+                                        {selectedPatientData.conditions?.[0] || selectedPatientData.description}
                                     </Typography>
                                 </Box>
-                                <Tooltip title="View patient data">
-                                    <IconButton
-                                        size="small"
-                                        onClick={() => handleOpenModal(selectedPatientData.data)}
-                                    >
-                                        <FileText size={16} />
-                                    </IconButton>
-                                </Tooltip>
+                                {selectedPatientData.data && (
+                                    <Tooltip title="View patient data">
+                                        <IconButton
+                                            size="small"
+                                            onClick={() => handleOpenModal(selectedPatientData.data)}
+                                        >
+                                            <FileText size={16} />
+                                        </IconButton>
+                                    </Tooltip>
+                                )}
                             </Box>
                         </CardContent>
                     </Card>
                 ) : (
                     /* Full patient list when none selected */
                     <Stack spacing={2}>
-                    {PERSONAS.map((p) => {
+                    {/* Loading state */}
+                    {isLoadingPatients && displayPatients.length === 0 && (
+                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', py: 4 }}>
+                            <CircularProgress size={24} />
+                            <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
+                                Loading patients...
+                            </Typography>
+                        </Box>
+                    )}
+                    {/* Error state */}
+                    {patientsError && (
+                        <Typography variant="caption" color="error" sx={{ textAlign: 'center', py: 2 }}>
+                            {patientsError}
+                        </Typography>
+                    )}
+                    {displayPatients.map((p) => {
                         const isSelected = selectedPatient?.id === p.id;
                         return (
                         <Card
@@ -276,7 +369,7 @@ export function ReferencePanel({ onCopy, onPromptSelect, selectedPatient, onPati
                                     // Primary action: select patient for queries
                                     if (onPatientSelect) {
                                         onPatientSelect(isSelected ? null : { id: p.id, name: p.name });
-                                    } else {
+                                    } else if (p.data) {
                                         // Fallback: open modal if no selection handler
                                         handleOpenModal(p.data);
                                     }
@@ -297,25 +390,53 @@ export function ReferencePanel({ onCopy, onPromptSelect, selectedPatient, onPati
                                                     sx={{ height: 18, fontSize: '0.6rem' }}
                                                 />
                                             )}
+                                            {p.isLive && (
+                                                <Chip
+                                                    label="Live"
+                                                    size="small"
+                                                    color="success"
+                                                    sx={{ height: 16, fontSize: '0.55rem' }}
+                                                />
+                                            )}
                                         </Box>
                                         <Typography variant="caption" color="text.secondary">
-                                            {p.age} years old • {p.description}
+                                            {p.age ? `${p.age} years old • ` : ''}{p.description}
                                         </Typography>
                                     </Box>
                                 </Box>
 
                                 <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', mt: 1 }}>
-                                    {p.conditions.slice(0, 3).map((c, i) => (
-                                        <Chip
-                                            key={i}
-                                            label={c}
-                                            size="small"
-                                            sx={{ height: 20, fontSize: '0.65rem' }}
-                                        />
-                                    ))}
-                                    {p.conditions.length > 3 && (
-                                        <Chip label={`+${p.conditions.length - 3}`} size="small" sx={{ height: 20, fontSize: '0.65rem' }} />
-                                    )}
+                                    {/* Show conditions if available, otherwise show resource types for live patients */}
+                                    {p.conditions && p.conditions.length > 0 ? (
+                                        <>
+                                            {p.conditions.slice(0, 3).map((c, i) => (
+                                                <Chip
+                                                    key={i}
+                                                    label={c}
+                                                    size="small"
+                                                    sx={{ height: 20, fontSize: '0.65rem' }}
+                                                />
+                                            ))}
+                                            {p.conditions.length > 3 && (
+                                                <Chip label={`+${p.conditions.length - 3}`} size="small" sx={{ height: 20, fontSize: '0.65rem' }} />
+                                            )}
+                                        </>
+                                    ) : p.resource_types && p.resource_types.length > 0 ? (
+                                        <>
+                                            {p.resource_types.slice(0, 4).map((rt, i) => (
+                                                <Chip
+                                                    key={i}
+                                                    label={rt}
+                                                    size="small"
+                                                    variant="outlined"
+                                                    sx={{ height: 20, fontSize: '0.65rem' }}
+                                                />
+                                            ))}
+                                            {p.resource_types.length > 4 && (
+                                                <Chip label={`+${p.resource_types.length - 4}`} size="small" variant="outlined" sx={{ height: 20, fontSize: '0.65rem' }} />
+                                            )}
+                                        </>
+                                    ) : null}
                                 </Box>
 
                                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1.5 }}>
@@ -336,7 +457,9 @@ export function ReferencePanel({ onCopy, onPromptSelect, selectedPatient, onPati
                                         }}
                                     >
                                         ID: {p.id}
+                                        {p.chunk_count > 0 && ` • ${p.chunk_count} chunks`}
                                     </Typography>
+                                    {p.data && (
                                     <Typography
                                         variant="caption"
                                         component="span"
@@ -356,6 +479,7 @@ export function ReferencePanel({ onCopy, onPromptSelect, selectedPatient, onPati
                                     >
                                         View Data
                                     </Typography>
+                                    )}
                                 </Box>
                             </CardActionArea>
                         </Card>
@@ -417,7 +541,7 @@ export function ReferencePanel({ onCopy, onPromptSelect, selectedPatient, onPati
                         Patient Data Viewer
                         {selectedJson && (
                             <Chip
-                                label={PERSONAS.find(p => p.data === selectedJson)?.name || 'Unknown Patient'}
+                                label={displayPatients.find(p => p.data === selectedJson)?.name || 'Unknown Patient'}
                                 size="small"
                                 color="primary"
                                 variant="outlined"

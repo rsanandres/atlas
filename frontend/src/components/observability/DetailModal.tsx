@@ -2,10 +2,11 @@
 
 import { Box, Typography, Modal, IconButton, Divider, Grid, alpha } from '@mui/material';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Activity, DollarSign, Zap, Database } from 'lucide-react';
+import { X, Activity, Zap, Database, HardDrive, Layers } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, PieChart, Pie, Cell } from 'recharts';
 import { ServiceHealth } from '@/types';
-import { CloudWatchMetric, LangSmithTrace, CostBreakdown } from '@/types/observability';
+import { LangSmithTrace, RerankerStats } from '@/types/observability';
+import { DatabaseStats } from '@/hooks/useObservability';
 import { HealthIndicator } from './HealthIndicator';
 import { glassStyle } from '@/theme/theme';
 
@@ -13,9 +14,9 @@ interface DetailModalProps {
   open: boolean;
   onClose: () => void;
   serviceHealth: ServiceHealth[];
-  cloudWatchMetrics: CloudWatchMetric[];
   langSmithTraces: LangSmithTrace[];
-  costBreakdown: CostBreakdown[];
+  rerankerStats: RerankerStats | null;
+  databaseStats: DatabaseStats | null;
 }
 
 const COLORS = ['#14b8a6', '#8b5cf6', '#f59e0b', '#64748b'];
@@ -24,24 +25,33 @@ export function DetailModal({
   open,
   onClose,
   serviceHealth,
-  cloudWatchMetrics,
   langSmithTraces,
-  costBreakdown,
+  rerankerStats,
+  databaseStats,
 }: DetailModalProps) {
-  // Prepare latency data for bar chart
-  const latencyData = cloudWatchMetrics
-    .filter(m => m.metricName.toLowerCase().includes('latency'))
-    .map(m => ({
-      name: m.dimensions[0]?.value?.replace('hcai-', '') || m.namespace.split('/')[1],
-      latency: Math.round(m.value),
-    }));
-
   // Calculate totals for traces
   const totalTokens = langSmithTraces.reduce((sum, t) => sum + (t.tokenUsage?.total || 0), 0);
   const avgLatency = langSmithTraces.length > 0
     ? Math.round(langSmithTraces.reduce((sum, t) => sum + t.latencyMs, 0) / langSmithTraces.length)
     : 0;
   const errorCount = langSmithTraces.filter(t => t.status === 'error').length;
+
+  // Prepare reranker cache data for pie chart
+  const cacheData = rerankerStats ? [
+    { name: 'Hits', value: rerankerStats.cache_hits, color: '#14b8a6' },
+    { name: 'Misses', value: rerankerStats.cache_misses, color: '#f59e0b' },
+  ] : [];
+
+  // Prepare database pool data for bar chart
+  const poolData = databaseStats ? [
+    { name: 'Active', value: databaseStats.active_connections || 0 },
+    { name: 'Pool Out', value: databaseStats.pool_checked_out || 0 },
+    { name: 'Pool In', value: databaseStats.pool_checked_in || 0 },
+    { name: 'Queue', value: databaseStats.queue_size || 0 },
+  ] : [];
+
+  // Queue stats for display
+  const queueStats = databaseStats?.queue_stats || { queued: 0, processed: 0, failed: 0, retries: 0 };
 
   return (
     <Modal open={open} onClose={onClose}>
@@ -100,7 +110,7 @@ export function DetailModal({
               <Divider sx={{ mb: 3 }} />
 
               <Grid container spacing={3}>
-                {/* Latency Chart */}
+                {/* Reranker Cache Stats */}
                 <Grid size={{ xs: 12, md: 6 }}>
                   <Box
                     sx={{
@@ -112,81 +122,58 @@ export function DetailModal({
                     }}
                   >
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                      <Zap size={16} />
+                      <Layers size={16} />
                       <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-                        Latency by Service
+                        Reranker Cache
                       </Typography>
                     </Box>
-                    <ResponsiveContainer width="100%" height={180}>
-                      <BarChart data={latencyData}>
-                        <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                        <YAxis tick={{ fontSize: 11 }} />
-                        <Tooltip
-                          contentStyle={{
-                            background: '#1a1a24',
-                            border: '1px solid rgba(255,255,255,0.1)',
-                            borderRadius: 8,
-                          }}
-                        />
-                        <Bar dataKey="latency" fill="#14b8a6" radius={[4, 4, 0, 0]} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </Box>
-                </Grid>
-
-                {/* Cost Breakdown */}
-                <Grid size={{ xs: 12, md: 6 }}>
-                  <Box
-                    sx={{
-                      p: 2,
-                      borderRadius: '12px',
-                      bgcolor: (theme) => alpha(theme.palette.common.white, 0.02),
-                      border: '1px solid',
-                      borderColor: 'divider',
-                    }}
-                  >
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                      <DollarSign size={16} />
-                      <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-                        Cost Breakdown (Monthly Est.)
-                      </Typography>
-                    </Box>
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                      <ResponsiveContainer width={120} height={120}>
-                        <PieChart>
-                          <Pie
-                            data={costBreakdown}
-                            dataKey="cost"
-                            nameKey="service"
-                            cx="50%"
-                            cy="50%"
-                            innerRadius={35}
-                            outerRadius={50}
-                          >
-                            {costBreakdown.map((entry, index) => (
-                              <Cell key={entry.service} fill={COLORS[index % COLORS.length]} />
-                            ))}
-                          </Pie>
-                        </PieChart>
-                      </ResponsiveContainer>
-                      <Box sx={{ flex: 1 }}>
-                        {costBreakdown.map((item, idx) => (
-                          <Box key={idx} sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-                            <Box sx={{ width: 8, height: 8, borderRadius: '2px', bgcolor: COLORS[idx % COLORS.length] }} />
-                            <Typography variant="caption" sx={{ flex: 1 }}>
-                              {item.service}
-                            </Typography>
-                            <Typography variant="caption" sx={{ fontWeight: 600 }}>
-                              ${item.cost.toFixed(2)}
-                            </Typography>
+                    {rerankerStats ? (
+                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        <ResponsiveContainer width={120} height={120}>
+                          <PieChart>
+                            <Pie
+                              data={cacheData}
+                              dataKey="value"
+                              nameKey="name"
+                              cx="50%"
+                              cy="50%"
+                              innerRadius={35}
+                              outerRadius={50}
+                            >
+                              {cacheData.map((entry) => (
+                                <Cell key={entry.name} fill={entry.color} />
+                              ))}
+                            </Pie>
+                          </PieChart>
+                        </ResponsiveContainer>
+                        <Box sx={{ flex: 1 }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                            <Box sx={{ width: 8, height: 8, borderRadius: '2px', bgcolor: '#14b8a6' }} />
+                            <Typography variant="caption" sx={{ flex: 1 }}>Cache Hits</Typography>
+                            <Typography variant="caption" sx={{ fontWeight: 600 }}>{rerankerStats.cache_hits}</Typography>
                           </Box>
-                        ))}
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                            <Box sx={{ width: 8, height: 8, borderRadius: '2px', bgcolor: '#f59e0b' }} />
+                            <Typography variant="caption" sx={{ flex: 1 }}>Cache Misses</Typography>
+                            <Typography variant="caption" sx={{ fontWeight: 600 }}>{rerankerStats.cache_misses}</Typography>
+                          </Box>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                            <Typography variant="caption" sx={{ flex: 1 }}>Cache Size</Typography>
+                            <Typography variant="caption" sx={{ fontWeight: 600 }}>{rerankerStats.cache_size} items</Typography>
+                          </Box>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Typography variant="caption" sx={{ flex: 1 }}>Model</Typography>
+                            <Typography variant="caption" sx={{ fontWeight: 600, fontSize: '0.65rem' }}>{rerankerStats.model_name.split('/').pop()}</Typography>
+                          </Box>
+                        </Box>
                       </Box>
-                    </Box>
+                    ) : (
+                      <Typography variant="caption" color="text.secondary">No reranker data available</Typography>
+                    )}
                   </Box>
                 </Grid>
 
-                {/* Trace Summary */}
+                {/* Database Pool Stats */}
                 <Grid size={{ xs: 12, md: 6 }}>
                   <Box
                     sx={{
@@ -198,31 +185,33 @@ export function DetailModal({
                     }}
                   >
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                      <Activity size={16} />
+                      <HardDrive size={16} />
                       <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-                        LangSmith Traces (Last Hour)
+                        Database Pool
                       </Typography>
                     </Box>
-                    <Grid container spacing={2}>
-                      <Grid size={{ xs: 4 }}>
-                        <Typography variant="caption" color="text.secondary">Total Traces</Typography>
-                        <Typography variant="h6" sx={{ fontWeight: 600 }}>{langSmithTraces.length}</Typography>
-                      </Grid>
-                      <Grid size={{ xs: 4 }}>
-                        <Typography variant="caption" color="text.secondary">Avg Latency</Typography>
-                        <Typography variant="h6" sx={{ fontWeight: 600 }}>{avgLatency}ms</Typography>
-                      </Grid>
-                      <Grid size={{ xs: 4 }}>
-                        <Typography variant="caption" color="text.secondary">Errors</Typography>
-                        <Typography variant="h6" sx={{ fontWeight: 600, color: errorCount > 0 ? 'error.main' : 'success.main' }}>
-                          {errorCount}
-                        </Typography>
-                      </Grid>
-                    </Grid>
+                    {databaseStats ? (
+                      <ResponsiveContainer width="100%" height={140}>
+                        <BarChart data={poolData}>
+                          <XAxis dataKey="name" tick={{ fontSize: 10 }} />
+                          <YAxis tick={{ fontSize: 10 }} />
+                          <Tooltip
+                            contentStyle={{
+                              background: '#1a1a24',
+                              border: '1px solid rgba(255,255,255,0.1)',
+                              borderRadius: 8,
+                            }}
+                          />
+                          <Bar dataKey="value" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <Typography variant="caption" color="text.secondary">No database data available</Typography>
+                    )}
                   </Box>
                 </Grid>
 
-                {/* Token Usage */}
+                {/* Queue Processing Stats */}
                 <Grid size={{ xs: 12, md: 6 }}>
                   <Box
                     sx={{
@@ -236,15 +225,80 @@ export function DetailModal({
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
                       <Database size={16} />
                       <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-                        Token Usage (Last Hour)
+                        Queue Processing
                       </Typography>
                     </Box>
-                    <Typography variant="h4" sx={{ fontWeight: 600, color: 'primary.main' }}>
-                      {(totalTokens / 1000).toFixed(1)}K
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      Estimated cost: ${((totalTokens / 1000) * 0.0015).toFixed(3)}
-                    </Typography>
+                    <Grid container spacing={2}>
+                      <Grid size={{ xs: 3 }}>
+                        <Typography variant="caption" color="text.secondary">Queued</Typography>
+                        <Typography variant="h6" sx={{ fontWeight: 600 }}>{queueStats.queued}</Typography>
+                      </Grid>
+                      <Grid size={{ xs: 3 }}>
+                        <Typography variant="caption" color="text.secondary">Processed</Typography>
+                        <Typography variant="h6" sx={{ fontWeight: 600, color: 'success.main' }}>{queueStats.processed}</Typography>
+                      </Grid>
+                      <Grid size={{ xs: 3 }}>
+                        <Typography variant="caption" color="text.secondary">Failed</Typography>
+                        <Typography variant="h6" sx={{ fontWeight: 600, color: queueStats.failed > 0 ? 'error.main' : 'text.primary' }}>
+                          {queueStats.failed}
+                        </Typography>
+                      </Grid>
+                      <Grid size={{ xs: 3 }}>
+                        <Typography variant="caption" color="text.secondary">Retries</Typography>
+                        <Typography variant="h6" sx={{ fontWeight: 600, color: queueStats.retries > 0 ? 'warning.main' : 'text.primary' }}>
+                          {queueStats.retries}
+                        </Typography>
+                      </Grid>
+                    </Grid>
+                  </Box>
+                </Grid>
+
+                {/* LangSmith Traces */}
+                <Grid size={{ xs: 12, md: 6 }}>
+                  <Box
+                    sx={{
+                      p: 2,
+                      borderRadius: '12px',
+                      bgcolor: (theme) => alpha(theme.palette.common.white, 0.02),
+                      border: '1px solid',
+                      borderColor: 'divider',
+                    }}
+                  >
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                      <Activity size={16} />
+                      <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                        LangSmith Traces
+                      </Typography>
+                    </Box>
+                    {langSmithTraces.length > 0 ? (
+                      <Grid container spacing={2}>
+                        <Grid size={{ xs: 4 }}>
+                          <Typography variant="caption" color="text.secondary">Total</Typography>
+                          <Typography variant="h6" sx={{ fontWeight: 600 }}>{langSmithTraces.length}</Typography>
+                        </Grid>
+                        <Grid size={{ xs: 4 }}>
+                          <Typography variant="caption" color="text.secondary">Avg Latency</Typography>
+                          <Typography variant="h6" sx={{ fontWeight: 600 }}>{avgLatency}ms</Typography>
+                        </Grid>
+                        <Grid size={{ xs: 4 }}>
+                          <Typography variant="caption" color="text.secondary">Errors</Typography>
+                          <Typography variant="h6" sx={{ fontWeight: 600, color: errorCount > 0 ? 'error.main' : 'success.main' }}>
+                            {errorCount}
+                          </Typography>
+                        </Grid>
+                        {totalTokens > 0 && (
+                          <Grid size={{ xs: 12 }}>
+                            <Typography variant="caption" color="text.secondary">
+                              Token Usage: {(totalTokens / 1000).toFixed(1)}K (~${((totalTokens / 1000) * 0.0015).toFixed(3)})
+                            </Typography>
+                          </Grid>
+                        )}
+                      </Grid>
+                    ) : (
+                      <Typography variant="caption" color="text.secondary">
+                        No traces available. Set LANGSMITH_API_KEY to enable tracing.
+                      </Typography>
+                    )}
                   </Box>
                 </Grid>
               </Grid>

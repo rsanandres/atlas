@@ -5,7 +5,8 @@ import { Box, Typography, IconButton, Tooltip, Grid, alpha } from '@mui/material
 import { motion } from 'framer-motion';
 import { Activity, Maximize2, RefreshCw } from 'lucide-react';
 import { ServiceHealth } from '@/types';
-import { CloudWatchMetric, LangSmithTrace, MetricSummary, CostBreakdown } from '@/types/observability';
+import { LangSmithTrace, MetricSummary, RerankerStats } from '@/types/observability';
+import { DatabaseStats } from '@/hooks/useObservability';
 import { HealthIndicator } from './HealthIndicator';
 import { MetricsCard } from './MetricsCard';
 import { DetailModal } from './DetailModal';
@@ -14,9 +15,9 @@ import { glassStyle } from '@/theme/theme';
 interface ObservabilityPanelProps {
   serviceHealth: ServiceHealth[];
   metricSummaries: MetricSummary[];
-  cloudWatchMetrics: CloudWatchMetric[];
   langSmithTraces: LangSmithTrace[];
-  costBreakdown: CostBreakdown[];
+  rerankerStats: RerankerStats | null;
+  databaseStats: DatabaseStats | null;
   lastUpdated: Date;
   onRefresh: () => void;
   isLoading: boolean;
@@ -25,9 +26,9 @@ interface ObservabilityPanelProps {
 export function ObservabilityPanel({
   serviceHealth,
   metricSummaries,
-  cloudWatchMetrics,
   langSmithTraces,
-  costBreakdown,
+  rerankerStats,
+  databaseStats,
   lastUpdated,
   onRefresh,
   isLoading,
@@ -169,9 +170,9 @@ export function ObservabilityPanel({
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         serviceHealth={serviceHealth}
-        cloudWatchMetrics={cloudWatchMetrics}
         langSmithTraces={langSmithTraces}
-        costBreakdown={costBreakdown}
+        rerankerStats={rerankerStats}
+        databaseStats={databaseStats}
       />
     </>
   );

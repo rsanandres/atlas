@@ -13,7 +13,6 @@ import { Menu } from 'lucide-react';
 import { useObservability } from '@/hooks/useObservability';
 import { useLeadCapture } from '@/hooks/useLeadCapture';
 import { useSessions } from '@/hooks/useSessions';
-import { getMockCostBreakdown } from '@/services/mockData';
 
 // Patient type for selection
 interface SelectedPatient {
@@ -32,8 +31,9 @@ export default function Home() {
   const {
     serviceHealth,
     metricSummaries,
-    cloudWatchMetrics,
     langSmithTraces,
+    rerankerStats,
+    databaseStats,
     lastUpdated,
     refreshData,
     isLoading: obsLoading,
@@ -98,9 +98,9 @@ export default function Home() {
           <ObservabilityPanel
             serviceHealth={serviceHealth}
             metricSummaries={metricSummaries}
-            cloudWatchMetrics={cloudWatchMetrics}
             langSmithTraces={langSmithTraces}
-            costBreakdown={getMockCostBreakdown()}
+            rerankerStats={rerankerStats}
+            databaseStats={databaseStats}
             lastUpdated={lastUpdated}
             onRefresh={refreshData}
             isLoading={obsLoading}

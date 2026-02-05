@@ -1057,6 +1057,94 @@ async def get_queue_stats() -> Dict[str, Any]:
     }
 
 
+async def list_patients(limit: int = 100) -> List[Dict[str, Any]]:
+    """
+    List all unique patients in the vector store with summary info.
+
+    Returns a list of patient objects with:
+    - id: patient UUID
+    - name: extracted from source_file metadata (format: LastName_FirstName_N.json)
+    - chunk_count: number of chunks for this patient
+    - resource_types: list of FHIR resource types for this patient
+    """
+    global _engine
+
+    if _engine is None:
+        await initialize_vector_store()
+
+    if not _engine:
+        return []
+
+    try:
+        async with _engine.begin() as conn:
+            # Get patient IDs, counts, and source_file for name extraction
+            result = await conn.execute(text(f"""
+                SELECT
+                    langchain_metadata->>'patient_id' as patient_id,
+                    COUNT(*) as chunk_count,
+                    MIN(langchain_metadata->>'source_file') as source_file
+                FROM "{SCHEMA_NAME}"."{TABLE_NAME}"
+                WHERE langchain_metadata->>'patient_id' IS NOT NULL
+                GROUP BY langchain_metadata->>'patient_id'
+                ORDER BY chunk_count DESC
+                LIMIT :limit
+            """), {"limit": limit})
+            patient_rows = result.fetchall()
+
+            if not patient_rows:
+                return []
+
+            # Get resource types for these patients (use snake_case field name)
+            patient_ids = [row[0] for row in patient_rows]
+            result = await conn.execute(text(f"""
+                SELECT
+                    langchain_metadata->>'patient_id' as patient_id,
+                    array_agg(DISTINCT langchain_metadata->>'resource_type') as resource_types
+                FROM "{SCHEMA_NAME}"."{TABLE_NAME}"
+                WHERE langchain_metadata->>'patient_id' = ANY(:patient_ids)
+                GROUP BY langchain_metadata->>'patient_id'
+            """), {"patient_ids": patient_ids})
+            resource_type_rows = {row[0]: row[1] for row in result.fetchall()}
+
+        patients = []
+        for patient_id, chunk_count, source_file in patient_rows:
+            resource_types = resource_type_rows.get(patient_id, [])
+            # Filter out None from resource_types
+            resource_types = [rt for rt in (resource_types or []) if rt]
+
+            # Extract patient name from source_file (format: LastName_FirstName_N.json)
+            name = "Unknown Patient"
+            if source_file:
+                try:
+                    # Remove path prefix and .json suffix
+                    filename = source_file.split("/")[-1].replace(".json", "")
+                    # Split by underscore: LastName_FirstName_Number
+                    parts = filename.split("_")
+                    if len(parts) >= 2:
+                        # Remove numeric suffix from last name (e.g., Adams180 -> Adams)
+                        last_name = ''.join(c for c in parts[0] if not c.isdigit())
+                        # Remove numeric suffix from first name (e.g., Katelin961 -> Katelin)
+                        first_name = ''.join(c for c in parts[1] if not c.isdigit())
+                        if first_name and last_name:
+                            name = f"{first_name} {last_name}"
+                except Exception:
+                    pass
+
+            patients.append({
+                "id": patient_id,
+                "name": name,
+                "chunk_count": chunk_count,
+                "resource_types": resource_types,
+            })
+
+        return patients
+    except Exception as e:
+        print(f"Error listing patients: {e}")
+        import traceback
+        traceback.print_exc()
+        return []
+
+
 # For testing/standalone use
 async def main():
     """Test function for standalone execution."""

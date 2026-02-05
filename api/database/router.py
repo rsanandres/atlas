@@ -104,3 +104,20 @@ async def get_error_counts():
         return counts
     except Exception as e:
         return {"error": str(e)}
+
+
+@router.get("/patients")
+async def list_patients():
+    """List all unique patients in the vector store with summary info.
+
+    Returns:
+        List of patient objects with id, name, chunk_count, and resource_types.
+    """
+    module = _load_postgres_module()
+    if not module:
+        return {"error": "Database module not found", "patients": []}
+    try:
+        patients = await module.list_patients()
+        return {"patients": patients, "count": len(patients)}
+    except Exception as e:
+        return {"error": str(e), "patients": []}

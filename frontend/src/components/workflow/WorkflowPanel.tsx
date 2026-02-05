@@ -74,8 +74,8 @@ export function WorkflowPanel({ pipeline, toolCalls, lastResponse, isProcessing,
               }
             }}
           >
-            <Tab label="Pipeline" icon={<Workflow size={16} />} iconPosition="start" />
             <Tab label="Reference" icon={<Users size={16} />} iconPosition="start" />
+            <Tab label="Pipeline" icon={<Workflow size={16} />} iconPosition="start" />
             <Tab label="Documentation" icon={<Info size={16} />} iconPosition="start" />
           </Tabs>
         </Box>
@@ -83,6 +83,14 @@ export function WorkflowPanel({ pipeline, toolCalls, lastResponse, isProcessing,
         {/* Content Area */}
         <Box sx={{ flex: 1, overflowY: 'auto' }}>
           {tabIndex === 0 ? (
+            // Reference View
+            <ReferencePanel
+              onCopy={handleCopyFeedback}
+              onPromptSelect={onPromptSelect}
+              selectedPatient={selectedPatient}
+              onPatientSelect={onPatientSelect}
+            />
+          ) : tabIndex === 1 ? (
             // Pipeline View
             <Box sx={{ p: 2 }}>
               {/* Header Info (moved from top) */}
@@ -108,6 +116,7 @@ export function WorkflowPanel({ pipeline, toolCalls, lastResponse, isProcessing,
                     step={step}
                     isLast={index === pipeline.length - 1}
                     queryText={lastQuery}
+                    details={step.details}
                   />
                 ))}
               </Stack>
@@ -177,14 +186,6 @@ export function WorkflowPanel({ pipeline, toolCalls, lastResponse, isProcessing,
                 )}
               </AnimatePresence>
             </Box>
-          ) : tabIndex === 1 ? (
-            // Reference View
-            <ReferencePanel
-              onCopy={handleCopyFeedback}
-              onPromptSelect={onPromptSelect}
-              selectedPatient={selectedPatient}
-              onPatientSelect={onPatientSelect}
-            />
           ) : (
             // Documentation View
             <DocumentationPanel />

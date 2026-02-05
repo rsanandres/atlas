@@ -7,11 +7,30 @@ import {
   getRerankerStats,
   getLangSmithTraces,
   getEmbeddingsHealth,
+  getDatabaseStats,
+  getErrorCounts,
 } from '@/services/agentApi';
 import { CloudWatchMetric, LangSmithTrace, MetricSummary, RerankerStats, CostBreakdown } from '@/types/observability';
 import { ServiceHealth } from '@/types';
 
 const REFRESH_INTERVAL = 5000; // 5 seconds for real-time updates
+
+// Database stats type
+export interface DatabaseStats {
+  active_connections: number;
+  max_connections: number;
+  pool_size: number;
+  pool_overflow: number;
+  pool_checked_out: number;
+  pool_checked_in: number;
+  queue_size: number;
+  queue_stats: {
+    queued: number;
+    processed: number;
+    failed: number;
+    retries: number;
+  };
+}
 
 // Initial data (empty, will be populated by first fetch)
 function getInitialData() {
@@ -19,6 +38,7 @@ function getInitialData() {
     cloudWatchMetrics: [] as CloudWatchMetric[],
     langSmithTraces: [] as LangSmithTrace[],
     rerankerStats: null as RerankerStats | null,
+    databaseStats: null as DatabaseStats | null,
     serviceHealth: [] as ServiceHealth[],
     metricSummaries: [] as MetricSummary[],
     costBreakdown: [] as CostBreakdown[],
@@ -36,12 +56,14 @@ export function useObservability() {
     
     try {
       // Fetch all service health checks in parallel (graceful degradation)
-      const [agentHealth, rerankerHealth, embeddingsHealth, rerankerStats, langSmithTraces] = await Promise.allSettled([
+      const [agentHealth, rerankerHealth, embeddingsHealth, rerankerStats, langSmithTraces, dbStats, errorCounts] = await Promise.allSettled([
         getAgentHealth(),
         getRerankerHealth(),
         getEmbeddingsHealth(),
         getRerankerStats(),
         getLangSmithTraces(10),
+        getDatabaseStats(),
+        getErrorCounts(),
       ]);
 
       // Build service health array (handle failures gracefully)
@@ -84,12 +106,35 @@ export function useObservability() {
       // Get LangSmith traces (empty array if failed or no API key)
       const traces = langSmithTraces.status === 'fulfilled' ? langSmithTraces.value : [];
 
+      // Get database stats (null if failed)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const databaseStats: any = dbStats.status === 'fulfilled' ? dbStats.value : null;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const errors: any = errorCounts.status === 'fulfilled' ? errorCounts.value : null;
+
+      // Add database health to service health
+      // If we got stats without error, the database is healthy (active_connections only counts running queries, not idle connections)
+      if (databaseStats && !databaseStats.error) {
+        serviceHealth.push({
+          name: 'PostgreSQL',
+          status: 'healthy',
+          latency: undefined,
+          lastChecked: new Date(),
+        });
+      } else if (databaseStats?.error) {
+        serviceHealth.push({
+          name: 'PostgreSQL',
+          status: 'unhealthy',
+          lastChecked: new Date(),
+        });
+      }
+
       // Calculate metric summaries from available data
       const metricSummaries: MetricSummary[] = [];
       if (stats) {
         const totalRequests = stats.cache_hits + stats.cache_misses;
         const hitRate = totalRequests > 0 ? (stats.cache_hits / totalRequests) * 100 : 0;
-        
+
         metricSummaries.push(
           {
             label: 'Cache Hit Rate',
@@ -109,6 +154,39 @@ export function useObservability() {
         );
       }
 
+      // Add database metrics
+      if (databaseStats && !databaseStats.error) {
+        metricSummaries.push(
+          {
+            label: 'DB Connections',
+            value: `${databaseStats.active_connections || 0}/${databaseStats.max_connections || 100}`,
+            unit: 'active',
+          },
+          {
+            label: 'Queue Size',
+            value: databaseStats.queue_size || 0,
+            unit: 'chunks',
+          }
+        );
+        // Add queue stats if available
+        if (databaseStats.queue_stats) {
+          metricSummaries.push({
+            label: 'Processed',
+            value: databaseStats.queue_stats.processed || 0,
+            unit: 'chunks',
+          });
+        }
+      }
+
+      // Add error counts
+      if (errors && !errors.error && errors.total_errors !== undefined) {
+        metricSummaries.push({
+          label: 'Errors',
+          value: errors.total_errors || 0,
+          unit: 'total',
+        });
+      }
+
       // Calculate cost breakdown (placeholder - would need actual cost data)
       const costBreakdown: CostBreakdown[] = [];
 
@@ -119,6 +197,7 @@ export function useObservability() {
         cloudWatchMetrics,
         langSmithTraces: traces,
         rerankerStats: stats,
+        databaseStats: databaseStats && !databaseStats.error ? databaseStats : null,
         serviceHealth,
         metricSummaries,
         costBreakdown,
@@ -171,6 +250,7 @@ export function useObservability() {
     cloudWatchMetrics: data.cloudWatchMetrics,
     langSmithTraces: data.langSmithTraces,
     rerankerStats: data.rerankerStats,
+    databaseStats: data.databaseStats,
     serviceHealth: data.serviceHealth,
     metricSummaries: data.metricSummaries,
     costBreakdown: data.costBreakdown,

@@ -11,6 +11,7 @@ const MAX_RETRIES = 3;
 const RETRY_DELAY = 1000; // 1 second base delay
 const REQUEST_TIMEOUT = 60000; // 60 seconds for agent queries
 const HEALTH_CHECK_TIMEOUT = 5000; // 5 seconds for health checks
+const DATABASE_TIMEOUT = 30000; // 30 seconds for database queries
 
 // Exponential backoff retry helper
 async function retryWithBackoff<T>(
@@ -508,4 +509,65 @@ export async function getSessionMessages(sessionId: string, limit: number = 50):
     const data = await response.json();
     return data.recent_turns || [];
   });
+}
+
+// Database API functions
+export interface PatientSummary {
+  id: string;
+  name: string;
+  chunk_count: number;
+  resource_types: string[];
+}
+
+export async function listPatients(): Promise<PatientSummary[]> {
+  try {
+    const response = await fetchWithTimeout(
+      `${API_BASE_URL}/db/patients`,
+      {},
+      DATABASE_TIMEOUT
+    );
+    if (!response.ok) {
+      console.error('Failed to list patients:', response.statusText);
+      return [];
+    }
+    const data = await response.json();
+    return data.patients || [];
+  } catch (error) {
+    console.error('Error listing patients:', error);
+    return [];
+  }
+}
+
+export async function getDatabaseStats(): Promise<Record<string, unknown> | null> {
+  try {
+    const response = await fetchWithTimeout(
+      `${API_BASE_URL}/db/stats`,
+      {},
+      DATABASE_TIMEOUT
+    );
+    if (!response.ok) {
+      return null;
+    }
+    return response.json();
+  } catch (error) {
+    console.error('Error getting database stats:', error);
+    return null;
+  }
+}
+
+export async function getErrorCounts(): Promise<Record<string, unknown> | null> {
+  try {
+    const response = await fetchWithTimeout(
+      `${API_BASE_URL}/db/errors/counts`,
+      {},
+      DATABASE_TIMEOUT
+    );
+    if (!response.ok) {
+      return null;
+    }
+    return response.json();
+  } catch (error) {
+    console.error('Error getting error counts:', error);
+    return null;
+  }
 }
