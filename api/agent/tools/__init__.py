@@ -21,6 +21,7 @@ from api.agent.tools.schemas import (
     TimelineResponse,
 )
 from api.agent.tools.retrieval import _reranker_url
+from api.agent.tools.context import get_patient_context
 
 _pii_masker = create_pii_masker()
 
@@ -68,13 +69,22 @@ def search_clinical_notes(
 ) -> List[Dict[str, Any]]:
     """
     Search clinical notes for relevant context.
-    
+
     Args:
         query: Search query string
         k_retrieve: Number of candidates to retrieve before reranking
         k_return: Number of results to return after reranking
-        patient_id: Patient UUID in format "f1d2d1e2-4a03-43cb-8f06-f68c90e96cc8" (optional)
+        patient_id: Patient UUID (auto-injected from context)
     """
+    # ALWAYS use patient_id from context when available
+    context_patient_id = get_patient_context()
+    if context_patient_id:
+        if patient_id and patient_id != context_patient_id:
+            print(f"[CLINICAL_NOTES] Overriding patient_id ({patient_id[:8]}...) with context ({context_patient_id[:8]}...)")
+        patient_id = context_patient_id
+    elif not patient_id:
+        print("[CLINICAL_NOTES] Warning: No patient_id provided and none in context")
+
     if patient_id:
         # Validate UUID format
         try:
@@ -85,7 +95,7 @@ def search_clinical_notes(
                 chunks=[],
                 count=0,
                 success=False,
-                error=f"Invalid patient_id format. Must be a UUID like 'f1d2d1e2-4a03-43cb-8f06-f68c90e96cc8', got: {patient_id}",
+                error=f"Invalid patient_id format. Must be a UUID (format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx), got: {patient_id}",
             ).model_dump()
         filter_metadata = {"patient_id": patient_id}
     else:
@@ -107,18 +117,32 @@ def search_clinical_notes(
 
 
 @tool
-async def get_patient_timeline(patient_id: str, k_return: int = 50) -> Dict[str, Any]:
+async def get_patient_timeline(patient_id: Optional[str] = None, k_return: int = 50) -> Dict[str, Any]:
     """
     Return a chronological timeline for a patient based on retrieved notes.
-    
+
     Queries database directly to get ALL patient chunks sorted by date.
-    
+
     Args:
-        patient_id: Patient UUID in format "f1d2d1e2-4a03-43cb-8f06-f68c90e96cc8" (required)
+        patient_id: Patient UUID (auto-injected from context)
         k_return: Number of timeline events to return (max 100)
     """
     from api.database.postgres import get_patient_timeline as db_get_timeline
-    
+
+    # ALWAYS use patient_id from context when available
+    context_patient_id = get_patient_context()
+    if context_patient_id:
+        if patient_id and patient_id != context_patient_id:
+            print(f"[TIMELINE] Overriding patient_id ({patient_id[:8]}...) with context ({context_patient_id[:8]}...)")
+        patient_id = context_patient_id
+    elif not patient_id:
+        return TimelineResponse(
+            patient_id="",
+            events=[],
+            success=False,
+            error="No patient_id provided and none in context",
+        ).model_dump()
+
     # Validate UUID format
     try:
         uuid.UUID(patient_id)
@@ -127,7 +151,7 @@ async def get_patient_timeline(patient_id: str, k_return: int = 50) -> Dict[str,
             patient_id=patient_id,
             events=[],
             success=False,
-            error=f"Invalid patient_id format. Must be a UUID like 'f1d2d1e2-4a03-43cb-8f06-f68c90e96cc8', got: {patient_id}",
+            error=f"Invalid patient_id format. Must be a UUID (format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx), got: {patient_id}",
         ).model_dump()
     
     # Use direct DB query (not vector search) to get all patient chunks
