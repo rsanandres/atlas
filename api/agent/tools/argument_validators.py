@@ -66,21 +66,21 @@ def validate_patient_id(value: str) -> Tuple[bool, str]:
     if is_valid_icd10(value):
         return False, (
             f"'{value}' looks like an ICD-10 code, not a patient ID. "
-            "Patient IDs are UUIDs like 'f1d2d1e2-4a03-43cb-8f06-f68c90e96cc8'. "
+            "Patient IDs are UUIDs (format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx). "
             "Use search_icd10() for ICD-10 lookups."
         )
-    
+
     # Check if user passed a FHIR resource ID
     if is_valid_fhir_resource_id(value):
         return False, (
             f"'{value}' looks like a FHIR resource ID, not a patient ID. "
-            "Patient IDs are UUIDs like 'f1d2d1e2-4a03-43cb-8f06-f68c90e96cc8'."
+            "Patient IDs are UUIDs (format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)."
         )
-    
+
     # Generic invalid format
     return False, (
         f"Invalid patient_id format: '{value}'. "
-        "Must be a UUID like 'f1d2d1e2-4a03-43cb-8f06-f68c90e96cc8'."
+        "Must be a UUID (format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)."
     )
 
 

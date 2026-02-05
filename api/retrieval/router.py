@@ -122,8 +122,8 @@ async def _rerank_single(request: RerankRequest) -> RerankResponse:
         query=query,
         k=k_retrieve,
         filter_metadata=request.filter_metadata,
-        bm25_weight=0.3,     # Good balance for general queries
-        semantic_weight=0.7, # Favor semantic understanding
+        bm25_weight=0.5,     # Balanced for FHIR keyword matching (resourceType, codes)
+        semantic_weight=0.5, # Equal semantic understanding
     )
 
     if not candidates:

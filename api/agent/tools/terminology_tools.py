@@ -78,11 +78,23 @@ async def search_icd10(term: str, max_results: int = 10) -> Dict[str, Any]:
 async def validate_icd10_code(code: str) -> Dict[str, Any]:
     """
     Validate whether an ICD-10-CM code exists by searching for exact code match.
-    
+
     Args:
         code: ICD-10-CM code like 'E11.9', 'I10', 'J06.9' (NOT a patient UUID!)
+
+    Note: Only call this if a specific code was claimed. If no code to validate,
+    this returns success with skipped=True (not an error).
     """
-    # Validate format first
+    # Handle empty/missing code gracefully - not an error, just nothing to validate
+    if not code or not code.strip():
+        return TerminologyResponse(
+            success=True,
+            error=None,
+            results=[{"skipped": True, "reason": "No code provided - nothing to validate"}],
+            count=0,
+        ).model_dump()
+
+    # Validate format
     is_valid, error_msg = _validate_icd10_format(code)
     if not is_valid:
         return TerminologyResponse(

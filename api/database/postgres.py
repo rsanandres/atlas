@@ -578,23 +578,23 @@ async def hybrid_search(
     query: str,
     k: int = 10,
     filter_metadata: Optional[Dict[str, Any]] = None,
-    bm25_weight: float = 0.3,
-    semantic_weight: float = 0.7,
+    bm25_weight: float = 0.5,
+    semantic_weight: float = 0.5,
     bm25_k: int = 50,
     semantic_k: int = 50,
 ) -> List[Document]:
     """
     Hybrid search combining BM25 (keyword) and semantic (vector) search.
-    
-    This approach ensures both exact keyword matches (like ICD-10 codes)
+
+    This approach ensures both exact keyword matches (like ICD-10 codes, resourceType)
     and semantically similar content are retrieved.
-    
+
     Args:
         query: Search query text
         k: Number of final results to return
         filter_metadata: Optional metadata filters (e.g., {"patient_id": "..."})
-        bm25_weight: Weight for BM25 scores (default 0.3)
-        semantic_weight: Weight for semantic scores (default 0.7)
+        bm25_weight: Weight for BM25 scores (default 0.5)
+        semantic_weight: Weight for semantic scores (default 0.5)
         bm25_k: Number of BM25 candidates to retrieve
         semantic_k: Number of semantic candidates to retrieve
         

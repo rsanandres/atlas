@@ -185,17 +185,23 @@ def _clean_response(text: str) -> str:
 
 def _load_conversation_history(session_id: str, patient_id: Optional[str] = None, limit: int = 10) -> List[Any]:
     """Load recent conversation history from session store and convert to messages.
-    
+
     Args:
         session_id: The session ID to load history from
         patient_id: If provided, only include turns related to this patient
         limit: Maximum number of turns to retrieve
-    
+
     Returns:
         List of HumanMessage/AIMessage for injection into agent context
     """
+    # Disable history injection to prevent cross-session pollution
+    # Set ENABLE_SESSION_HISTORY=true to re-enable
+    if not os.getenv("ENABLE_SESSION_HISTORY", "").lower() == "true":
+        print("[HISTORY] Session history injection disabled (set ENABLE_SESSION_HISTORY=true to enable)")
+        return []
+
     print(f"[HISTORY] Attempting to load history for session: {session_id}, patient_id: {patient_id}, limit: {limit}")
-    
+
     if not SESSION_STORE_AVAILABLE:
         print("[HISTORY] WARNING: Session store not available")
         return []
@@ -570,12 +576,20 @@ async def _respond_node(state: AgentState) -> AgentState:
     """Synthesize the researched information into a user-friendly response."""
     max_iterations = int(os.getenv("AGENT_MAX_ITERATIONS", "15"))
     system_prompt = get_response_prompt() or get_conversational_prompt()
-    
+
     # Get the research findings
     researcher_output = state.get("researcher_output", "")
     validation_result = state.get("validation_result", "NEEDS_REVISION")
     validator_output = state.get("validator_output", "")
     user_query = state.get("query", "")
+
+    # DEBUG: Log what we're sending to the Response Synthesizer
+    debug_hallucination = os.getenv("DEBUG_HALLUCINATION", "").lower() == "true"
+    if debug_hallucination:
+        print(f"\n[DEBUG:RESPOND] ========== RESPONSE SYNTHESIZER INPUT ==========")
+        print(f"[DEBUG:RESPOND] User query: {user_query}")
+        print(f"[DEBUG:RESPOND] Researcher output (first 1000 chars):\n{researcher_output[:1000]}")
+        print(f"[DEBUG:RESPOND] ================================================\n")
     
     # Build messages for response synthesis - only include what user needs to see
     messages = [
@@ -598,10 +612,28 @@ async def _respond_node(state: AgentState) -> AgentState:
     # Fallback to researcher output if synthesis fails
     if not final_response or len(final_response.strip()) < 10:
         final_response = researcher_output
-    
+
     # Clean up any internal details that leaked through
     final_response = _clean_response(final_response)
-    
+
+    # DEBUG: Log the final synthesized response
+    if debug_hallucination:
+        print(f"\n[DEBUG:RESPOND] ========== FINAL RESPONSE OUTPUT ==========")
+        print(f"[DEBUG:RESPOND] Final response:\n{final_response}")
+        print(f"[DEBUG:RESPOND] ===========================================\n")
+
+        # HALLUCINATION CHECK: Look for known example data in response
+        example_hallucinations = [
+            ("Type 2 Diabetes", "E11.9"),
+            ("Hypertension", "38341003"),
+            ("Metformin", "examples"),
+            ("Lisinopril", "examples"),
+        ]
+        for condition, code in example_hallucinations:
+            if condition in final_response and code not in researcher_output:
+                print(f"[DEBUG:HALLUCINATION] WARNING: '{condition}' in response but '{code}' not in researcher output!")
+                print(f"[DEBUG:HALLUCINATION] This may be a hallucination from prompt examples!")
+
     return {**state, "final_response": final_response}
 
 

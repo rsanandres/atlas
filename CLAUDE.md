@@ -109,7 +109,8 @@ Next.js 16 with React 19:
 DB_HOST=localhost DB_PORT=5432 DB_USER=postgres DB_NAME=postgres
 
 # LLM/Embeddings
-LLM_PROVIDER=ollama LLM_MODEL=llama3.1:8b
+LLM_PROVIDER=ollama
+LLM_MODEL=qwen2.5:32b  # Recommended for 24GB VRAM (4090)
 OLLAMA_BASE_URL=http://localhost:11434
 EMBEDDING_PROVIDER=ollama OLLAMA_EMBED_MODEL=mxbai-embed-large:latest
 
@@ -117,8 +118,23 @@ EMBEDDING_PROVIDER=ollama OLLAMA_EMBED_MODEL=mxbai-embed-large:latest
 DDB_ENDPOINT=http://localhost:8001
 
 # Agent
-AGENT_GRAPH_TYPE=complex  # or 'simple'
+AGENT_GRAPH_TYPE=complex  # or 'simple' (bypasses Validator)
+
+# Debug flags
+DEBUG_HALLUCINATION=true  # Enables tracing in multi_agent_graph.py
+ENABLE_SESSION_HISTORY=false  # Disabled to prevent cross-session pollution
 ```
+
+## Model Selection Guide
+
+| Model | VRAM | Use Case |
+|-------|------|----------|
+| `qwen2.5:32b` | ~20GB | **Recommended** - Best instruction following |
+| `llama3.1:8b` | ~5GB | Too small, hallucinates from prompt examples |
+| `mixtral:8x7b` | ~26GB | Good MoE alternative |
+| `llama3.1:70b` | ~40GB | Requires CPU offload on 4090, slow |
+
+**Note:** Small models (8B) cannot distinguish few-shot examples from real data. Use 32B+ for complex medical prompts.
 
 ## POC Directories
 

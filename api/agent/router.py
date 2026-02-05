@@ -372,3 +372,31 @@ async def query_agent_stream(payload: AgentQueryRequest):
 @router.get("/health")
 async def health() -> Dict[str, str]:
     return {"status": "ok"}
+
+
+@router.post("/reload-prompts")
+async def reload_prompts() -> Dict[str, Any]:
+    """Reload prompts from YAML file without restarting server.
+
+    Useful for development when prompts.yaml has been updated.
+    Also clears any cached agents to ensure new prompts are used.
+    """
+    from api.agent.prompt_loader import reload_prompts as _reload_prompts, get_metadata
+    from api.agent import multi_agent_graph
+
+    # Reload prompts from file
+    _reload_prompts()
+
+    # Clear cached agents so they pick up new prompts
+    multi_agent_graph._RESEARCHER_AGENT = None
+    multi_agent_graph._VALIDATOR_AGENT = None
+    multi_agent_graph._RESPONSE_AGENT = None
+
+    # Get metadata for confirmation
+    metadata = get_metadata()
+
+    return {
+        "status": "ok",
+        "message": "Prompts reloaded and agent caches cleared",
+        "metadata": metadata
+    }

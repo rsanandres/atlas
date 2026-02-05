@@ -20,7 +20,7 @@ from api.agent.tools.schemas import (
     SessionContextResponse,
     TimelineResponse,
 )
-from api.agent.tools.retrieval import _reranker_url
+from api.agent.tools.retrieval import _reranker_url, detect_resource_type_from_query
 from api.agent.tools.context import get_patient_context
 
 _pii_masker = create_pii_masker()
@@ -85,6 +85,9 @@ def search_clinical_notes(
     elif not patient_id:
         print("[CLINICAL_NOTES] Warning: No patient_id provided and none in context")
 
+    # Auto-detect resource type from query keywords (e.g., "conditions" -> Condition)
+    detected_resource_type = detect_resource_type_from_query(query)
+
     if patient_id:
         # Validate UUID format
         try:
@@ -98,8 +101,12 @@ def search_clinical_notes(
                 error=f"Invalid patient_id format. Must be a UUID (format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx), got: {patient_id}",
             ).model_dump()
         filter_metadata = {"patient_id": patient_id}
+        if detected_resource_type:
+            filter_metadata["resource_type"] = detected_resource_type
+            print(f"[CLINICAL_NOTES] Auto-detected resource_type: {detected_resource_type}")
     else:
-        filter_metadata = None
+        filter_metadata = {"resource_type": detected_resource_type} if detected_resource_type else None
+
     results = _call_reranker(query, k_retrieve, k_return, filter_metadata=filter_metadata)
     return RetrievalResponse(
         query=query,
