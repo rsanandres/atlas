@@ -38,8 +38,10 @@ const PERSONAS = Object.entries(LOCAL_PERSONA_DATA).map(([id, data]) => ({ id, .
 const RECOMMENDED_PROMPTS = [
   "What are the patient's active conditions?",
   "Summarize the patient's medication history.",
-  "Show me the timeline of recent encounters.",
   "Does the patient have any known allergies?",
+  "What are the patient's recent lab results?",
+  "Show me the timeline of clinical events.",
+  "When was the patient's last encounter?",
 ];
 
 // Patient type for selection

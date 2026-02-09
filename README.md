@@ -1,366 +1,264 @@
-# HC AI - FHIR Data Processing & Vector Store
+# Atlas AI - Clinical Intelligence Platform
 
-A production-ready system for processing FHIR (Fast Healthcare Interoperability Resources) data, generating embeddings, and storing them in a PostgreSQL vector database for semantic search and retrieval.
+A full-stack healthcare AI system that lets clinicians query patient records using natural language. Built with a multi-agent RAG architecture, hybrid vector search, and real-time streaming — processing FHIR clinical data across 10 resource types with 20+ specialized medical tools.
 
-## 🏗️ Architecture
-
-The system consists of three main components:
-
-1. **Go Parser** (`POC_embeddings/main.go`) - Efficiently parses FHIR Bundle JSON files and extracts resources
-2. **Python API** (`POC_embeddings/main.py`) - FastAPI service that accepts FHIR resources and processes them asynchronously
-3. **PostgreSQL Vector Store** (`api/database/postgres.py`) - Stores chunks with 1024-dimensional embeddings using pgvector
-
-### Data Flow
+## Architecture
 
 ```
-FHIR JSON Files → Go Parser → Python API → Chunking → Embedding → PostgreSQL Vector Store
+                                    ┌─────────────────────────────────┐
+                                    │         Next.js Frontend        │
+                                    │   Chat  ·  Pipeline  ·  Observ  │
+                                    └──────────────┬──────────────────┘
+                                                   │ SSE Stream
+                                    ┌──────────────▼──────────────────┐
+                                    │        FastAPI Gateway          │
+                                    │   PII Masker  ·  Guardrails    │
+                                    └──────────────┬──────────────────┘
+                                                   │
+                          ┌────────────────────────▼────────────────────────┐
+                          │              LangGraph Multi-Agent              │
+                          │                                                │
+                          │  ┌────────────┐  ┌───────────┐  ┌──────────┐  │
+                          │  │ Researcher │→ │ Validator │→ │ Responder│  │
+                          │  └─────┬──────┘  └───────────┘  └──────────┘  │
+                          │        │                                       │
+                          │  ┌─────▼──────────────────────────────────┐   │
+                          │  │            20+ Medical Tools           │   │
+                          │  │  FDA · ICD-10 · LOINC · RxNorm · GFR  │   │
+                          │  │  PubMed · Clinical Trials · WHO Stats │   │
+                          │  └────────────────────┬───────────────────┘   │
+                          └───────────────────────┼───────────────────────┘
+                                                  │
+                    ┌─────────────────┬───────────▼──────────┬──────────────┐
+                    │                 │                      │              │
+             ┌──────▼──────┐  ┌──────▼──────┐  ┌───────────▼──┐  ┌───────▼──────┐
+             │  PostgreSQL │  │   Ollama     │  │  Cross-Encoder│  │   DynamoDB   │
+             │  + pgvector │  │  qwen2.5:32b │  │   Reranker   │  │  Sessions    │
+             │  1024-dim   │  │              │  │  MiniLM-L6   │  │  7-day TTL   │
+             └─────────────┘  └──────────────┘  └──────────────┘  └──────────────┘
 ```
 
-## 📋 Prerequisites
-
-- **Go** 1.19+ (for parsing FHIR files)
-- **Python** 3.9+ (for API and processing)
-- **Docker** & **Docker Compose** (for PostgreSQL with pgvector)
-- **Ollama** (for local embeddings) - [Install Ollama](https://ollama.ai)
-- **PostgreSQL** with **pgvector** extension (via Docker)
-
-## 🚀 Quick Start
-
-### 1. Clone and Setup
-
-```bash
-git clone <repository-url>
-cd hc_ai
-```
-
-### 2. Install Python Dependencies
-
-```bash
-pip install -r requirements.txt
-```
-
-### 3. Setup Environment Variables
-
-Create a `.env` file in the project root:
-
-```bash
-# Database Configuration
-DB_USER=postgres
-DB_PASSWORD=your_password_here
-DB_NAME=your_database_name
-DB_HOST=localhost
-DB_PORT=5432
-
-# Embedding Configuration
-EMBEDDING_PROVIDER=ollama  # Options: ollama, nomic, bedrock
-OLLAMA_BASE_URL=http://localhost:11434
-OLLAMA_EMBED_MODEL=mxbai-embed-large:latest
-
-# Optional: Database Pool Configuration
-DB_MAX_POOL_SIZE=10
-DB_MAX_OVERFLOW=5
-DB_POOL_TIMEOUT=30
-
-# Optional: Queue Configuration
-CHUNK_QUEUE_MAX_SIZE=1000
-CHUNK_MAX_RETRIES=5
-CHUNK_BATCH_SIZE=20
-CHUNK_RETRY_BASE_DELAY=1.0
-CHUNK_RETRY_MAX_DELAY=60.0
-```
-
-### 4. Start PostgreSQL with pgvector
-
-```bash
-cd db/postgres
-docker-compose up -d
-```
-
-This starts a PostgreSQL 18 container with pgvector extension on port 5432.
-
-See `db/postgres/README.md` for more details.
-
-### 5. Pull Ollama Embedding Model
-
-```bash
-ollama pull mxbai-embed-large:latest
-```
-
-### 6. Start the Python API
-
-```bash
-cd POC_embeddings
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
-```
-
-The API will be available at `http://localhost:8000`
-
-### 7. Process FHIR Files
-
-In a separate terminal, run the Go parser:
-
-```bash
-cd POC_embeddings
-go run main.go
-```
-
-This will:
-- Scan `../data/fhir/` for JSON files
-- Extract FHIR resources from Bundles
-- Send each resource to the Python API for processing
-
-## 📡 API Endpoints
-
-### `POST /ingest`
-
-Ingest a FHIR resource for processing.
-
-**Request Body:**
-```json
-{
-  "id": "resource-id",
-  "fullUrl": "urn:uuid:...",
-  "resourceType": "Observation",
-  "content": "Extracted text content from resource",
-  "patientId": "patient-123",
-  "resourceJson": "{...full FHIR JSON resource...}",
-  "sourceFile": "../data/fhir/bundle.json"
-}
-```
-
-**Response:**
-```json
-{
-  "status": "accepted",
-  "id": "resource-id",
-  "resourceType": "Observation",
-  "contentLength": 1234
-}
-```
-
-### `GET /health`
-
-Health check endpoint.
-
-### `GET /`
-
-Root endpoint with API information and available endpoints.
-
-### `GET /db/stats`
-
-Get database connection and queue statistics.
-
-**Response:**
-```json
-{
-  "active_connections": 2,
-  "max_connections": 500,
-  "pool_size": 10,
-  "queue_size": 0,
-  "queue_stats": {
-    "queued": 0,
-    "processed": 1234,
-    "failed": 0,
-    "retries": 5
-  }
-}
-```
-
-### `GET /db/queue`
-
-Get queue statistics (memory queue, persisted queue, DLQ).
-
-### `GET /db/errors`
-
-Get error logs with optional filtering.
-
-**Query Parameters:**
-- `limit` (default: 100) - Maximum number of records
-- `offset` (default: 0) - Pagination offset
-- `file_id` - Filter by file ID
-- `resource_id` - Filter by resource ID
-- `error_type` - Filter by error type (validation, fatal, max_retries, queue_full)
-
-### `GET /db/errors/counts`
-
-Get error statistics grouped by type and file/resource.
-
-## 🗄️ Database Structure
-
-### Schema: `hc_ai_schema`
-### Table: `hc_ai_table`
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `langchain_id` | UUID | Primary key, unique chunk identifier |
-| `content` | TEXT | The chunk text content |
-| `embedding` | VECTOR(1024) | 1024-dimensional embedding vector (NOT NULL) |
-| `langchain_metadata` | JSON | Metadata including patientId, resourceId, resourceType, etc. |
-
-### Metadata Structure
-
-Each chunk includes rich metadata:
-```json
-{
-  "patientId": "patient-123",
-  "resourceId": "resource-456",
-  "resourceType": "Observation",
-  "fullUrl": "urn:uuid:...",
-  "sourceFile": "../data/fhir/bundle.json",
-  "chunkId": "resource-456_chunk_0",
-  "chunkIndex": 0,
-  "totalChunks": 5,
-  "chunkSize": 850,
-  "effectiveDate": "2024-01-15",
-  "status": "final"
-}
-```
-
-## 🔧 Configuration
-
-### Embedding Providers
-
-The system supports multiple embedding providers:
-
-1. **Ollama** (Default, Local)
-   - Set `EMBEDDING_PROVIDER=ollama`
-   - Requires Ollama running locally
-   - Model: `mxbai-embed-large:latest` (1024 dimensions)
-
-2. **Nomic** (Fallback)
-   - Set `EMBEDDING_PROVIDER=nomic`
-   - Requires Nomic API key
-
-3. **Amazon Bedrock** (Future)
-   - Set `EMBEDDING_PROVIDER=bedrock`
-   - Requires AWS credentials
-   - Not yet implemented
-
-### Chunking Strategy
-
-The system uses **RecursiveJsonSplitter** when JSON is available, which:
-- Preserves FHIR JSON structure
-- Creates chunks of 500-1000 characters
-- Maintains parent-child relationships
-
-Falls back to **RecursiveCharacterTextSplitter** when JSON is not available.
-
-### Queue & Retry System
-
-- **Queue-based processing** for resilience
-- **Automatic retries** with exponential backoff
-- **Dead Letter Queue (DLQ)** for failed chunks
-- **Persistent queue** stored in SQLite (managed by `api/database/queue_storage.py`)
-
-## 📊 Monitoring & Debugging
-
-### Check Database Status
-
-```bash
-# Using the check script
-python3 scripts/check_db.py
-
-# Or directly in PostgreSQL
-docker exec -it postgres-db psql -U postgres
-SET search_path TO hc_ai_schema, public;
-SELECT COUNT(*) FROM hc_ai_table;
-```
-
-### Verify Embeddings
-
-```bash
-# Run SQL queries to verify embeddings
-docker exec -it postgres-db psql -U postgres -d your_database_name
-```
-
-See `db/sql/check_embeddings_simple.sql` for verification queries.
-
-### Check Queue Status
-
-```bash
-curl http://localhost:8000/db/queue | python3 -m json.tool
-```
-
-### View Error Logs
-
-```bash
-curl http://localhost:8000/db/errors?limit=10 | python3 -m json.tool
-```
-
-## 📁 Project Structure
+## Key Features
+
+### Multi-Agent RAG Pipeline
+- Three-node LangGraph workflow: Researcher retrieves and reasons, Validator checks safety, Responder synthesizes
+- Hybrid search combining BM25 keyword matching (50%) + semantic vector search (50%) with 1024-dim embeddings
+- Cross-encoder reranking with MiniLM-L6-v2 for precision
+- Auto-detects FHIR resource type from natural language (e.g., "medications" filters to MedicationRequest)
+
+### 20+ Medical Tools
+- **Patient data**: Hybrid retrieval search, chronological timeline views
+- **Drug safety**: FDA labels, recalls, shortages, adverse event reports (openFDA)
+- **Medical coding**: ICD-10 search/validation (NIH), LOINC lookup (Regenstrief), RxNorm resolution
+- **Clinical calculators**: eGFR (CKD-EPI 2021), BMI, BSA (Mosteller), creatinine clearance (Cockcroft-Gault)
+- **Safety**: Drug interaction checking, dosage validation against FDA labels
+- **Research**: PubMed articles, ClinicalTrials.gov, WHO global health statistics
+
+### Real-Time Streaming UI
+- Server-Sent Events stream each agent step as it executes
+- Pipeline visualization with real wall-clock timing per step
+- Expandable step details: documents retrieved, tools invoked, sources cited, relevance scores
+- Source cards with score bars, full FHIR metadata, and expand/collapse
+
+### Safety & Privacy
+- PII masking on both input and output (patient names, SSNs, dates)
+- Guardrails validation layer for response safety checks
+- Patient context auto-injection prevents cross-patient data leaks
+- Anti-hallucination: 32B+ models required (8B models copy prompt examples as real data)
+
+### Observability Dashboard
+- Live service health monitoring with latency tracking
+- Database stats, reranker metrics, error counts
+- Pipeline step timing driven by real SSE events
+- Loading skeletons and graceful degradation when services are down
+
+### Frontend UX
+- Mobile-responsive layout with drawer navigation for smaller screens
+- Copy button on code blocks, thumbs up/down feedback, regenerate responses
+- Chat export to markdown, keyboard shortcuts (Cmd+/)
+- Error boundary with toast notifications
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Frontend | Next.js 16, React 19, Material UI, Framer Motion, Recharts |
+| Backend | FastAPI, LangGraph, LangChain, Pydantic |
+| LLM | Ollama with qwen2.5:32b (runs on 24GB VRAM) |
+| Embeddings | mxbai-embed-large (1024 dimensions) |
+| Reranker | Cross-encoder MiniLM-L6-v2 |
+| Vector DB | PostgreSQL + pgvector (hybrid BM25 + cosine similarity) |
+| Sessions | Amazon DynamoDB (7-day TTL) |
+| PII | Local regex masker (AWS Comprehend Medical ready) |
+| Data Format | HL7 FHIR R4 |
+| Data Ingestion | Go parser + Python batch embedder |
+
+## Project Structure
 
 ```
 hc_ai/
-├── POC_embeddings/
-│   ├── main.py              # FastAPI service
-│   ├── main.go              # Go FHIR parser
-│   ├── helper.py            # Chunking, embeddings, processing
-│   ├── requirements.txt     # Python dependencies
-│   └── test_*.py            # Test scripts
-├── db/
-│   ├── postgres/
-│   │   ├── docker-compose.yml   # PostgreSQL with pgvector
-│   │   └── README.md            # PostgreSQL setup instructions
-│   ├── dynamodb/
-│   │   ├── docker-compose.yml   # DynamoDB Local setup
-│   │   └── README.md            # DynamoDB setup instructions
-│   └── sql/
-│       ├── verify_embeddings.sql # Embedding verification queries
-│       ├── check_embeddings_simple.sql
-│       └── test.sql
-├── scripts/
-│   ├── check_db.py          # Database diagnostic script
-│   ├── check_embeddings.py  # Embedding verification script
-│   ├── ingest_fhir_json.py  # FHIR JSON ingestion script
-│   ├── test_postgres.py     # PostgreSQL test script
-│   ├── chat_cli.py          # Chat CLI
-│   └── agent_debug_cli.py   # Agent debug CLI
-├── api/
-│   └── database/
-│       ├── postgres.py      # Vector store implementation
-│       └── queue_storage.py # Queue persistence
-├── data/
-│   └── fhir/                # FHIR JSON files (place your files here)
-├── README.md                # This file
-└── .env                     # Environment variables (create this)
+├── api/                          # Unified FastAPI application
+│   ├── main.py                   # App entrypoint, mounts all routers
+│   ├── agent/                    # Multi-agent system
+│   │   ├── multi_agent_graph.py  # LangGraph workflow (researcher -> validator -> responder)
+│   │   ├── prompts.yaml          # All agent prompts
+│   │   ├── tools/                # 11 tool modules, 20+ functions
+│   │   │   ├── retrieval.py      # Hybrid search with auto resource type detection
+│   │   │   ├── fda_tools.py      # openFDA drug safety
+│   │   │   ├── terminology_tools.py  # ICD-10, RxNorm
+│   │   │   ├── loinc_lookup.py   # LOINC lab code validation
+│   │   │   ├── calculators.py    # eGFR, BMI, BSA, CrCl
+│   │   │   ├── research_tools.py # PubMed, ClinicalTrials.gov, WHO
+│   │   │   └── dosage_validator.py   # FDA label dosage checking
+│   │   ├── pii_masker/           # Input/output PII protection
+│   │   └── guardrails/           # Response safety validation
+│   ├── auth/                     # JWT authentication
+│   ├── database/                 # PostgreSQL hybrid search implementation
+│   ├── embeddings/               # FHIR resource ingestion API
+│   ├── retrieval/                # Cross-encoder reranking service
+│   └── session/                  # DynamoDB session management
+├── frontend/                     # Next.js 16 application
+│   └── src/
+│       ├── app/page.tsx          # Main chat interface
+│       ├── components/
+│       │   ├── chat/             # ChatPanel, MessageBubble, MessageList
+│       │   ├── workflow/         # Pipeline visualization, SourceCards, PatientSelector
+│       │   ├── observability/    # Health monitoring, metrics dashboard
+│       │   └── layout/           # Responsive MainLayout
+│       ├── hooks/                # useChat, useWorkflow, useObservability
+│       └── services/             # API clients, SSE streaming
+├── scripts/                      # Batch embedding, database diagnostics, CLI tools
+├── data/fhir/                    # FHIR patient bundles (Synthea-generated)
+└── POC_*/                        # Proof-of-concept directories (preserved for reference)
 ```
 
-## 🔍 Key Features
+## Getting Started
 
-- ✅ **Asynchronous Processing** - FastAPI background tasks for non-blocking ingestion
-- ✅ **Resilient Queue System** - Automatic retries with exponential backoff
-- ✅ **Rich Metadata** - Comprehensive metadata for filtering and tracing
-- ✅ **Multiple Embedding Providers** - Ollama (local), Nomic, Bedrock (future)
-- ✅ **Connection Pooling** - Efficient database connection management
-- ✅ **Error Tracking** - Comprehensive error logging and monitoring
-- ✅ **FHIR-Aware Chunking** - Preserves JSON structure when available
+### Prerequisites
 
-## 🐛 Troubleshooting
+- Python 3.11+
+- Node.js 18+
+- PostgreSQL with pgvector extension
+- Ollama
+- Docker (for DynamoDB Local)
 
-### "Model not found" error
+### Backend Setup
+
 ```bash
+# Install dependencies
+pip install -r requirements.txt
+
+# Start PostgreSQL with pgvector
+cd postgres && docker-compose up -d
+
+# Start DynamoDB Local (for sessions)
+cd POC_retrieval && docker-compose -f docker-compose-dynamodb.yml up -d
+
+# Pull required models
+ollama pull qwen2.5:32b
 ollama pull mxbai-embed-large:latest
+
+# Ingest FHIR patient data into vector store
+python scripts/batch_embed_patients.py
+
+# Start the API
+uvicorn api.main:app --reload --port 8000
 ```
 
-### "Connection refused" to database
-- Ensure Docker container is running: `docker ps`
-- Check environment variables in `.env`
-- Verify port 5432 is not in use
+### Frontend Setup
 
-### "No embeddings generated"
-- Check Ollama is running: `curl http://localhost:11434/api/tags`
-- Verify model is available: `ollama list`
-- Check logs for embedding errors
+```bash
+cd frontend
+npm install
+npm run dev
+```
 
-### Queue not processing
-- Check queue stats: `curl http://localhost:8000/db/queue`
-- Review error logs: `curl http://localhost:8000/db/errors`
-- Check database connection pool stats
+Open [http://localhost:3000](http://localhost:3000), select a patient from the sidebar, and ask a clinical question.
 
-## 📝 License
+### Environment Variables
 
-[Add your license here]
+```bash
+# Database
+DB_HOST=localhost  DB_PORT=5432  DB_USER=postgres  DB_NAME=postgres
 
-## 🤝 Contributing
+# LLM & Embeddings
+LLM_PROVIDER=ollama
+LLM_MODEL=qwen2.5:32b
+OLLAMA_BASE_URL=http://localhost:11434
+EMBEDDING_PROVIDER=ollama
+OLLAMA_EMBED_MODEL=mxbai-embed-large:latest
 
-[Add contribution guidelines here]
+# Sessions
+DDB_ENDPOINT=http://localhost:8001
+
+# Agent configuration
+AGENT_GRAPH_TYPE=simple        # simple (fast) or complex (with validator loop)
+AGENT_RECURSION_LIMIT=50
+AGENT_TIMEOUT_SECONDS=300
+
+# Optional
+DEBUG_HALLUCINATION=true       # Trace source attribution through the pipeline
+PII_MASKER_PROVIDER=local      # local (default) or aws (for Comprehend Medical)
+```
+
+## Example Queries
+
+With a patient selected:
+
+```
+"What are the patient's active conditions?"
+"Summarize the patient's medication history"
+"Does the patient have any known allergies?"
+"What are the patient's recent lab results?"
+"Show me the timeline of clinical events"
+"When was the patient's last encounter?"
+```
+
+The agent can also access external medical resources:
+
+```
+"Calculate the patient's eGFR from their latest creatinine"
+"Are there any FDA recalls for the patient's medications?"
+"Search PubMed for recent treatments for the patient's conditions"
+```
+
+## FHIR Resource Types
+
+The system indexes and retrieves 10 FHIR R4 resource types:
+
+| Resource Type | Example Queries |
+|--------------|----------------|
+| Condition | Active diagnoses, problem list |
+| Observation | Lab results, vital signs, blood pressure |
+| MedicationRequest | Current prescriptions, medication history |
+| Encounter | Visits, admissions, appointment history |
+| Procedure | Surgeries, diagnostic procedures |
+| Immunization | Vaccine records |
+| DiagnosticReport | Lab and imaging reports |
+| Patient | Demographics |
+| Organization | Healthcare facilities |
+| Medication | Drug reference data |
+
+## Model Selection
+
+| Model | VRAM | Recommendation |
+|-------|------|----------------|
+| `qwen2.5:32b` | ~20GB | Best instruction following for medical prompts |
+| `mixtral:8x7b` | ~26GB | Good MoE alternative |
+| `llama3.1:8b` | ~5GB | Not recommended -- hallucinates from prompt examples |
+
+8B parameter models cannot distinguish few-shot examples from real patient data in complex medical prompts. Use 32B+ for reliable clinical output.
+
+## Testing
+
+```bash
+# Backend agent tests
+python -m pytest api/agent/test_*.py
+
+# Frontend build & lint
+cd frontend && npm run build && npm run lint
+```
+
+## License
+
+All rights reserved.
