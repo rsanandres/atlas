@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Box, Typography, Chip, Stack, Divider, alpha, Tabs, Tab } from '@mui/material';
+import { Box, Typography, Chip, Stack, Divider, alpha, Tabs, Tab, Skeleton } from '@mui/material';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Workflow, Wrench, Info, Users } from 'lucide-react';
 import { PipelineStep as PipelineStepType, Message } from '@/types';
@@ -30,6 +30,7 @@ export function WorkflowPanel({ pipeline, toolCalls, lastResponse, isProcessing,
   const [tabIndex, setTabIndex] = useState(0);
   const sources = lastResponse?.sources || [];
   const hasActivity = pipeline.some(s => s.status === 'completed' || s.status === 'active');
+  const hasCompletedSteps = pipeline.some(s => s.status === 'completed');
 
   const handleCopyFeedback = (msg: string) => {
     // Ideally we would show a snackbar here, but for now we trust the copy action
@@ -109,17 +110,31 @@ export function WorkflowPanel({ pipeline, toolCalls, lastResponse, isProcessing,
                 )}
               </Box>
 
-              <Stack spacing={0}>
-                {pipeline.map((step, index) => (
-                  <PipelineStep
-                    key={step.id}
-                    step={step}
-                    isLast={index === pipeline.length - 1}
-                    queryText={lastQuery}
-                    details={step.details}
-                  />
-                ))}
-              </Stack>
+              {isProcessing && !hasCompletedSteps ? (
+                <Stack spacing={2}>
+                  {[1, 2, 3, 4, 5].map(i => (
+                    <Box key={i} sx={{ display: 'flex', gap: 1.5, alignItems: 'center' }}>
+                      <Skeleton variant="rounded" width={32} height={32} sx={{ borderRadius: '8px', flexShrink: 0 }} />
+                      <Box sx={{ flex: 1 }}>
+                        <Skeleton variant="text" width="60%" />
+                        <Skeleton variant="text" width="40%" />
+                      </Box>
+                    </Box>
+                  ))}
+                </Stack>
+              ) : (
+                <Stack spacing={0}>
+                  {pipeline.map((step, index) => (
+                    <PipelineStep
+                      key={step.id}
+                      step={step}
+                      isLast={index === pipeline.length - 1}
+                      queryText={lastQuery}
+                      details={step.details}
+                    />
+                  ))}
+                </Stack>
+              )}
 
               {/* Tool calls */}
               <AnimatePresence>

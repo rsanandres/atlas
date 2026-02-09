@@ -59,7 +59,7 @@ This system demonstrates **cost-conscious engineering** with production scalabil
 | **Vector DB** | PostgreSQL + pgvector | Vector similarity search | 5432 |
 | **Session Store** | DynamoDB Local | Conversation management | 8001 |
 | **Queue** | SQLite | Persistent retry queue | - |
-| **LLM** | Ollama + Llama 3.1:8b | Agent reasoning | 11434 |
+| **LLM** | Ollama + qwen2.5:32b | Agent reasoning | 11434 |
 | **Frontend** | Next.js | Web interface | 3000 |
 
 **Key Features:**
@@ -159,9 +159,21 @@ graph LR
 - **Embeddings**: 
   - Local: mxbai-embed-large (1024 dimensions)
   - AWS: Amazon Titan Embeddings
-- **LLM**: 
-  - Local: Llama 3.1:8b via Ollama
-  - AWS: Claude (Sonnet/Haiku) via Bedrock
+- **LLM**:
+  - Local: qwen2.5:32b via Ollama (recommended for 24GB VRAM)
+  - AWS: Claude 3.5 (Sonnet/Haiku) via Bedrock
+  - Dual-provider support: `LLM_PROVIDER=ollama|bedrock`
+
+**Model Selection Guide (24GB VRAM / RTX 4090):**
+
+| Model | VRAM | Notes |
+|-------|------|-------|
+| `qwen2.5:32b` | ~20GB | **Recommended** - Best instruction following for complex medical prompts |
+| `mixtral:8x7b` | ~26GB | Good MoE alternative |
+| `llama3.1:8b` | ~5GB | Too small - hallucinates from prompt examples |
+| `llama3.1:70b` | ~40GB | Requires CPU offload on 4090, slow |
+
+> **Key insight:** 8B-parameter models cannot distinguish few-shot examples from real patient data. Use 32B+ for medical agents to prevent example data hallucination.
 - **Reranking**: sentence-transformers/all-MiniLM-L6-v2 cross-encoder
 
 ---
@@ -949,8 +961,8 @@ async def bm25_search(
 async def hybrid_search(
     query: str,
     k: int = 10,
-    bm25_weight: float = 0.3,      # 30% keyword importance
-    semantic_weight: float = 0.7,   # 70% semantic importance
+    bm25_weight: float = 0.5,      # 50% keyword importance
+    semantic_weight: float = 0.5,   # 50% semantic importance
 ) -> List[Document]:
     # Run both searches in parallel
     bm25_task = asyncio.create_task(
@@ -1262,6 +1274,33 @@ Encryption: At rest + in transit
 
 ---
 
+### Auto Resource Type Detection
+
+**Implementation**: [api/agent/tools/retrieval.py](file:///Users/raph/Documents/hc_ai/api/agent/tools/retrieval.py)
+
+The retrieval layer automatically detects FHIR resource types from query keywords, filtering results before they reach the LLM:
+
+```python
+def detect_resource_type_from_query(query: str) -> Optional[str]:
+    keyword_map = {
+        "Condition": ["condition", "diagnosis", "disease", "problem", "illness", "disorder"],
+        "Observation": ["lab", "test", "vital", "blood pressure", "glucose", "cholesterol"],
+        "MedicationRequest": ["medication", "drug", "prescription", "rx"],
+        "Procedure": ["surgery", "surgical", "operation", "intervention"],
+        "Immunization": ["vaccine", "vaccination", "immunized"],
+        "Encounter": ["visit", "appointment", "admission", "hospitalization"],
+        "DiagnosticReport": ["imaging", "radiology", "xray", "mri", "ct scan"],
+    }
+    # Uses regex word boundaries to avoid partial matches
+```
+
+**Benefits**:
+- Applied automatically at the retrieval layer - the LLM doesn't need to know about resource types
+- Prevents irrelevant resource types from burying relevant results (e.g., Condition resources getting buried by 34 Observation chunks)
+- Works with both `search_clinical_notes` and `retrieve_patient_data` tools
+
+---
+
 ### Key Takeaways
 
 This retrieval system demonstrates:
@@ -1269,6 +1308,7 @@ This retrieval system demonstrates:
 ✅ **Multiple Strategy Support**: Semantic, keyword, hybrid, and patient-specific retrieval
 ✅ **Production Optimization**: Caching, connection pooling, batch operations
 ✅ **Reranking**: Cross-encoder for improved precision
+✅ **Auto Resource Type Detection**: Query-driven FHIR resource filtering at retrieval layer
 ✅ **AWS-Ready**: Clear migration path to RDS with HA and managed services
 ✅ **Performance**: Sub-100ms latency with 90%+ cache hit rate
 
@@ -1295,52 +1335,136 @@ The agent system is the brain of hc_ai, orchestrating retrieval, medical knowled
 
 ### LLM Providers
 
-**Local Development**:
+The system supports dual LLM providers via the `LLM_PROVIDER` environment variable:
+
+**Local Development (Ollama)**:
 ```python
-# Ollama LLM
+# LLM_PROVIDER=ollama (default)
 llm = ChatOllama(
-    model="llama3.1:8b",
+    model="qwen2.5:32b",  # Recommended for 24GB VRAM
     base_url="http://localhost:11434",
+    temperature=0.1,
+    num_ctx=4096,
     timeout=60
 )
 ```
 
-**AWS Production** (planned):
+**AWS Production (Bedrock)**:
 ```python
-# Bedrock Claude
+# LLM_PROVIDER=bedrock
+# LLM_MODEL=sonnet or haiku
 llm = ChatBedrock(
-    model_id="anthropic.claude-3-sonnet-20240229-v1:0",
-    region_name="us-east-2"
+    model_id="anthropic.claude-3-5-sonnet-20241022-v2:0",  # or haiku
+    model_kwargs={"temperature": 0.1, "max_tokens": 2048}
 )
-# Or Haiku for faster/cheaper responses
 ```
 
-### Agent Tools Ecosystem
+### Query Classification Node
 
-**Retrieval Tools** ([api/agent/tools/retrieval.py](file:///Users/raph/Documents/hc_ai/api/agent/tools/retrieval.py)):
-- `semantic_search`: Vector similarity search
-- `hybrid_search`: Combined BM25 + semantic
-- `patient_timeline`: Chronological patient data
+Before reaching the agent, queries are classified to determine routing:
+
+```python
+class QueryClassifier:
+    # Classifies queries as: "conversational" | "medical" | "mixed" | "unclear"
+```
+
+- **Conversational** queries (greetings, small talk) → routed to a lightweight conversational responder (LLM only, no tools)
+- **Medical / Mixed / Unclear** queries → routed to the full researcher agent with tool access
+
+This prevents unnecessary tool calls for simple conversational interactions.
+
+---
+
+### Graph Type Configuration
+
+The agent graph supports two modes via `AGENT_GRAPH_TYPE` environment variable:
+
+| Mode | Flow | Max Iterations | Use Case |
+|------|------|----------------|----------|
+| **`simple`** (default) | Researcher → Responder | 1 | Faster, more predictable |
+| **`complex`** | Researcher → Validator → Responder | 15 | Iterative refinement with validation loops |
+
+- **Simple mode**: Single pass through researcher and response synthesis. No validation node.
+- **Complex mode**: Adds a Validator node that checks researcher output and can request revision. Can iterate up to `AGENT_MAX_ITERATIONS` (default 15) times.
+
+---
+
+### Patient Context Auto-Injection
+
+**Implementation**: [api/agent/tools/context.py](file:///Users/raph/Documents/hc_ai/api/agent/tools/context.py)
+
+Patient context is managed automatically so the LLM never needs to remember or pass patient IDs:
+
+```python
+# Thread-safe context using Python's contextvars
+_current_patient_id: ContextVar[Optional[str]] = ContextVar('current_patient_id', default=None)
+
+def set_patient_context(patient_id: Optional[str]) -> None: ...
+def get_patient_context() -> Optional[str]: ...
+def clear_patient_context() -> None: ...
+```
+
+**Flow**:
+1. Frontend sends `patient_id` in the API request
+2. Backend stores it in `AgentState`
+3. `set_patient_context()` is called in the researcher node before tools execute
+4. All tools call `get_patient_context()` to auto-inject the patient_id
+5. If the LLM hallucinates a different patient_id, the context override prevents it
+
+---
+
+### Death Loop Prevention
+
+The agent tracks search behavior to prevent infinite loops:
+
+- **`search_attempts`**: List of `{query, patient_id, results_count, iteration}` - tracks every search made
+- **`empty_search_count`**: Counter of consecutive searches returning 0 results
+- When `empty_search_count > 0`: Injects failed query trajectory into researcher context with instructions to try different search terms
+- When `iteration_count >= 12`: Forces completion with a "step limit" message
+
+---
+
+### Agent Tools Ecosystem (24 Tools)
+
+**Retrieval Tools** ([api/agent/tools/retrieval.py](file:///Users/raph/Documents/hc_ai/api/agent/tools/retrieval.py), [api/agent/tools/__init__.py](file:///Users/raph/Documents/hc_ai/api/agent/tools/__init__.py)):
+- `search_patient_records`: Reranker-based search with optional full FHIR JSON context
+- `retrieve_patient_data`: Direct PostgreSQL hybrid search + reranking
+- `search_clinical_notes`: Clinical notes retrieval with auto resource type detection
+- `get_patient_timeline`: Chronological patient data (async, direct DB query)
 
 **Medical Terminology** ([api/agent/tools/terminology_tools.py](file:///Users/raph/Documents/hc_ai/api/agent/tools/terminology_tools.py)):
-- `loinc_lookup`: LOINC code descriptions
-- `snomed_lookup`: SNOMED CT terminology
-- `icd10_lookup`: ICD-10 diagnosis codes
+- `search_icd10`: Search ICD-10 codes via NIH Clinical Tables
+- `validate_icd10_code`: Validate a specific ICD-10 code
+- `lookup_rxnorm`: Drug name lookup via RxNorm REST API
+- `lookup_loinc`: LOINC code lookup via Regenstrief API
 
 **FDA Tools** ([api/agent/tools/fda_tools.py](file:///Users/raph/Documents/hc_ai/api/agent/tools/fda_tools.py)):
-- `drug_interactions`: Check drug-drug interactions
-- `adverse_events`: FDA adverse event reports
-- `drug_label_lookup`: Official drug labeling
+- `search_fda_drugs`: Drug label search via openFDA
+- `get_drug_recalls`: FDA enforcement/recall data
+- `get_drug_shortages`: Drug shortage information
+- `get_faers_events`: FDA Adverse Event Reporting System data
 
 **Research Tools** ([api/agent/tools/research_tools.py](file:///Users/raph/Documents/hc_ai/api/agent/tools/research_tools.py)):
-- `pubmed_search`: Search medical literature via NCBI API
+- `search_pubmed`: Medical literature search via NCBI eUtils
+- `search_clinical_trials`: Clinical trial search via ClinicalTrials.gov
+- `get_who_stats`: WHO Global Health Observatory statistics
 
 **Calculators** ([api/agent/tools/calculators.py](file:///Users/raph/Documents/hc_ai/api/agent/tools/calculators.py)):
-- `calculate_bmi`: Body Mass Index
-- `calculate_egfr`: Estimated glomerular filtration rate
+- `calculate_gfr`: Glomerular filtration rate (with CKD staging)
+- `calculate_bmi`: Body Mass Index (with category)
+- `calculate_bsa`: Body Surface Area (Mosteller formula)
+- `calculate_creatinine_clearance`: Creatinine clearance (Cockcroft-Gault)
+- `calculate`: Safe arithmetic expression evaluator
 
 **Validators** ([api/agent/tools/dosage_validator.py](file:///Users/raph/Documents/hc_ai/api/agent/tools/dosage_validator.py)):
-- `validate_dosage`: Check medication dosage safety
+- `validate_dosage`: Medication dosage safety check
+
+**Medication Tools** ([api/agent/tools/__init__.py](file:///Users/raph/Documents/hc_ai/api/agent/tools/__init__.py)):
+- `cross_reference_meds`: Check medication list for interaction warnings
+
+**Utility Tools**:
+- `get_session_context`: Retrieve session summary and recent turns
+- `get_current_date`: Current date in ISO format
 
 ### Guardrails & Safety
 
@@ -1390,12 +1514,17 @@ async def query_agent_stream(payload: AgentQueryRequest):
     )
 ```
 
-**Event Types**:
-- `on_llm_start`: LLM invocation begins
-- `on_llm_stream`: Token-by-token output
-- `on_tool_start`: Tool execution begins
-- `on_tool_end`: Tool results available
-- `on_chain_end`: Final response complete
+**SSE Event Types**:
+- `start`: Agent starting
+- `status`: Status message (e.g., "Researcher investigating...")
+- `tool`: Tool being called (includes tool name and input)
+- `tool_result`: Tool output returned
+- `researcher_output`: Researcher node output (includes iteration, search_attempts, empty_search_count)
+- `validator_output`: Validator node output (includes validation result)
+- `response_output`: Final response being synthesized
+- `complete`: Final event with response, tool_calls, sources, iteration_count
+- `max_iterations`: Hit recursion limit
+- `error`: Error occurred
 
 ### Performance
 
@@ -1407,7 +1536,7 @@ async def query_agent_stream(payload: AgentQueryRequest):
 
 ## 5. Session Management
 
-**Implementation**: [api/session/store_dynamodb.py](file:///Users/raph/Documents/hc_ai/api/session/store_dynamodb.py)
+**Implementation**: [api/session/store_dynamodb.py](file:///Users/raph/Documents/hc_ai/api/session/store_dynamodb.py), [api/session/router.py](file:///Users/raph/Documents/hc_ai/api/session/router.py)
 
 **DynamoDB Tables**:
 
@@ -1416,11 +1545,33 @@ async def query_agent_stream(payload: AgentQueryRequest):
 | `hcai_session_turns` | Individual messages | PK: session_id, SK: turn_ts |
 | `hcai_session_summary` | Session metadata | PK: session_id, GSI: user_id |
 
-**Features**:
-- TTL-based auto-expiration (7 days)
-- Last N turns retrieval (configurable, default 10)
-- User-level session management via GSI
-- Patient context association
+### API Endpoints
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/session/create` | POST | Create new session with UUID |
+| `/session/turn` | POST | Append user/assistant message to session |
+| `/session/summary` | POST | Update session metadata (name, description) |
+| `/session/list` | GET | List all sessions for a user_id |
+| `/session/count` | GET | Get session count + max allowed |
+| `/session/{session_id}` | GET | Get recent turns for session |
+| `/session/{session_id}` | DELETE | Clear all turns in session |
+| `/session/{session_id}/metadata` | GET | Get session metadata |
+| `/session/{session_id}/metadata` | PUT | Update session metadata |
+
+### Features
+
+- **TTL-based auto-expiration**: 7-day TTL on DynamoDB records (`DDB_TTL_DAYS=7`)
+- **Last N turns retrieval**: Configurable via `SESSION_RECENT_LIMIT` (default 10)
+- **Session limits**: Max 20 sessions per user (`MAX_SESSIONS_PER_USER`)
+- **Session auto-naming**: First 50 characters of the first user message become the session name
+- **Guest user IDs**: Generated as `uuid.uuid4()` when creating sessions without authentication
+- **User-level session management**: Global Secondary Index on user_id
+- **Patient context association**: Patient selection persisted with session
+
+### Session History Injection
+
+Session history can be injected into the agent context to maintain conversation continuity. However, this is **disabled by default** (`ENABLE_SESSION_HISTORY=false`) to prevent cross-session pollution - old responses containing hallucinated data from previous conversations can contaminate new queries.
 
 **Local vs AWS**:
 - Local: DynamoDB Local on port 8001
@@ -1432,12 +1583,52 @@ async def query_agent_stream(payload: AgentQueryRequest):
 
 **Unified FastAPI Application**: [api/main.py](file:///Users/raph/Documents/hc_ai/api/main.py)
 
-**Router Structure**:
-- `/agent`: Agent execution and streaming
-- `/embeddings`: FHIR ingestion
-- `/retrieval`: Search and reranking
-- `/session`: Conversation management
-- `/db`: Database monitoring and stats
+### Router Structure
+
+| Router | Prefix | Purpose |
+|--------|--------|---------|
+| [auth/router.py](file:///Users/raph/Documents/hc_ai/api/auth/router.py) | `/auth` | JWT authentication, email verification, token rotation (planned) |
+| [agent/router.py](file:///Users/raph/Documents/hc_ai/api/agent/router.py) | `/agent` | Agent execution, streaming, prompt reload |
+| [embeddings/router.py](file:///Users/raph/Documents/hc_ai/api/embeddings/router.py) | `/embeddings` | FHIR resource ingestion |
+| [retrieval/router.py](file:///Users/raph/Documents/hc_ai/api/retrieval/router.py) | `/retrieval` | Search, reranking, cache stats |
+| [session/router.py](file:///Users/raph/Documents/hc_ai/api/session/router.py) | `/session` | Conversation management |
+| [database/router.py](file:///Users/raph/Documents/hc_ai/api/database/router.py) | `/db` | Database stats, queue monitoring, patient list |
+
+### Authentication System (planned)
+
+> **Status**: Backend endpoints are implemented and the router is mounted, but authentication is **not currently enforced** — no API routes require auth, and the frontend does not use login/registration. Email verification logs to console in dev mode (requires `SENDGRID_API_KEY` for real emails).
+
+**Endpoints**:
+- `POST /auth/register`: Create new user with email verification token
+- `GET /auth/verify`: Verify email with token
+- `POST /auth/login`: OAuth2 login, returns access + refresh tokens
+- `POST /auth/refresh`: Refresh access token using HttpOnly cookie
+- `POST /auth/logout`: Revoke refresh token and delete cookie
+- `GET /auth/me`: Get current authenticated user info
+
+**Mechanism**: JWT access tokens + HttpOnly refresh token cookies, bcrypt password hashing, email verification required before login, token rotation on refresh.
+
+### Notable Endpoints
+
+- `POST /agent/reload-prompts`: Reload `prompts.yaml` without server restart (clears cached agents)
+- `GET /db/patients`: List all unique patients in vector store with chunk counts and resource types
+- `GET /health`: Overall API health check
+
+### Dual-Provider LLM Support (planned)
+
+> **Status**: Both Ollama and Bedrock provider code paths are implemented in `config.py`, but only Ollama is used in the current local development setup. Bedrock is scaffolded for the AWS production migration.
+
+The API supports both local (Ollama) and cloud (AWS Bedrock) LLM providers via `LLM_PROVIDER` environment variable:
+
+```bash
+# Local development (current)
+LLM_PROVIDER=ollama
+LLM_MODEL=qwen2.5:32b
+
+# AWS production (planned)
+LLM_PROVIDER=bedrock
+LLM_MODEL=sonnet  # or haiku
+```
 
 **Current Deployment**:
 - Local uvicorn on port 8000
@@ -1452,39 +1643,139 @@ async def query_agent_stream(payload: AgentQueryRequest):
 
 ## 7. Frontend Interface
 
-**Technology**: Next.js + TypeScript + Material-UI
+**Technology Stack**: Next.js 16.1.2 + React 19.2.3 + TypeScript 5 + Material-UI 7.3.7
 
-**Key Features**:
-- Chat interface with streaming SSE responses
-- Patient reference panel with FHIR data
-- Observability metrics display
-- Session management UI
+**Additional Libraries**: Recharts (visualization), Tremor (dashboard), TanStack React Query, Radix UI primitives, Emotion (CSS-in-JS)
 
 **Note**: Frontend was vibe-coded with focus on functionality over architecture. Not the primary technical showcase of this project.
+
+### 3-Panel Layout
+
+The application uses a responsive 3-panel layout:
+
+| Panel | Position | Width | Purpose |
+|-------|----------|-------|---------|
+| **ChatPanel** | Left | 68% | Chat messages, input, patient selector |
+| **WorkflowPanel** | Right top | 32% | Agent processing visualization, tool calls |
+| **ObservabilityPanel** | Right bottom | 32% | Service health, metrics, LangSmith traces (planned) |
+
+### Component Architecture
+
+**Chat Components** (`src/components/chat/`):
+- `ChatPanel`: Main chat container with message list and input
+- `MessageList`: Renders user/assistant messages with markdown
+- `ChatInput`: Text input with send/stop controls
+
+**Workflow Components** (`src/components/workflow/`):
+- `WorkflowPanel`: Real-time agent processing visualization
+- `ReferencePanel`: Patient data reference and prompt display
+- `ThinkingPanel`: Debug mode - shows agent's internal reasoning
+
+**Observability Components** (`src/components/observability/`):
+- `ObservabilityPanel`: Dashboard with service health, cache stats, DB pool metrics
+
+### RAG Pipeline Visualization
+
+The WorkflowPanel visualizes the 6-step RAG pipeline in real-time:
+
+1. **Query Input** → User's question received
+2. **PII Masking** → Sensitive data redacted
+3. **Vector Search** → Hybrid search executed
+4. **Reranking** → Cross-encoder refinement
+5. **LLM ReAct** → Agent reasoning with tools
+6. **Response** → Final answer generated
+
+### Custom Hooks
+
+| Hook | File | Purpose |
+|------|------|---------|
+| `useChat` | `src/hooks/useChat.ts` | Chat state: messages, loading, streaming, send/stop/clear |
+| `useWorkflow` | `src/hooks/useWorkflow.ts` | Pipeline visualization: stages, tool calls, processing state |
+| `useObservability` | `src/hooks/useObservability.ts` | Health/metrics: service health, reranker stats, DB stats |
+| `useSessions` | `src/hooks/useSessions.ts` | Session management: list, create, active session, load/save |
+| `useUser` | `src/hooks/useUser.ts` | Auth: login, register, logout, current user |
+| `useLeadCapture` | `src/hooks/useLeadCapture.ts` | Lead capture modal: triggers after N messages (planned - backend submission not yet implemented) |
+
+### SSE Streaming Architecture
+
+The frontend consumes Server-Sent Events via `streamAgent.ts`:
+
+```typescript
+type StreamEvent = {
+  type: 'start' | 'status' | 'tool' | 'tool_result' |
+        'researcher_output' | 'validator_output' | 'response_output' |
+        'complete' | 'max_iterations' | 'error';
+  // Event-specific data fields
+};
+```
+
+**Stream Callbacks**:
+- `onStatus(message)` - Status updates
+- `onTool(toolName, input)` - Tool invocation
+- `onToolResult(toolName, output)` - Tool completion
+- `onResearcherOutput(output, iteration)` - Researcher node output
+- `onValidatorOutput(output, result, iteration)` - Validator output
+- `onResponseOutput(output, iteration)` - Response synthesis
+- `onComplete(data)` - Final response with sources
+- `onError(error)` - Error handling
+
+### Patient Personas
+
+The application includes 8 featured patient personas with pre-loaded FHIR data for demonstration:
+- Patients are selected via a dropdown in the ChatPanel
+- Selection persists across messages within a session
+- Patient ID is auto-injected into all agent tool calls
+
+### Additional Features
+
+- **Debug Mode**: ThinkingPanel reveals agent's internal reasoning, tool call details, and search trajectories
+- **Observability Dashboard**: Pie charts for cache hit/miss rates, bar charts for DB connection pool status
+- **Lead Capture Modal** (planned): UI triggers after N messages, but backend submission is not yet implemented
+- **Session Management UI**: Create, list, switch between, and delete conversation sessions
 
 ---
 
 ## 8. Metrics & Evaluation
 
-**RAGAS Framework**: [POC_RAGAS/](file:///Users/raph/Documents/hc_ai/POC_RAGAS)
+**RAGAS Framework** (POC): [POC_RAGAS/](file:///Users/raph/Documents/hc_ai/POC_RAGAS)
+
+> **Status**: Standalone evaluation framework, not integrated into the main application. Used for offline agent quality testing.
+
 - Faithfulness evaluation
 - Relevancy scoring
 - Hallucination detection
 - Custom healthcare metrics
 
-**Observability Metrics Tracked**:
+### Observability Dashboard
+
+The frontend provides a real-time observability dashboard (ObservabilityPanel) displaying:
+
+- **Service Health Checks**: Live status for Agent, Reranker, Embeddings, and PostgreSQL services
+- **Cache Performance**: Pie chart showing cache hit/miss ratios for the reranking layer
+- **Database Pool Stats**: Bar chart showing active, idle, and overflow connection counts
+- **LangSmith Traces** (planned): UI placeholder for LangSmith trace links (not yet integrated into main app)
+- **Queue Statistics**: Queued, processed, failed, and retrying chunk counts
+
+### Metrics Tracked
+
 - Query latency (p50, p95, p99)
 - Token usage (input/output tokens)
 - Retrieval performance (candidates retrieved, reranking time)
-- Cache hit rates
-- Database connection pool stats
+- Cache hit rates (90%+ for repeated queries)
+- Database connection pool stats (pool_size, checked_out, overflow)
 - Queue processing stats (queued, processed, failed, retries)
+- Agent iteration counts and search attempt trajectories
 
-**System Health**:
-- `/agent/health`: Agent system status
-- `/retrieval/rerank/health`: Reranker status
-- `/db/stats`: Database connection stats
-- `/health`: Overall API health
+### System Health Endpoints
+
+| Endpoint | Purpose |
+|----------|---------|
+| `GET /health` | Overall API health |
+| `GET /agent/health` | Agent system status |
+| `GET /retrieval/rerank/health` | Reranker model status |
+| `GET /retrieval/rerank/stats` | Cache hit rate, performance metrics |
+| `GET /db/stats` | Database connection pool stats |
+| `GET /db/queue` | Queue processing statistics |
 
 ---
 
@@ -1498,7 +1789,7 @@ async def query_agent_stream(payload: AgentQueryRequest):
 | VPC Transfer | N/A | S3 Gateway Endpoint | Free data transfer within VPC |
 | API | FastAPI + uvicorn | App Runner | Managed containers, auto-scaling |
 | Embeddings | Ollama (mxbai-embed-large) | Bedrock Titan | Managed, pay-per-use, lower latency |
-| LLM | Ollama (Llama 3.1:8b) | Bedrock Claude | Managed, enterprise-grade, Sonnet/Haiku options |
+| LLM | Ollama (qwen2.5:32b) | Bedrock Claude | Managed, enterprise-grade, Sonnet/Haiku options |
 | Vector DB | PostgreSQL + pgvector | RDS PostgreSQL | Multi-AZ, automated backups, managed |
 | Sessions | DynamoDB Local | DynamoDB | On-demand pricing, serverless, auto-scaling |
 | Observability | Local logs | LangSmith (planned) | Agent tracing, debugging, analytics |
@@ -1679,7 +1970,7 @@ This documentation showcases a **production-ready healthcare RAG system** demons
 **Key Technical Achievements**:
 - **8-stage data pipeline** with JSON-aware chunking and metadata extraction
 - **Hybrid retrieval** combining semantic + keyword search with reranking
-- **Multi-agent system** with 10+ healthcare-specific tools
+- **Multi-agent system** with 24 healthcare-specific tools
 - **Sub-100ms query latency** with 90%+ cache hit rate
 - **AWS migration plan** with 46% cost optimization via reserved instances
 

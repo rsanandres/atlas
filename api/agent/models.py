@@ -19,6 +19,7 @@ class AgentDocument(BaseModel):
     doc_id: str
     content_preview: str
     metadata: Dict[str, Any] = Field(default_factory=dict)
+    score: Optional[float] = None
 
 
 class AgentQueryResponse(BaseModel):

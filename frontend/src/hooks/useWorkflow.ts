@@ -20,7 +20,7 @@ const DEFAULT_PIPELINE: PipelineStep[] = [
   {
     id: 'pii_mask',
     name: 'PII Masking',
-    description: 'Scrubbing sensitive data with AWS Comprehend Medical',
+    description: 'Scrubbing sensitive data before processing',
     status: 'pending',
   },
   {
@@ -75,54 +75,50 @@ export function useWorkflow() {
     stepTimings.current = {};
   }, []);
 
-  // Simulate pipeline progress when processing
-  const startProcessing = useCallback(() => {
-    setIsProcessing(true);
-    resetPipeline();
-    processingStartTime.current = Date.now();
+  // Activate a pipeline step based on real SSE events.
+  // Completes the currently active step (with real duration) and activates the new one.
+  const activateStep = useCallback((stepId: string) => {
+    const now = Date.now();
 
-    // Animate through steps with timing
-    const steps = ['query', 'pii_mask', 'vector_search', 'rerank', 'llm_react'];
-    let currentIndex = 0;
+    // First call starts the processing timer
+    if (processingStartTime.current === 0) {
+      processingStartTime.current = now;
+      setIsProcessing(true);
+    }
 
-    const interval = setInterval(() => {
-      if (currentIndex < steps.length) {
-        const stepId = steps[currentIndex];
-        const now = Date.now();
+    // Start timing for the new step
+    if (!stepTimings.current[stepId]) {
+      stepTimings.current[stepId] = { startTime: now };
+    }
 
-        // Mark previous step as completed with timing
-        if (currentIndex > 0) {
-          const prevStepId = steps[currentIndex - 1];
-          stepTimings.current[prevStepId] = {
-            ...stepTimings.current[prevStepId],
-            endTime: now,
-          };
+    setPipeline(prev => {
+      // Find the currently active step to complete it
+      const activeStep = prev.find(s => s.status === 'active');
+
+      // End timing for the currently active step
+      if (activeStep && activeStep.id !== stepId) {
+        const timing = stepTimings.current[activeStep.id];
+        if (timing?.startTime && !timing.endTime) {
+          timing.endTime = now;
         }
-
-        // Start timing for current step
-        stepTimings.current[stepId] = { startTime: now };
-
-        setPipeline(prev => prev.map(step => {
-          if (step.id === stepId) {
-            return { ...step, status: 'active' };
-          }
-          if (steps.indexOf(step.id) < currentIndex) {
-            const timing = stepTimings.current[step.id];
-            const duration = timing?.startTime && timing?.endTime
-              ? timing.endTime - timing.startTime
-              : undefined;
-            return { ...step, status: 'completed', duration };
-          }
-          return step;
-        }));
-        currentIndex++;
-      } else {
-        clearInterval(interval);
       }
-    }, 400);
 
-    return () => clearInterval(interval);
-  }, [resetPipeline]);
+      return prev.map(step => {
+        if (step.id === stepId) {
+          return { ...step, status: 'active' };
+        }
+        // Complete the previously active step with real duration
+        if (activeStep && step.id === activeStep.id && step.id !== stepId) {
+          const timing = stepTimings.current[step.id];
+          const duration = timing?.startTime && timing?.endTime
+            ? timing.endTime - timing.startTime
+            : undefined;
+          return { ...step, status: 'completed', duration };
+        }
+        return step;
+      });
+    });
+  }, []);
 
   // Update pipeline based on response
   const updateFromResponse = useCallback((response: Message | null) => {
@@ -158,50 +154,59 @@ export function useWorkflow() {
     // Always mark llm_react as used (LLM always runs)
     usedSteps.add('llm_react');
 
-    // Calculate details for each step based on available data
+    // Calculate details for each step — use real data where available, null for unavailable
+    const iterationCount = response.iterationCount;
     const stepDetails: Record<string, Record<string, unknown>> = {
       query: {
         // Query details are passed via queryText prop
       },
       pii_mask: {
-        // PII masking details - would need backend to emit these
-        entitiesFound: 0,
-        namesMasked: 0,
-        idsMasked: 0,
-        datesMasked: 0,
-        processingTime: 0,
+        // PII masking details — not available from backend yet
+        entitiesFound: null,
+        namesMasked: null,
+        idsMasked: null,
+        datesMasked: null,
+        processingTime: null,
       },
       vector_search: {
-        docsRetrieved: sources.length,
-        searchTime: 0, // Would need backend timing
+        docsRetrieved: sources.length, // Real
+        searchTime: null, // Not available from backend
       },
       rerank: {
-        candidatesIn: sources.length > 0 ? Math.min(sources.length * 2, 20) : 0,
-        resultsOut: sources.length,
-        topScore: sources.length > 0 ? 0.85 : 0, // Would need actual scores
-        rerankTime: 0,
+        candidatesIn: null, // Not available from backend
+        resultsOut: sources.length, // Real
+        topScore: null, // Not available from backend
+        rerankTime: null,
       },
       llm_react: {
-        inputTokens: 0, // Would need backend to emit
-        outputTokens: 0,
-        reasoningSteps: toolCalls.length > 0 ? toolCalls.length : 1,
-        toolsInvoked: toolCalls.length,
-        latency: Math.round(totalLatency * 0.7), // Estimate LLM takes ~70% of time
+        inputTokens: null, // Not available from backend
+        outputTokens: null,
+        reasoningSteps: iterationCount ?? (toolCalls.length > 0 ? toolCalls.length : 1), // Real if available
+        toolsInvoked: toolCalls.length, // Real
+        latency: null,
       },
       response: {
-        responseLength: response.content?.length || 0,
-        sourcesCited: sources.length,
-        piiRemasked: 0,
-        totalLatency: totalLatency,
+        responseLength: response.content?.length || 0, // Real
+        sourcesCited: sources.length, // Real
+        piiRemasked: null,
+        totalLatency: totalLatency, // Real
       },
     };
 
-    setPipeline(prev => prev.map(step => ({
-      ...step,
-      status: usedSteps.has(step.id) ? 'completed' : 'skipped',
-      details: stepDetails[step.id],
-      duration: step.id === 'response' ? totalLatency : undefined,
-    })));
+    setPipeline(prev => prev.map(step => {
+      const timing = stepTimings.current[step.id];
+      const realDuration = timing?.startTime && timing?.endTime
+        ? timing.endTime - timing.startTime
+        : undefined;
+
+      return {
+        ...step,
+        status: usedSteps.has(step.id) ? 'completed' : 'skipped',
+        details: stepDetails[step.id],
+        // Preserve real durations from activateStep; use totalLatency for response
+        duration: step.id === 'response' ? totalLatency : realDuration,
+      };
+    }));
   }, []);
 
   return {
@@ -209,7 +214,7 @@ export function useWorkflow() {
     lastToolCalls,
     isProcessing,
     resetPipeline,
-    startProcessing,
+    activateStep,
     updateFromResponse,
   };
 }

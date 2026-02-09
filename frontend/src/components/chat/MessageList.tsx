@@ -9,9 +9,11 @@ import { MessageBubble } from './MessageBubble';
 interface MessageListProps {
   messages: Message[];
   debugMode?: boolean;
+  onFeedback?: (messageId: string, feedback: 'positive' | 'negative') => void;
+  onRegenerate?: (messageId: string) => void;
 }
 
-export function MessageList({ messages, debugMode = false }: MessageListProps) {
+export function MessageList({ messages, debugMode = false, onFeedback, onRegenerate }: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll to bottom on new messages
@@ -73,10 +75,15 @@ export function MessageList({ messages, debugMode = false }: MessageListProps) {
       }}
     >
       {messages.map((message) => (
-        <MessageBubble key={message.id} message={message} debugMode={debugMode} />
+        <MessageBubble
+          key={message.id}
+          message={message}
+          debugMode={debugMode}
+          onFeedback={onFeedback}
+          onRegenerate={onRegenerate}
+        />
       ))}
       <div ref={bottomRef} />
     </Box>
   );
 }
-

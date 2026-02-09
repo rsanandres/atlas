@@ -6,6 +6,7 @@ import { Toaster } from 'sonner';
 import { useState, useEffect } from 'react';
 import { darkTheme } from '@/theme/theme';
 import { DebugModeProvider } from '@/hooks/useDebugMode';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { AppRouterCacheProvider } from '@mui/material-nextjs/v15-appRouter';
 
 interface ProvidersProps {
@@ -33,20 +34,22 @@ export function Providers({ children }: ProvidersProps) {
         <ThemeProvider theme={darkTheme}>
           <CssBaseline />
           <DebugModeProvider>
-            {mounted && (
-              <Toaster
-                position="bottom-right"
-                theme="dark"
-                toastOptions={{
-                  style: {
-                    background: '#1a1a24',
-                    border: '1px solid rgba(255,255,255,0.08)',
-                    color: '#f4f4f5',
-                  },
-                }}
-              />
-            )}
-            {children}
+            <ErrorBoundary>
+              {mounted && (
+                <Toaster
+                  position="bottom-right"
+                  theme="dark"
+                  toastOptions={{
+                    style: {
+                      background: '#1a1a24',
+                      border: '1px solid rgba(255,255,255,0.08)',
+                      color: '#f4f4f5',
+                    },
+                  }}
+                />
+              )}
+              {children}
+            </ErrorBoundary>
           </DebugModeProvider>
         </ThemeProvider>
       </QueryClientProvider>

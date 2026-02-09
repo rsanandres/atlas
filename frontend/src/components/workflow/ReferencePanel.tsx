@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Box, Typography, Card, CardContent, Chip, IconButton, Button, Stack, Tooltip, Dialog, DialogTitle, DialogContent, DialogActions, Tabs, Tab, List, ListItem, ListItemText, Divider, CardActionArea, Grid, TextField, CircularProgress } from '@mui/material';
-import { Copy, User, Activity, AlertCircle, MessageSquare, FileText, FileJson, X, Pill, Stethoscope, Calendar, Thermometer, Syringe, ClipboardList, Microscope, Database, RefreshCw } from 'lucide-react';
-import { alpha } from '@mui/material/styles';
-import dynamic from 'next/dynamic';
+import { Box, Divider } from '@mui/material';
 
-// Import Persona Data (fallback for detailed view)
+// Import sub-components
+import { PatientSelector } from './PatientSelector';
+import { PatientDataModal } from './PatientDataModal';
+import { RecommendedPrompts } from './RecommendedPrompts';
+
+// Import data
 import larsonJson from '../../data/personas/larson.json';
 import ziemeJson from '../../data/personas/zieme.json';
 import christiansenJson from '../../data/personas/christiansen.json';
@@ -14,823 +16,151 @@ import adamJson from '../../data/personas/abbott_adam.json';
 import alvaJson from '../../data/personas/abbott_alva.json';
 import amayaJson from '../../data/personas/abbott_amaya.json';
 
-// Import Utils
-import { getConditions, getMedications, getAllergies, getEncounters, getObservations, getImmunizations, getProcedures, getCarePlans } from '../../utils/fhirUtils';
 import { listPatients, PatientSummary } from '../../services/agentApi';
-
-const JsonView = dynamic(() => import('@microlink/react-json-view'), { ssr: false });
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type FhirBundle = any;
 
 // Local persona data with full FHIR bundles for detailed view
-// Maps patient IDs to their local JSON data
 const LOCAL_PERSONA_DATA: Record<string, { name: string; age: number; conditions: string[]; description: string; data: FhirBundle }> = {
-    "5e81d5b2-af01-4367-9b2e-0cdf479094a4": {
-        name: "Danial Larson",
-        age: 65,
-        conditions: ["Recurrent rectal polyp", "Hypertension", "Chronic kidney disease"],
-        description: "Older male with multiple chronic conditions.",
-        data: larsonJson
-    },
-    "d8d9460b-4cb6-47f9-a94f-9e58390204b2": {
-        name: "Ron Zieme",
-        age: 86,
-        conditions: ["Hypertension", "Fibromyalgia", "Osteoporosis", "Coronary Heart Disease"],
-        description: "Elderly female with complex history including MI and heart disease.",
-        data: ziemeJson
-    },
-    "0beb6802-3353-4144-8ae3-97176bce86c3": {
-        name: "Doug Christiansen",
-        age: 24,
-        conditions: ["Chronic sinusitis"],
-        description: "Young adult with chronic sinus issues.",
-        data: christiansenJson
-    },
-    "6a4168a1-2cfd-4269-8139-8a4a663adfe7": {
-        name: "Jamie Hegmann",
-        age: 71,
-        conditions: ["Coronary Heart Disease", "Myocardial Infarction History"],
-        description: "Female patient with significant cardiac history.",
-        data: hegmannJson
-    },
-    "7f7ad77a-5dd5-4df0-ba36-f4f1e4b6d368": {
-        name: "Carlo Herzog",
-        age: 23,
-        conditions: ["Childhood asthma", "Allergic rhinitis", "Nut allergy"],
-        description: "Young male with multiple allergies and asthma.",
-        data: herzogJson
-    },
-    "53fcaff1-eb44-4257-819b-50b47f311edf": {
-        name: "Adam Abbott",
-        age: 31,
-        conditions: ["Normal Pregnancy"],
-        description: "Young female with active pregnancy.",
-        data: adamJson
-    },
-    "f883318e-9a81-4f77-9cff-5318a00b777f": {
-        name: "Alva Abbott",
-        age: 67,
-        conditions: ["Prediabetes"],
-        description: "Older male managing prediabetes.",
-        data: alvaJson
-    },
-    "4b7098a8-13b8-4916-a379-6ae2c8a70a8a": {
-        name: "Amaya Abbott",
-        age: 69,
-        conditions: ["Hypertension", "Chronic sinusitis", "Concussion History"],
-        description: "Older male with hypertension and history of head injury.",
-        data: amayaJson
-    }
+  "5e81d5b2-af01-4367-9b2e-0cdf479094a4": { name: "Danial Larson", age: 65, conditions: ["Recurrent rectal polyp", "Hypertension", "Chronic kidney disease"], description: "Older male with multiple chronic conditions.", data: larsonJson },
+  "d8d9460b-4cb6-47f9-a94f-9e58390204b2": { name: "Ron Zieme", age: 86, conditions: ["Hypertension", "Fibromyalgia", "Osteoporosis", "Coronary Heart Disease"], description: "Elderly female with complex history including MI and heart disease.", data: ziemeJson },
+  "0beb6802-3353-4144-8ae3-97176bce86c3": { name: "Doug Christiansen", age: 24, conditions: ["Chronic sinusitis"], description: "Young adult with chronic sinus issues.", data: christiansenJson },
+  "6a4168a1-2cfd-4269-8139-8a4a663adfe7": { name: "Jamie Hegmann", age: 71, conditions: ["Coronary Heart Disease", "Myocardial Infarction History"], description: "Female patient with significant cardiac history.", data: hegmannJson },
+  "7f7ad77a-5dd5-4df0-ba36-f4f1e4b6d368": { name: "Carlo Herzog", age: 23, conditions: ["Childhood asthma", "Allergic rhinitis", "Nut allergy"], description: "Young male with multiple allergies and asthma.", data: herzogJson },
+  "53fcaff1-eb44-4257-819b-50b47f311edf": { name: "Adam Abbott", age: 31, conditions: ["Normal Pregnancy"], description: "Young female with active pregnancy.", data: adamJson },
+  "f883318e-9a81-4f77-9cff-5318a00b777f": { name: "Alva Abbott", age: 67, conditions: ["Prediabetes"], description: "Older male managing prediabetes.", data: alvaJson },
+  "4b7098a8-13b8-4916-a379-6ae2c8a70a8a": { name: "Amaya Abbott", age: 69, conditions: ["Hypertension", "Chronic sinusitis", "Concussion History"], description: "Older male with hypertension and history of head injury.", data: amayaJson },
 };
 
-// Convert to array format for backward compatibility
-const PERSONAS = Object.entries(LOCAL_PERSONA_DATA).map(([id, data]) => ({
-    id,
-    ...data
-}));
+const PERSONAS = Object.entries(LOCAL_PERSONA_DATA).map(([id, data]) => ({ id, ...data }));
 
 const RECOMMENDED_PROMPTS = [
-    "What are the patient's active conditions?",
-    "Summarize the patient's medication history.",
-    "Show me the timeline of recent encounters.",
-    "Does the patient have any known allergies?"
+  "What are the patient's active conditions?",
+  "Summarize the patient's medication history.",
+  "Show me the timeline of recent encounters.",
+  "Does the patient have any known allergies?",
 ];
 
 // Patient type for selection
 interface SelectedPatient {
-    id: string;
-    name: string;
+  id: string;
+  name: string;
 }
 
 interface ReferencePanelProps {
-    onCopy: (text: string) => void;
-    onPromptSelect?: (text: string) => void;
-    selectedPatient?: SelectedPatient | null;
-    onPatientSelect?: (patient: SelectedPatient | null) => void;
+  onCopy: (text: string) => void;
+  onPromptSelect?: (text: string) => void;
+  selectedPatient?: SelectedPatient | null;
+  onPatientSelect?: (patient: SelectedPatient | null) => void;
 }
 
 export function ReferencePanel({ onCopy, onPromptSelect, selectedPatient, onPatientSelect }: ReferencePanelProps) {
-    const [modalOpen, setModalOpen] = useState(false);
-    const [modalTab, setModalTab] = useState(0);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const [selectedJson, setSelectedJson] = useState<any>(null);
-    const [sortOrder, setSortOrder] = useState<'default' | 'newest' | 'oldest'>('default');
+  // Modal state
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [selectedJson, setSelectedJson] = useState<any>(null);
 
-    // Live patient data from API
-    const [livePatients, setLivePatients] = useState<PatientSummary[]>([]);
-    const [isLoadingPatients, setIsLoadingPatients] = useState(false);
-    const [patientsError, setPatientsError] = useState<string | null>(null);
+  // Live patient data from API
+  const [livePatients, setLivePatients] = useState<PatientSummary[]>([]);
+  const [isLoadingPatients, setIsLoadingPatients] = useState(false);
+  const [patientsError, setPatientsError] = useState<string | null>(null);
 
-    // Fetch live patients from database
-    const fetchPatients = async () => {
-        setIsLoadingPatients(true);
-        setPatientsError(null);
-        try {
-            const patients = await listPatients();
-            setLivePatients(patients);
-        } catch (err) {
-            console.error('Failed to fetch patients:', err);
-            setPatientsError('Failed to load patients from database');
-        } finally {
-            setIsLoadingPatients(false);
-        }
+  const fetchPatients = async () => {
+    setIsLoadingPatients(true);
+    setPatientsError(null);
+    try {
+      const patients = await listPatients();
+      setLivePatients(patients);
+    } catch (err) {
+      console.error('Failed to fetch patients:', err);
+      setPatientsError('Failed to load patients from database');
+    } finally {
+      setIsLoadingPatients(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchPatients();
+  }, []);
+
+  // Featured patients (those with full local FHIR data)
+  const featuredPatients = PERSONAS.map(p => {
+    const liveData = livePatients.find(lp => lp.id === p.id);
+    return {
+      ...p,
+      isLive: !!liveData,
+      isFeatured: true,
+      chunk_count: liveData?.chunk_count || 0,
+      resource_types: liveData?.resource_types || [] as string[],
     };
+  });
 
-    useEffect(() => {
-        fetchPatients();
-    }, []);
+  // Database patients (excluding featured ones)
+  const featuredIds = new Set(PERSONAS.map(p => p.id));
+  const databasePatients = livePatients
+    .filter(lp => !featuredIds.has(lp.id))
+    .map(liveP => ({
+      id: liveP.id,
+      name: liveP.name,
+      age: undefined as number | undefined,
+      conditions: [] as string[],
+      description: `${liveP.chunk_count} records • ${liveP.resource_types.length} resource types`,
+      data: undefined,
+      chunk_count: liveP.chunk_count,
+      resource_types: liveP.resource_types,
+      isLive: true,
+      isFeatured: false,
+    }));
 
-    // Merge live patients with local data for rich display
-    const displayPatients = livePatients.length > 0
-        ? livePatients.map(liveP => {
-            const localData = LOCAL_PERSONA_DATA[liveP.id];
-            return {
-                id: liveP.id,
-                name: localData?.name || liveP.name,
-                age: localData?.age,
-                conditions: localData?.conditions || [],
-                description: localData?.description || `${liveP.chunk_count} records • ${liveP.resource_types.length} resource types`,
-                data: localData?.data,
-                chunk_count: liveP.chunk_count,
-                resource_types: liveP.resource_types,
-                isLive: true,
-            };
-        })
-        : PERSONAS.map(p => ({ ...p, isLive: false, chunk_count: 0, resource_types: [] as string[] }));
+  const allPatients = [...featuredPatients, ...databasePatients];
 
-    const handleCopy = (text: string, label: string) => {
-        navigator.clipboard.writeText(text);
-        onCopy(`Copied ${label}`);
-    };
+  const handlePromptClick = (prompt: string) => {
+    if (onPromptSelect) {
+      onPromptSelect(prompt);
+    } else {
+      navigator.clipboard.writeText(prompt);
+      onCopy('Copied Prompt');
+    }
+  };
 
-    const handlePromptClick = (prompt: string) => {
-        if (onPromptSelect) {
-            // Just insert the prompt directly - patient is already selected
-            onPromptSelect(prompt);
-        } else {
-            handleCopy(prompt, "Prompt");
-        }
-    };
+  // Find the name for the modal
+  const modalPatientName = selectedJson
+    ? allPatients.find(p => p.data === selectedJson)?.name || 'Unknown Patient'
+    : undefined;
 
-    const handleOpenModal = (data: any) => {
-        setSelectedJson(data);
-        setModalTab(0); // Default to summary
-    };
+  return (
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, p: 2, pb: 4 }}>
+      {/* Step 1: Patient Selection */}
+      <PatientSelector
+        selectedPatient={selectedPatient}
+        onPatientSelect={onPatientSelect}
+        onViewData={setSelectedJson}
+        featuredPatients={featuredPatients}
+        databasePatients={databasePatients}
+        livePatients={livePatients}
+        isLoadingPatients={isLoadingPatients}
+        patientsError={patientsError}
+        onRefresh={fetchPatients}
+      />
 
-    // Derived data for summary view
-    const summaryData = selectedJson ? {
-        conditions: getConditions(selectedJson),
-        medications: getMedications(selectedJson),
-        allergies: getAllergies(selectedJson),
-        encounters: getEncounters(selectedJson),
-        observations: getObservations(selectedJson),
-        immunizations: getImmunizations(selectedJson),
-        procedures: getProcedures(selectedJson),
-        carePlans: getCarePlans(selectedJson)
-    } : null;
+      {/* Step 2: Recommended Prompts (only shown after patient selection) */}
+      {selectedPatient && (
+        <>
+          <Divider />
+          <RecommendedPrompts
+            prompts={RECOMMENDED_PROMPTS}
+            onPromptClick={handlePromptClick}
+          />
+        </>
+      )}
 
-    // Find selected patient data for collapsed view
-    const selectedPatientData = selectedPatient
-        ? displayPatients.find(p => p.id === selectedPatient.id)
-        : null;
-
-    return (
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, p: 2, pb: 4 }}>
-
-            {/* Step 1: Patient Selection (collapsible when selected) */}
-            <Box>
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
-                    <Typography variant="subtitle2" sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'text.secondary', fontWeight: 600 }}>
-                        <User size={16} />
-                        {selectedPatient ? 'Selected Patient' : 'Step 1: Select a Patient'}
-                        {livePatients.length > 0 && (
-                            <Chip
-                                label={`${livePatients.length} in DB`}
-                                size="small"
-                                icon={<Database size={12} />}
-                                sx={{ height: 18, fontSize: '0.6rem', ml: 0.5 }}
-                                color="success"
-                            />
-                        )}
-                    </Typography>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        {!selectedPatient && (
-                            <Tooltip title="Refresh patient list">
-                                <IconButton
-                                    size="small"
-                                    onClick={fetchPatients}
-                                    disabled={isLoadingPatients}
-                                    sx={{ p: 0.5 }}
-                                >
-                                    {isLoadingPatients ? (
-                                        <CircularProgress size={14} />
-                                    ) : (
-                                        <RefreshCw size={14} />
-                                    )}
-                                </IconButton>
-                            </Tooltip>
-                        )}
-                        {selectedPatient && onPatientSelect && (
-                            <Button
-                                size="small"
-                                variant="text"
-                                onClick={() => onPatientSelect(null)}
-                                sx={{ fontSize: '0.7rem', minWidth: 'auto', p: 0.5 }}
-                            >
-                                Change
-                            </Button>
-                        )}
-                    </Box>
-                </Box>
-
-                {/* Collapsed view when patient is selected */}
-                {selectedPatient && selectedPatientData ? (
-                    <Card
-                        variant="outlined"
-                        sx={{
-                            bgcolor: (theme) => alpha(theme.palette.primary.main, 0.1),
-                            borderColor: 'primary.main',
-                            borderWidth: 2,
-                        }}
-                    >
-                        <CardContent sx={{ py: 1.5, px: 2, '&:last-child': { pb: 1.5 } }}>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                                <Box
-                                    sx={{
-                                        width: 36,
-                                        height: 36,
-                                        borderRadius: '50%',
-                                        bgcolor: 'primary.main',
-                                        color: 'primary.contrastText',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        fontWeight: 600,
-                                    }}
-                                >
-                                    {selectedPatient.name.charAt(0)}
-                                </Box>
-                                <Box sx={{ flex: 1 }}>
-                                    <Typography variant="subtitle2" fontWeight="bold">
-                                        {selectedPatient.name}
-                                    </Typography>
-                                    <Typography variant="caption" color="text.secondary">
-                                        {selectedPatientData.age ? `${selectedPatientData.age} yrs` : ''}
-                                        {selectedPatientData.age && selectedPatientData.conditions?.[0] ? ' • ' : ''}
-                                        {selectedPatientData.conditions?.[0] || selectedPatientData.description}
-                                    </Typography>
-                                </Box>
-                                {selectedPatientData.data && (
-                                    <Tooltip title="View patient data">
-                                        <IconButton
-                                            size="small"
-                                            onClick={() => handleOpenModal(selectedPatientData.data)}
-                                        >
-                                            <FileText size={16} />
-                                        </IconButton>
-                                    </Tooltip>
-                                )}
-                            </Box>
-                        </CardContent>
-                    </Card>
-                ) : (
-                    /* Full patient list when none selected */
-                    <Stack spacing={2}>
-                    {/* Loading state */}
-                    {isLoadingPatients && displayPatients.length === 0 && (
-                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', py: 4 }}>
-                            <CircularProgress size={24} />
-                            <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
-                                Loading patients...
-                            </Typography>
-                        </Box>
-                    )}
-                    {/* Error state */}
-                    {patientsError && (
-                        <Typography variant="caption" color="error" sx={{ textAlign: 'center', py: 2 }}>
-                            {patientsError}
-                        </Typography>
-                    )}
-                    {displayPatients.map((p) => {
-                        const isSelected = selectedPatient?.id === p.id;
-                        return (
-                        <Card
-                            key={p.id}
-                            variant="outlined"
-                            sx={{
-                                bgcolor: (theme) => isSelected
-                                    ? alpha(theme.palette.primary.main, 0.15)
-                                    : alpha(theme.palette.background.paper, 0.4),
-                                backdropFilter: 'blur(10px)',
-                                borderColor: isSelected ? 'primary.main' : 'divider',
-                                borderWidth: isSelected ? 2 : 1,
-                                transition: 'all 0.2s',
-                                '&:hover': {
-                                    bgcolor: (theme) => isSelected
-                                        ? alpha(theme.palette.primary.main, 0.2)
-                                        : alpha(theme.palette.background.paper, 0.6),
-                                    borderColor: 'primary.main',
-                                    transform: 'translateY(-2px)',
-                                    boxShadow: 2
-                                },
-                                cursor: 'pointer',
-                                position: 'relative'
-                            }}
-                        >
-                            {/* Copy Button - Positioned absolutely to avoid nesting in CardActionArea */}
-                            <Box
-                                sx={{
-                                    position: 'absolute',
-                                    top: 12,
-                                    right: 12,
-                                    zIndex: 1
-                                }}
-                                onClick={(e) => e.stopPropagation()}
-                            >
-                                <Tooltip title="Copy Patient ID">
-                                    <IconButton
-                                        size="small"
-                                        onClick={() => handleCopy(p.id, "Patient ID")}
-                                        sx={{
-                                            bgcolor: 'background.paper',
-                                            '&:hover': {
-                                                bgcolor: 'action.hover'
-                                            }
-                                        }}
-                                    >
-                                        <Copy size={14} />
-                                    </IconButton>
-                                </Tooltip>
-                            </Box>
-
-                            <CardActionArea
-                                onClick={() => {
-                                    // Primary action: select patient for queries
-                                    if (onPatientSelect) {
-                                        onPatientSelect(isSelected ? null : { id: p.id, name: p.name });
-                                    } else if (p.data) {
-                                        // Fallback: open modal if no selection handler
-                                        handleOpenModal(p.data);
-                                    }
-                                }}
-                                sx={{ p: 1.5, pr: 6 }}
-                            >
-                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
-                                    <Box>
-                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                            <Typography variant="subtitle2" fontWeight="bold">
-                                                {p.name}
-                                            </Typography>
-                                            {isSelected && (
-                                                <Chip
-                                                    label="Selected"
-                                                    size="small"
-                                                    color="primary"
-                                                    sx={{ height: 18, fontSize: '0.6rem' }}
-                                                />
-                                            )}
-                                            {p.isLive && (
-                                                <Chip
-                                                    label="Live"
-                                                    size="small"
-                                                    color="success"
-                                                    sx={{ height: 16, fontSize: '0.55rem' }}
-                                                />
-                                            )}
-                                        </Box>
-                                        <Typography variant="caption" color="text.secondary">
-                                            {p.age ? `${p.age} years old • ` : ''}{p.description}
-                                        </Typography>
-                                    </Box>
-                                </Box>
-
-                                <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', mt: 1 }}>
-                                    {/* Show conditions if available, otherwise show resource types for live patients */}
-                                    {p.conditions && p.conditions.length > 0 ? (
-                                        <>
-                                            {p.conditions.slice(0, 3).map((c, i) => (
-                                                <Chip
-                                                    key={i}
-                                                    label={c}
-                                                    size="small"
-                                                    sx={{ height: 20, fontSize: '0.65rem' }}
-                                                />
-                                            ))}
-                                            {p.conditions.length > 3 && (
-                                                <Chip label={`+${p.conditions.length - 3}`} size="small" sx={{ height: 20, fontSize: '0.65rem' }} />
-                                            )}
-                                        </>
-                                    ) : p.resource_types && p.resource_types.length > 0 ? (
-                                        <>
-                                            {p.resource_types.slice(0, 4).map((rt, i) => (
-                                                <Chip
-                                                    key={i}
-                                                    label={rt}
-                                                    size="small"
-                                                    variant="outlined"
-                                                    sx={{ height: 20, fontSize: '0.65rem' }}
-                                                />
-                                            ))}
-                                            {p.resource_types.length > 4 && (
-                                                <Chip label={`+${p.resource_types.length - 4}`} size="small" variant="outlined" sx={{ height: 20, fontSize: '0.65rem' }} />
-                                            )}
-                                        </>
-                                    ) : null}
-                                </Box>
-
-                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1.5 }}>
-                                    <Typography
-                                        variant="caption"
-                                        sx={{
-                                            fontFamily: 'monospace',
-                                            bgcolor: 'action.hover',
-                                            p: 0.5,
-                                            borderRadius: 1,
-                                            fontSize: '0.65rem',
-                                            wordBreak: 'break-all',
-                                            flex: 1
-                                        }}
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleCopy(p.id, "ID");
-                                        }}
-                                    >
-                                        ID: {p.id}
-                                        {p.chunk_count > 0 && ` • ${p.chunk_count} chunks`}
-                                    </Typography>
-                                    {p.data && (
-                                    <Typography
-                                        variant="caption"
-                                        component="span"
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleOpenModal(p.data);
-                                        }}
-                                        sx={{
-                                            fontSize: '0.65rem',
-                                            ml: 1,
-                                            color: 'primary.main',
-                                            cursor: 'pointer',
-                                            '&:hover': {
-                                                textDecoration: 'underline'
-                                            }
-                                        }}
-                                    >
-                                        View Data
-                                    </Typography>
-                                    )}
-                                </Box>
-                            </CardActionArea>
-                        </Card>
-                    );
-                    })}
-                    </Stack>
-                )}
-            </Box>
-
-            {/* Step 2: Recommended Prompts (only shown after patient selection) */}
-            {selectedPatient && (
-                <>
-                    <Divider />
-                    <Box>
-                        <Typography variant="subtitle2" sx={{ mb: 1.5, display: 'flex', alignItems: 'center', gap: 1, color: 'text.secondary', fontWeight: 600 }}>
-                            <MessageSquare size={16} />
-                            Step 2: Ask a Question
-                        </Typography>
-                        <Stack spacing={1}>
-                            {RECOMMENDED_PROMPTS.map((prompt, i) => (
-                                <Button
-                                    key={i}
-                                    variant="outlined"
-                                    size="small"
-                                    onClick={() => handlePromptClick(prompt)}
-                                    sx={{
-                                        justifyContent: 'flex-start',
-                                        textAlign: 'left',
-                                        textTransform: 'none',
-                                        borderColor: 'divider',
-                                        color: 'text.primary',
-                                        py: 1,
-                                        '&:hover': {
-                                            bgcolor: 'action.hover',
-                                            borderColor: 'primary.main'
-                                        }
-                                    }}
-                                >
-                                    {prompt}
-                                </Button>
-                            ))}
-                        </Stack>
-                    </Box>
-                </>
-            )}
-
-            {/* Patient Details Modal */}
-            <Dialog
-                open={!!selectedJson}
-                onClose={() => setSelectedJson(null)}
-                maxWidth="lg"
-                fullWidth
-                PaperProps={{
-                    sx: { height: '90vh', display: 'flex', flexDirection: 'column' }
-                }}
-            >
-                <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 0 }}>
-                    <Box component="span" sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                        Patient Data Viewer
-                        {selectedJson && (
-                            <Chip
-                                label={displayPatients.find(p => p.data === selectedJson)?.name || 'Unknown Patient'}
-                                size="small"
-                                color="primary"
-                                variant="outlined"
-                            />
-                        )}
-                    </Box>
-                    <IconButton size="small" onClick={() => setSelectedJson(null)}>
-                        <X size={20} />
-                    </IconButton>
-                </DialogTitle>
-
-                <Box sx={{ borderBottom: 1, borderColor: 'divider', px: 3 }}>
-                    <Tabs value={modalTab} onChange={(_, v) => setModalTab(v)}>
-                        <Tab icon={<Activity size={16} />} iconPosition="start" label="Detailed Summary" />
-                        <Tab icon={<ClipboardList size={16} />} iconPosition="start" label="All Entries" />
-                        <Tab icon={<FileJson size={16} />} iconPosition="start" label="Raw JSON" />
-                    </Tabs>
-                </Box>
-
-                <DialogContent sx={{ p: 0, flex: 1, overflow: 'hidden', bgcolor: 'background.default' }}>
-                    {modalTab === 0 && summaryData && (
-                        <Box sx={{ p: 3, height: '100%', overflow: 'auto' }}>
-                            {/* Masonry-like Grid */}
-                            <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: 3 }}>
-
-                                {/* 1. Conditions */}
-                                <Card variant="outlined">
-                                    <CardContent>
-                                        <Typography variant="subtitle2" sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2, color: 'error.main' }}>
-                                            <Activity size={18} /> Active Conditions
-                                        </Typography>
-                                        {summaryData.conditions.length > 0 ? (
-                                            <Stack spacing={1}>
-                                                {summaryData.conditions.map((c, i) => (
-                                                    <Box key={i} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                        <Typography variant="body2" fontWeight={500}>{c.name}</Typography>
-                                                        <Chip label={c.status} size="small" color="error" variant="outlined" sx={{ height: 20, fontSize: '0.7rem' }} />
-                                                    </Box>
-                                                ))}
-                                            </Stack>
-                                        ) : <Typography variant="caption" color="text.secondary">No active conditions found</Typography>}
-                                    </CardContent>
-                                </Card>
-
-                                {/* 2. Medications */}
-                                <Card variant="outlined">
-                                    <CardContent>
-                                        <Typography variant="subtitle2" sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2, color: 'primary.main' }}>
-                                            <Pill size={18} /> Medications
-                                        </Typography>
-                                        {summaryData.medications.length > 0 ? (
-                                            <Stack spacing={1.5}>
-                                                {summaryData.medications.map((m, i) => (
-                                                    <Box key={i} sx={{ p: 1, bgcolor: 'action.hover', borderRadius: 1 }}>
-                                                        <Typography variant="body2" fontWeight={500}>{m.name}</Typography>
-                                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 0.5 }}>
-                                                            <Typography variant="caption" color="text.secondary">Status: {m.status}</Typography>
-                                                            {m.authoredOn && <Typography variant="caption" color="text.secondary">{new Date(m.authoredOn).toLocaleDateString()}</Typography>}
-                                                        </Box>
-                                                    </Box>
-                                                ))}
-                                            </Stack>
-                                        ) : <Typography variant="caption" color="text.secondary">No active medications found</Typography>}
-                                    </CardContent>
-                                </Card>
-
-                                {/* 3. Vitals & Observations (New) */}
-                                <Card variant="outlined" sx={{ gridRow: 'span 2' }}>
-                                    <CardContent>
-                                        <Typography variant="subtitle2" sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2, color: 'info.main' }}>
-                                            <Thermometer size={18} /> Vitals & Labs ({summaryData.observations.length})
-                                        </Typography>
-                                        {summaryData.observations.length > 0 ? (
-                                            <List dense disablePadding sx={{ maxHeight: 400, overflow: 'auto' }}>
-                                                {summaryData.observations.slice(0, 15).map((o, i) => (
-                                                    <ListItem key={i} divider disableGutters>
-                                                        <ListItemText
-                                                            primary={<Typography variant="body2">{o.name}</Typography>}
-                                                            secondary={
-                                                                <Box component="span" sx={{ display: 'flex', justifyContent: 'space-between', mt: 0.5 }}>
-                                                                    <Typography variant="body2" component="span" fontWeight="bold" color="text.primary">{o.value}</Typography>
-                                                                    <Typography variant="caption" component="span">{o.date ? new Date(o.date).toLocaleDateString() : ''}</Typography>
-                                                                </Box>
-                                                            }
-                                                        />
-                                                    </ListItem>
-                                                ))}
-                                                {summaryData.observations.length > 15 && (
-                                                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', pt: 1, textAlign: 'center' }}>
-                                                        +{summaryData.observations.length - 15} more observations
-                                                    </Typography>
-                                                )}
-                                            </List>
-                                        ) : <Typography variant="caption" color="text.secondary">No observations found</Typography>}
-                                    </CardContent>
-                                </Card>
-
-                                {/* 4. Procedures & Immunizations (New) */}
-                                <Card variant="outlined">
-                                    <CardContent>
-                                        <Typography variant="subtitle2" sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2, color: 'warning.main' }}>
-                                            <Stethoscope size={18} /> Procedures & History
-                                        </Typography>
-                                        <Stack spacing={2}>
-                                            {summaryData.procedures.length > 0 && (
-                                                <Box>
-                                                    <Typography variant="caption" fontWeight="bold" color="text.secondary" sx={{ mb: 1, display: 'block' }}>PROCEDURES</Typography>
-                                                    <Stack spacing={0.5}>
-                                                        {summaryData.procedures.slice(0, 3).map((p, i) => (
-                                                            <Box key={i} sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                                                                <Typography variant="caption" sx={{ flex: 1 }}>{p.name}</Typography>
-                                                                <Typography variant="caption" color="text.secondary">{p.date ? new Date(p.date).toLocaleDateString() : ''}</Typography>
-                                                            </Box>
-                                                        ))}
-                                                    </Stack>
-                                                </Box>
-                                            )}
-
-                                            {summaryData.immunizations.length > 0 && (
-                                                <Box>
-                                                    <Typography variant="caption" fontWeight="bold" color="text.secondary" sx={{ mb: 1, display: 'block' }}>IMMUNIZATIONS</Typography>
-                                                    <Stack spacing={0.5}>
-                                                        {summaryData.immunizations.slice(0, 3).map((im, i) => (
-                                                            <Box key={i} sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                                                                <Typography variant="caption" sx={{ flex: 1 }}>{im.vaccine}</Typography>
-                                                                <Typography variant="caption" color="text.secondary">{im.date ? new Date(im.date).toLocaleDateString() : ''}</Typography>
-                                                            </Box>
-                                                        ))}
-                                                    </Stack>
-                                                </Box>
-                                            )}
-
-                                            {summaryData.procedures.length === 0 && summaryData.immunizations.length === 0 && (
-                                                <Typography variant="caption" color="text.secondary">No procedures or immunizations found</Typography>
-                                            )}
-                                        </Stack>
-                                    </CardContent>
-                                </Card>
-
-                                {/* 5. Encounters */}
-                                <Card variant="outlined">
-                                    <CardContent>
-                                        <Typography variant="subtitle2" sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                                            <Calendar size={18} /> Recent Encounters
-                                        </Typography>
-                                        <List dense disablePadding>
-                                            {summaryData.encounters.length > 0 ? summaryData.encounters.map((e, i) => (
-                                                <ListItem key={i} divider={i !== summaryData.encounters.length - 1} disableGutters>
-                                                    <ListItemText
-                                                        primary={e.type}
-                                                        secondary={
-                                                            <Box component="span" sx={{ display: 'flex', gap: 2 }}>
-                                                                <span>{e.period ? new Date(e.period).toLocaleDateString() : 'Unknown Date'}</span>
-                                                                {e.reason && <span>Reason: {e.reason}</span>}
-                                                            </Box>
-                                                        }
-                                                    />
-                                                </ListItem>
-                                            )) : <Typography variant="caption" color="text.secondary">No recent encounters found</Typography>}
-                                        </List>
-                                    </CardContent>
-                                </Card>
-                            </Box>
-                        </Box>
-                    )}
-
-                    {modalTab === 1 && selectedJson?.entry && (
-                        <Box sx={{ p: 3, height: '100%', overflow: 'auto', bgcolor: 'background.default' }}>
-                            <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
-                                <TextField
-                                    select
-                                    size="small"
-                                    value={sortOrder}
-                                    onChange={(e) => setSortOrder(e.target.value as any)}
-                                    SelectProps={{ native: true }}
-                                    sx={{ minWidth: 200 }}
-                                >
-                                    <option value="default">Default Order</option>
-                                    <option value="newest">Newest First</option>
-                                    <option value="oldest">Oldest First</option>
-                                </TextField>
-                            </Box>
-                            <Stack spacing={2}>
-                                {selectedJson.entry
-                                    .map((entry: any) => {
-                                        const r = entry.resource;
-                                        const type = r.resourceType;
-
-                                        // Helper to get primary display text
-                                        let primary = 'Unknown Resource';
-                                        let secondary = '';
-                                        let date = '';
-                                        let dateObj: Date | null = null;
-
-                                        if (type === 'Patient') {
-                                            primary = `${r.name?.[0]?.given?.join(' ')} ${r.name?.[0]?.family}`;
-                                            secondary = `${r.gender}, DOB: ${r.birthDate}`;
-                                        } else if (type === 'Encounter') {
-                                            primary = r.type?.[0]?.text || r.type?.[0]?.coding?.[0]?.display || 'Visit';
-                                            secondary = r.reasonCode?.[0]?.text || r.reasonCode?.[0]?.coding?.[0]?.display || '';
-                                            date = r.period?.start;
-                                        } else if (type === 'Condition') {
-                                            primary = r.code?.text || r.code?.coding?.[0]?.display;
-                                            secondary = r.clinicalStatus?.coding?.[0]?.code;
-                                            date = r.onsetDateTime;
-                                        } else if (type === 'Observation') {
-                                            primary = r.code?.text || r.code?.coding?.[0]?.display;
-                                            if (r.valueQuantity) secondary = `${parseFloat(r.valueQuantity.value).toFixed(1)} ${r.valueQuantity.unit || ''}`;
-                                            else if (r.valueCodeableConcept) secondary = r.valueCodeableConcept.text;
-                                            else if (r.component) secondary = 'Multi-component observation';
-                                            date = r.effectiveDateTime;
-                                        } else if (type === 'MedicationRequest') {
-                                            primary = r.medicationCodeableConcept?.text || r.medicationCodeableConcept?.coding?.[0]?.display;
-                                            secondary = r.status;
-                                            date = r.authoredOn;
-                                        } else if (type === 'Procedure') {
-                                            primary = r.code?.text || r.code?.coding?.[0]?.display;
-                                            secondary = r.status;
-                                            date = r.performedDateTime || r.performedPeriod?.start;
-                                        } else if (type === 'Immunization') {
-                                            primary = r.vaccineCode?.text || r.vaccineCode?.coding?.[0]?.display;
-                                            secondary = r.status;
-                                            date = r.occurrenceDateTime;
-                                        } else {
-                                            primary = type;
-                                            secondary = r.id;
-                                        }
-
-                                        if (date) {
-                                            dateObj = new Date(date);
-                                        }
-
-                                        return { entry, type, primary, secondary, date, dateObj };
-                                    })
-                                    .sort((a: any, b: any) => {
-                                        if (sortOrder === 'default') return 0;
-                                        if (!a.dateObj && !b.dateObj) return 0;
-                                        if (!a.dateObj) return 1;
-                                        if (!b.dateObj) return -1;
-
-                                        return sortOrder === 'newest'
-                                            ? b.dateObj.getTime() - a.dateObj.getTime()
-                                            : a.dateObj.getTime() - b.dateObj.getTime();
-                                    })
-                                    .map((item: any, i: number) => (
-                                        <Card key={i} variant="outlined" sx={{ borderRadius: 3, '&:hover': { borderColor: 'primary.main', bgcolor: 'action.hover' } }}>
-                                            <CardContent sx={{ p: '16px !important', display: 'flex', alignItems: 'center', gap: 2 }}>
-                                                <Chip
-                                                    label={item.type}
-                                                    size="small"
-                                                    sx={{
-                                                        minWidth: 100,
-                                                        bgcolor: (theme) => alpha(theme.palette.primary.main, 0.1),
-                                                        color: 'primary.main',
-                                                        fontWeight: 600,
-                                                        fontSize: '0.7rem'
-                                                    }}
-                                                />
-                                                <Box sx={{ flex: 1 }}>
-                                                    <Typography variant="body2" fontWeight="bold">{item.primary}</Typography>
-                                                    {item.secondary && <Typography variant="caption" color="text.secondary">{item.secondary}</Typography>}
-                                                </Box>
-                                                {item.date && (
-                                                    <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'monospace' }}>
-                                                        {new Date(item.date).toLocaleDateString()}
-                                                    </Typography>
-                                                )}
-                                            </CardContent>
-                                        </Card>
-                                    ))}
-                            </Stack>
-                        </Box>
-                    )}
-
-                    {modalTab === 2 && (
-                        <Box sx={{ height: '100%', overflow: 'auto', display: 'flex', flexDirection: 'column', bgcolor: '#1e1e1e' }}>
-                            <JsonView
-                                src={selectedJson}
-                                theme="codeschool"
-                                style={{ padding: '20px', fontFamily: 'monospace', fontSize: '0.85rem', backgroundColor: 'transparent' }}
-                                displayDataTypes={false}
-                                displayObjectSize={true}
-                                enableClipboard={true}
-                                collapsed={2}
-                            />
-                        </Box>
-                    )}
-                </DialogContent>
-            </Dialog>
-        </Box>
-    );
+      {/* Patient Details Modal */}
+      <PatientDataModal
+        open={!!selectedJson}
+        onClose={() => setSelectedJson(null)}
+        data={selectedJson}
+        patientName={modalPatientName}
+      />
+    </Box>
+  );
 }

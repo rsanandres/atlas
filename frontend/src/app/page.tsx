@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { ChatPanel } from '@/components/chat/ChatPanel';
 import { WorkflowPanel } from '@/components/workflow/WorkflowPanel';
@@ -26,8 +26,8 @@ export default function Home() {
   // Patient selection state - persists across messages
   const [selectedPatient, setSelectedPatient] = useState<SelectedPatient | null>(null);
 
-  const { messages, isLoading, error, sendMessage, stopGeneration, clearChat, getLastResponse, messageCount, streamingState } = useChat(activeSessionId, selectedPatient?.id);
-  const { pipeline, lastToolCalls, isProcessing, startProcessing, updateFromResponse } = useWorkflow();
+  const { messages, isLoading, error, sendMessage, stopGeneration, clearChat, getLastResponse, messageCount, streamingState, setFeedback, regenerateMessage } = useChat(activeSessionId, selectedPatient?.id);
+  const { pipeline, lastToolCalls, isProcessing, activateStep, updateFromResponse, resetPipeline } = useWorkflow();
   const {
     serviceHealth,
     metricSummaries,
@@ -44,15 +44,57 @@ export default function Home() {
   const [lastQuery, setLastQuery] = useState<string>('');
   const [chatInput, setChatInput] = useState<string>(''); // Added external input state
 
-  // Start workflow animation when sending a message
+  // Track which pipeline steps have been activated to avoid duplicates
+  const activatedStepsRef = useRef(new Set<string>());
+
+  // Search tools that trigger vector_search/rerank pipeline steps
+  const SEARCH_TOOLS = ['search_clinical_notes', 'get_patient_timeline'];
+
+  // Start workflow when sending a message
   const handleSend = (message: string) => {
     setLastQuery(message);
-    setChatInput(''); // Clear external input after sending
-    startProcessing();
+    setChatInput('');
+    activatedStepsRef.current = new Set();
+    resetPipeline();
+    activateStep('query');
     sendMessage(message);
   };
 
-  // Update workflow when response arrives
+  // Drive pipeline steps from real SSE streaming events
+  useEffect(() => {
+    if (!streamingState.isStreaming) return;
+
+    const activate = (stepId: string) => {
+      if (!activatedStepsRef.current.has(stepId)) {
+        activatedStepsRef.current.add(stepId);
+        activateStep(stepId);
+      }
+    };
+
+    const status = streamingState.currentStatus;
+
+    // Status-based transitions
+    if (status.includes('Starting')) activate('pii_mask');
+    if (status.includes('Synthesizing')) {
+      activate('llm_react'); // Ensure llm_react is activated before response
+      activate('response');
+    }
+
+    // Tool and step-based transitions
+    for (const step of streamingState.steps) {
+      if (step.type === 'tool_call' && step.toolName && SEARCH_TOOLS.includes(step.toolName)) {
+        activate('vector_search');
+      }
+      if (step.type === 'tool_result' && step.toolName && SEARCH_TOOLS.includes(step.toolName)) {
+        activate('rerank');
+      }
+      if (step.type === 'researcher') {
+        activate('llm_react');
+      }
+    }
+  }, [streamingState, activateStep]);
+
+  // Finalize pipeline when response arrives
   useEffect(() => {
     if (!isLoading) {
       const lastResponse = getLastResponse();
@@ -80,6 +122,8 @@ export default function Home() {
             streamingState={streamingState}
             externalInput={chatInput}
             selectedPatient={selectedPatient}
+            onFeedback={setFeedback}
+            onRegenerate={regenerateMessage}
           />
         }
         workflowPanel={

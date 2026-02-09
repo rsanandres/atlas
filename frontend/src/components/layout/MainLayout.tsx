@@ -1,7 +1,9 @@
 'use client';
 
-import { Box, alpha } from '@mui/material';
+import { useState } from 'react';
+import { Box, Drawer, Fab, alpha, useMediaQuery, useTheme } from '@mui/material';
 import { motion } from 'framer-motion';
+import { PanelRight, X } from 'lucide-react';
 
 interface MainLayoutProps {
   chatPanel: React.ReactNode;
@@ -10,6 +12,10 @@ interface MainLayoutProps {
 }
 
 export function MainLayout({ chatPanel, workflowPanel, observabilityPanel }: MainLayoutProps) {
+  const theme = useTheme();
+  const isDesktop = useMediaQuery(theme.breakpoints.up('lg')); // >1200px
+  const [rightPanelOpen, setRightPanelOpen] = useState(false);
+
   return (
     <Box
       sx={{
@@ -68,26 +74,72 @@ export function MainLayout({ chatPanel, workflowPanel, observabilityPanel }: Mai
           {chatPanel}
         </motion.div>
 
-        {/* Right side - Stacked panels (32%) */}
-        <Box
-          sx={{
-            flex: '0 0 32%',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 2,
-            height: '100%',
-          }}
-        >
-          {/* Top - Workflow (50%) */}
-          <Box sx={{ flex: '1 1 50%', minHeight: 0 }}>
-            {workflowPanel}
+        {/* Right side - Desktop: inline panels; Mobile/Tablet: drawer */}
+        {isDesktop ? (
+          <Box
+            sx={{
+              flex: '0 0 32%',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 2,
+              height: '100%',
+            }}
+          >
+            <Box sx={{ flex: '1 1 50%', minHeight: 0 }}>
+              {workflowPanel}
+            </Box>
+            <Box sx={{ flex: '1 1 50%', minHeight: 0 }}>
+              {observabilityPanel}
+            </Box>
           </Box>
+        ) : (
+          <>
+            <Drawer
+              anchor="right"
+              open={rightPanelOpen}
+              onClose={() => setRightPanelOpen(false)}
+              PaperProps={{
+                sx: {
+                  width: '85vw',
+                  maxWidth: 480,
+                  bgcolor: 'background.default',
+                  p: 2,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 2,
+                },
+              }}
+            >
+              <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <Fab size="small" onClick={() => setRightPanelOpen(false)} sx={{ boxShadow: 'none', bgcolor: 'action.hover' }}>
+                  <X size={18} />
+                </Fab>
+              </Box>
+              <Box sx={{ flex: '1 1 50%', minHeight: 0, overflow: 'auto' }}>
+                {workflowPanel}
+              </Box>
+              <Box sx={{ flex: '1 1 50%', minHeight: 0, overflow: 'auto' }}>
+                {observabilityPanel}
+              </Box>
+            </Drawer>
 
-          {/* Bottom - Observability (50%) */}
-          <Box sx={{ flex: '1 1 50%', minHeight: 0 }}>
-            {observabilityPanel}
-          </Box>
-        </Box>
+            <Fab
+              size="small"
+              onClick={() => setRightPanelOpen(true)}
+              sx={{
+                position: 'fixed',
+                bottom: 80,
+                right: 16,
+                zIndex: 10,
+                bgcolor: (theme) => alpha(theme.palette.primary.main, 0.9),
+                color: 'primary.contrastText',
+                '&:hover': { bgcolor: 'primary.main' },
+              }}
+            >
+              <PanelRight size={20} />
+            </Fab>
+          </>
+        )}
       </Box>
     </Box>
   );

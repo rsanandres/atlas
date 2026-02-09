@@ -1,20 +1,23 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Box, Typography, Chip, Stack, Skeleton, alpha, Collapse, IconButton } from '@mui/material';
+import { useState, useEffect, useCallback } from 'react';
+import { Box, Typography, Chip, Stack, Skeleton, alpha, Collapse, IconButton, Tooltip } from '@mui/material';
 import { motion } from 'framer-motion';
-import { User, Bot, FileText, ChevronDown, ChevronUp, Brain, CheckCircle, AlertCircle } from 'lucide-react';
+import { User, Bot, FileText, ChevronDown, ChevronUp, Brain, CheckCircle, AlertCircle, ThumbsUp, ThumbsDown, RefreshCw, Copy, Check } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { toast } from 'sonner';
 import { Message } from '@/types';
 
 interface MessageBubbleProps {
   message: Message;
   debugMode?: boolean;
+  onFeedback?: (messageId: string, feedback: 'positive' | 'negative') => void;
+  onRegenerate?: (messageId: string) => void;
 }
 
-export function MessageBubble({ message, debugMode = false }: MessageBubbleProps) {
+export function MessageBubble({ message, debugMode = false, onFeedback, onRegenerate }: MessageBubbleProps) {
   const isUser = message.role === 'user';
   const isLoading = message.isLoading;
   const [showThinking, setShowThinking] = useState(false);
@@ -129,18 +132,16 @@ export function MessageBubble({ message, debugMode = false }: MessageBubbleProps
                     code({ className, children, ...props }) {
                       const match = /language-(\w+)/.exec(className || '');
                       const isInline = !match;
-                      return isInline ? (
-                        <code className={className} {...props}>
-                          {children}
-                        </code>
-                      ) : (
-                        <SyntaxHighlighter
-                          style={oneDark}
-                          language={match[1]}
-                          PreTag="div"
-                        >
-                          {String(children).replace(/\n$/, '')}
-                        </SyntaxHighlighter>
+                      if (isInline) {
+                        return (
+                          <code className={className} {...props}>
+                            {children}
+                          </code>
+                        );
+                      }
+                      const codeString = String(children).replace(/\n$/, '');
+                      return (
+                        <CodeBlock language={match[1]} code={codeString} />
                       );
                     },
                   }}
@@ -276,21 +277,121 @@ export function MessageBubble({ message, debugMode = false }: MessageBubbleProps
             </Stack>
           )}
 
-          {/* Timestamp */}
-          <Typography
-            variant="caption"
-            sx={{
-              display: 'block',
-              mt: 0.5,
-              color: 'text.disabled',
-              textAlign: isUser ? 'right' : 'left',
-            }}
-          >
-            {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-          </Typography>
+          {/* Timestamp + Feedback + Regenerate */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.5 }}>
+            <Typography
+              variant="caption"
+              sx={{
+                color: 'text.disabled',
+                flex: 1,
+                textAlign: isUser ? 'right' : 'left',
+              }}
+            >
+              {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </Typography>
+
+            {/* Feedback & Regenerate - assistant messages only, not loading */}
+            {!isUser && !isLoading && (
+              <Box sx={{ display: 'flex', gap: 0.25 }}>
+                <Tooltip title="Good response">
+                  <IconButton
+                    size="small"
+                    onClick={() => onFeedback?.(message.id, 'positive')}
+                    sx={{
+                      p: 0.5,
+                      color: message.feedback === 'positive' ? 'success.main' : 'text.disabled',
+                      '&:hover': { color: 'success.main' },
+                    }}
+                  >
+                    <ThumbsUp size={14} fill={message.feedback === 'positive' ? 'currentColor' : 'none'} />
+                  </IconButton>
+                </Tooltip>
+                <Tooltip title="Bad response">
+                  <IconButton
+                    size="small"
+                    onClick={() => onFeedback?.(message.id, 'negative')}
+                    sx={{
+                      p: 0.5,
+                      color: message.feedback === 'negative' ? 'error.main' : 'text.disabled',
+                      '&:hover': { color: 'error.main' },
+                    }}
+                  >
+                    <ThumbsDown size={14} fill={message.feedback === 'negative' ? 'currentColor' : 'none'} />
+                  </IconButton>
+                </Tooltip>
+                <Tooltip title="Regenerate response">
+                  <IconButton
+                    size="small"
+                    onClick={() => onRegenerate?.(message.id)}
+                    sx={{
+                      p: 0.5,
+                      color: 'text.disabled',
+                      '&:hover': { color: 'text.primary' },
+                    }}
+                  >
+                    <RefreshCw size={14} />
+                  </IconButton>
+                </Tooltip>
+              </Box>
+            )}
+          </Box>
         </Box>
       </Box>
     </motion.div>
   );
 }
 
+/** Code block with copy button */
+function CodeBlock({ language, code }: { language: string; code: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = useCallback(() => {
+    navigator.clipboard.writeText(code);
+    setCopied(true);
+    toast.success('Copied to clipboard');
+    setTimeout(() => setCopied(false), 2000);
+  }, [code]);
+
+  return (
+    <Box sx={{ position: 'relative', '&:hover .copy-btn': { opacity: 1 } }}>
+      <Box
+        sx={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          bgcolor: '#282c34',
+          px: 1.5,
+          pt: 0.5,
+          borderTopLeftRadius: '8px',
+          borderTopRightRadius: '8px',
+        }}
+      >
+        <Typography variant="caption" sx={{ color: 'text.disabled', fontSize: '0.7rem' }}>
+          {language}
+        </Typography>
+        <IconButton
+          className="copy-btn"
+          size="small"
+          onClick={handleCopy}
+          sx={{
+            opacity: 0,
+            transition: 'opacity 0.2s',
+            color: 'text.disabled',
+            p: 0.5,
+            '&:hover': { color: 'text.primary' },
+          }}
+        >
+          {copied ? <Check size={14} /> : <Copy size={14} />}
+        </IconButton>
+      </Box>
+      <SyntaxHighlighter
+        style={oneDark}
+        language={language}
+        PreTag="div"
+        customStyle={{ marginTop: 0, borderTopLeftRadius: 0, borderTopRightRadius: 0 }}
+      >
+        {code}
+      </SyntaxHighlighter>
+    </Box>
+  );
+}

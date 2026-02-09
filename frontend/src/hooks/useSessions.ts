@@ -57,6 +57,7 @@ export function useSessions() {
           session_id: localSessionId,
           user_id: ephemeralUserId,
           name: 'New Chat',
+          tags: [],
           created_at: new Date().toISOString(),
           last_activity: new Date().toISOString(),
           message_count: 0,
@@ -95,14 +96,16 @@ export function useSessions() {
     sessions: activeSession ? [activeSession] : [],
     isLoggedIn: false,
     createNewSession: async () => activeSession,
-    switchSession: () => { },
-    updateSession: async () => activeSession,
-    removeSession: async () => { },
+    switchSession: (_sessionId?: string) => { },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    updateSession: async (_sessionId?: string, _updates?: any) => activeSession,
+    removeSession: async (_sessionId?: string) => { },
     checkSessionLimit: async () => false,
     maxSessions: 1,
     loadSessions: async () => { },
     login: () => { },
-    saveGuestMessage: () => { },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    saveGuestMessage: (_sessionId?: string, _message?: any) => { },
     clearGuestSession: () => { },
   };
 }

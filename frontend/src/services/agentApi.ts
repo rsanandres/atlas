@@ -9,9 +9,9 @@ const LANGSMITH_API_KEY = process.env.NEXT_PUBLIC_LANGSMITH_API_KEY;
 // Retry configuration
 const MAX_RETRIES = 3;
 const RETRY_DELAY = 1000; // 1 second base delay
-const REQUEST_TIMEOUT = 60000; // 60 seconds for agent queries
-const HEALTH_CHECK_TIMEOUT = 5000; // 5 seconds for health checks
-const DATABASE_TIMEOUT = 30000; // 30 seconds for database queries
+const REQUEST_TIMEOUT = 300000; // 5 minutes for agent queries (remote backend)
+const HEALTH_CHECK_TIMEOUT = 30000; // 30 seconds for health checks (remote backend)
+const DATABASE_TIMEOUT = 120000; // 2 minutes for database queries (remote backend)
 
 // Exponential backoff retry helper
 async function retryWithBackoff<T>(
@@ -284,7 +284,7 @@ export async function getLangSmithTraces(limit: number = 10): Promise<LangSmithT
   }
 
   try {
-    const projectName = 'hc-ai-agents';
+    const projectName = 'hc_ai testing';
     const response = await fetchWithTimeout(
       `${LANGSMITH_API_URL}/api/v1/runs?project_name=${encodeURIComponent(projectName)}&limit=${limit}`,
       {

@@ -42,7 +42,7 @@ const STATUS_COLORS: Record<string, string> = {
 
 interface StepDetail {
   label: string;
-  value: string | number;
+  value: string | number | null;
   icon?: React.ElementType;
   highlight?: boolean;
 }
@@ -54,13 +54,17 @@ interface PipelineStepProps {
   details?: Record<string, unknown>;
 }
 
-// Helper to safely get number from details
-const getNum = (details: Record<string, unknown> | undefined, key: string, fallback: number): number => {
+// Helper to get value from details — returns null if value is null/undefined
+const getVal = (details: Record<string, unknown> | undefined, key: string): number | null => {
   const val = details?.[key];
-  return typeof val === 'number' ? val : fallback;
+  return typeof val === 'number' ? val : null;
 };
 
-// Generate mock details based on step type
+// Format a numeric value with suffix, or return null if value is null
+const fmtMs = (val: number | null): string | null => val !== null ? `${val}ms` : null;
+const fmtChars = (val: number | null): string | null => val !== null ? `${val} chars` : null;
+
+// Generate step details using real data where available
 function getStepDetails(stepId: string, queryText?: string, details?: Record<string, unknown>): StepDetail[] {
   switch (stepId) {
     case 'query':
@@ -70,42 +74,42 @@ function getStepDetails(stepId: string, queryText?: string, details?: Record<str
       ];
     case 'pii_mask':
       return [
-        { label: 'Entities Found', value: getNum(details, 'entitiesFound', 0), icon: Eye },
-        { label: 'Names Masked', value: getNum(details, 'namesMasked', 0), icon: EyeOff },
-        { label: 'IDs Masked', value: getNum(details, 'idsMasked', 0), icon: EyeOff },
-        { label: 'Dates Masked', value: getNum(details, 'datesMasked', 0), icon: EyeOff },
-        { label: 'Processing Time', value: `${getNum(details, 'processingTime', 0)}ms`, icon: Clock },
+        { label: 'Entities Found', value: getVal(details, 'entitiesFound'), icon: Eye },
+        { label: 'Names Masked', value: getVal(details, 'namesMasked'), icon: EyeOff },
+        { label: 'IDs Masked', value: getVal(details, 'idsMasked'), icon: EyeOff },
+        { label: 'Dates Masked', value: getVal(details, 'datesMasked'), icon: EyeOff },
+        { label: 'Processing Time', value: fmtMs(getVal(details, 'processingTime')), icon: Clock },
       ];
     case 'vector_search':
       return [
         { label: 'Collection', value: 'fhir_chunks', icon: Database },
-        { label: 'Documents Retrieved', value: getNum(details, 'docsRetrieved', 0), icon: FileText, highlight: true },
-        { label: 'Search Time', value: `${getNum(details, 'searchTime', 0)}ms`, icon: Clock },
-        { label: 'Embedding Model', value: 'Amazon Titan v2', icon: Zap },
+        { label: 'Documents Retrieved', value: getVal(details, 'docsRetrieved'), icon: FileText, highlight: true },
+        { label: 'Search Time', value: fmtMs(getVal(details, 'searchTime')), icon: Clock },
+        { label: 'Embedding Model', value: 'mxbai-embed-large', icon: Zap },
       ];
     case 'rerank':
       return [
-        { label: 'Candidates In', value: getNum(details, 'candidatesIn', 0), icon: FileText },
-        { label: 'Results Out', value: getNum(details, 'resultsOut', 0), icon: FileText, highlight: true },
-        { label: 'Top Score', value: getNum(details, 'topScore', 0).toFixed(3), icon: Zap },
+        { label: 'Candidates In', value: getVal(details, 'candidatesIn'), icon: FileText },
+        { label: 'Results Out', value: getVal(details, 'resultsOut'), icon: FileText, highlight: true },
+        { label: 'Top Score', value: getVal(details, 'topScore') !== null ? getVal(details, 'topScore')!.toFixed(3) : null, icon: Zap },
         { label: 'Model', value: 'MiniLM-L6-v2', icon: Brain },
-        { label: 'Rerank Time', value: `${getNum(details, 'rerankTime', 0)}ms`, icon: Clock },
+        { label: 'Rerank Time', value: fmtMs(getVal(details, 'rerankTime')), icon: Clock },
       ];
     case 'llm_react':
       return [
-        { label: 'Model', value: 'Claude 3.5 Haiku', icon: Brain },
-        { label: 'Input Tokens', value: getNum(details, 'inputTokens', 0), icon: Hash },
-        { label: 'Output Tokens', value: getNum(details, 'outputTokens', 0), icon: Hash },
-        { label: 'Reasoning Steps', value: getNum(details, 'reasoningSteps', 0), icon: Zap, highlight: true },
-        { label: 'Tools Invoked', value: getNum(details, 'toolsInvoked', 0), icon: Layers },
-        { label: 'Latency', value: `${getNum(details, 'latency', 0)}ms`, icon: Clock },
+        { label: 'Model', value: 'qwen2.5:32b', icon: Brain },
+        { label: 'Input Tokens', value: getVal(details, 'inputTokens'), icon: Hash },
+        { label: 'Output Tokens', value: getVal(details, 'outputTokens'), icon: Hash },
+        { label: 'Reasoning Steps', value: getVal(details, 'reasoningSteps'), icon: Zap, highlight: true },
+        { label: 'Tools Invoked', value: getVal(details, 'toolsInvoked'), icon: Layers },
+        { label: 'Latency', value: fmtMs(getVal(details, 'latency')), icon: Clock },
       ];
     case 'response':
       return [
-        { label: 'Response Length', value: `${getNum(details, 'responseLength', 0)} chars`, icon: Hash },
-        { label: 'Sources Cited', value: getNum(details, 'sourcesCited', 0), icon: FileText, highlight: true },
-        { label: 'PII Re-masked', value: getNum(details, 'piiRemasked', 0), icon: EyeOff },
-        { label: 'Total Latency', value: `${getNum(details, 'totalLatency', 0)}ms`, icon: Clock },
+        { label: 'Response Length', value: fmtChars(getVal(details, 'responseLength')), icon: Hash },
+        { label: 'Sources Cited', value: getVal(details, 'sourcesCited'), icon: FileText, highlight: true },
+        { label: 'PII Re-masked', value: getVal(details, 'piiRemasked'), icon: EyeOff },
+        { label: 'Total Latency', value: fmtMs(getVal(details, 'totalLatency')), icon: Clock },
       ];
     default:
       return [];
@@ -121,7 +125,9 @@ export function PipelineStep({ step, isLast, queryText, details }: PipelineStepP
   const isSkipped = step.status === 'skipped';
   const canExpand = isCompleted || isActive;
 
-  const stepDetails = getStepDetails(step.id, queryText, details);
+  // Filter out null non-highlighted values (skip rows with no data unless they're important)
+  const stepDetails = getStepDetails(step.id, queryText, details)
+    .filter(d => d.value !== null || d.highlight);
 
   return (
     <Box sx={{ display: 'flex', alignItems: 'flex-start' }}>
@@ -285,11 +291,11 @@ export function PipelineStep({ step, isLast, queryText, details }: PipelineStepP
                     variant="caption"
                     sx={{
                       fontWeight: detail.highlight ? 600 : 400,
-                      color: detail.highlight ? 'primary.main' : 'text.primary',
+                      color: detail.value === null ? 'text.disabled' : detail.highlight ? 'primary.main' : 'text.primary',
                       fontFamily: typeof detail.value === 'number' ? 'var(--font-geist-mono)' : 'inherit',
                     }}
                   >
-                    {detail.value}
+                    {detail.value ?? '---'}
                   </Typography>
                 </Box>
               );

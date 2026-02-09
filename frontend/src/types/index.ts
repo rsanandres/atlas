@@ -3,6 +3,7 @@ export interface AgentDocument {
   doc_id: string;
   content_preview: string;
   metadata: Record<string, unknown>;
+  score?: number;
 }
 
 export interface AgentQueryRequest {
@@ -37,6 +38,8 @@ export interface Message {
   researcherOutput?: string;
   validatorOutput?: string;
   validationResult?: string;
+  feedback?: 'positive' | 'negative';
+  iterationCount?: number;
 }
 
 // Workflow Types

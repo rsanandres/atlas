@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, KeyboardEvent, useEffect } from 'react';
-import { Box, TextField, IconButton, alpha, CircularProgress, Tooltip } from '@mui/material';
+import { Box, TextField, IconButton, alpha, Typography, Tooltip } from '@mui/material';
 import { Send, Square } from 'lucide-react'; // Added Square
 import { motion } from 'framer-motion';
 
@@ -128,6 +128,9 @@ export function ChatInput({ onSend, onStop, isLoading, disabled, externalInput, 
           )}
         </motion.div>
       </Box>
+      <Typography variant="caption" sx={{ mt: 0.5, color: 'text.disabled', fontSize: '0.65rem', display: 'block' }}>
+        Enter to send · Shift+Enter for new line
+      </Typography>
     </Box>
   );
 }

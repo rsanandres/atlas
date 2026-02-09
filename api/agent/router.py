@@ -40,6 +40,7 @@ def _build_sources(source_items: List[Dict[str, Any]]) -> List[AgentDocument]:
                 doc_id=item.get("doc_id", ""),
                 content_preview=item.get("content_preview", ""),
                 metadata=item.get("metadata", {}),
+                score=item.get("score"),
             )
         )
     return sources
@@ -353,7 +354,7 @@ async def query_agent_stream(payload: AgentQueryRequest):
                 "validator_output": result.get("validator_output"),
                 "validation_result": result.get("validation_result"),
                 "tool_calls": tool_calls,
-                "sources": [{"doc_id": s.doc_id, "content_preview": s.content_preview} for s in sources],
+                "sources": [{"doc_id": s.doc_id, "content_preview": s.content_preview, "metadata": s.metadata, "score": s.score} for s in sources],
                 "iteration_count": result.get("iteration_count"),
             }
             yield f"data: {json.dumps(final_data)}\n\n"

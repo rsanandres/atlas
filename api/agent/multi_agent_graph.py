@@ -459,11 +459,15 @@ def _extract_sources(messages: List[Any]) -> List[Dict[str, Any]]:
                 if isinstance(data, dict) and "chunks" in data and isinstance(data["chunks"], list):
                     for chunk in data["chunks"]:
                         if isinstance(chunk, dict):
-                            sources.append({
+                            source_entry: Dict[str, Any] = {
                                 "doc_id": chunk.get("id", ""),
                                 "content_preview": chunk.get("content", "") or chunk.get("text", ""),
-                                "metadata": chunk.get("metadata", {})
-                            })
+                                "metadata": chunk.get("metadata", {}),
+                            }
+                            # Include relevance score if available
+                            if "score" in chunk and chunk["score"] is not None:
+                                source_entry["score"] = float(chunk["score"])
+                            sources.append(source_entry)
             except json.JSONDecodeError:
                 continue
             except Exception:

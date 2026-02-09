@@ -1,7 +1,7 @@
 import { ServiceHealth } from '@/types';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-const HEALTH_CHECK_TIMEOUT = 5000; // 5 seconds for health checks
+const HEALTH_CHECK_TIMEOUT = 30000; // 30 seconds for health checks (remote backend)
 
 // Fetch with timeout
 async function fetchWithTimeout(

@@ -1,15 +1,19 @@
 'use client';
 
+import { useState, useEffect, useCallback } from 'react';
 import { Box, Typography, IconButton, Tooltip, alpha, Switch, FormControlLabel, Chip } from '@mui/material';
-import { Trash2, Menu, Bug, User } from 'lucide-react';
+import { Trash2, Bug, User, Download, Keyboard } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { toast } from 'sonner';
 import { Message } from '@/types';
 import { MessageList } from './MessageList';
 import { ChatInput } from './ChatInput';
 import { ThinkingPanel } from './ThinkingPanel';
+import { KeyboardShortcuts } from './KeyboardShortcuts';
 import { glassStyle } from '@/theme/theme';
 import { useDebugMode } from '@/hooks/useDebugMode';
 import { StreamingState } from '@/hooks/useChat';
+import { exportChatAsMarkdown, downloadMarkdown } from '@/utils/exportChat';
 
 // Patient type for selection
 interface SelectedPatient {
@@ -28,6 +32,8 @@ interface ChatPanelProps {
   streamingState?: StreamingState;
   externalInput?: string;
   selectedPatient?: SelectedPatient | null;
+  onFeedback?: (messageId: string, feedback: 'positive' | 'negative') => void;
+  onRegenerate?: (messageId: string) => void;
 }
 
 export function ChatPanel({
@@ -41,9 +47,31 @@ export function ChatPanel({
   streamingState,
   externalInput,
   selectedPatient,
+  onFeedback,
+  onRegenerate,
 }: ChatPanelProps) {
   const { debugMode, toggleDebugMode } = useDebugMode();
   const isPatientSelected = !!selectedPatient;
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+
+  // Global Cmd+/ shortcut
+  const handleKeyDown = useCallback((e: globalThis.KeyboardEvent) => {
+    if ((e.metaKey || e.ctrlKey) && e.key === '/') {
+      e.preventDefault();
+      setShortcutsOpen(prev => !prev);
+    }
+  }, []);
+
+  useEffect(() => {
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleKeyDown]);
+
+  const handleExport = () => {
+    const md = exportChatAsMarkdown(messages, selectedPatient?.name);
+    downloadMarkdown(md, `atlas-chat-${new Date().toISOString().slice(0, 10)}.md`);
+    toast.success('Chat exported');
+  };
 
   return (
     <motion.div
@@ -130,7 +158,28 @@ export function ChatPanel({
                   },
                 }}
               />
-            </Tooltip>            {/* Debug Mode Toggle */}
+            </Tooltip>
+
+            <Tooltip title="Keyboard shortcuts (Cmd+/)">
+              <IconButton
+                size="small"
+                onClick={() => setShortcutsOpen(true)}
+                sx={{ color: 'text.secondary' }}
+              >
+                <Keyboard size={18} />
+              </IconButton>
+            </Tooltip>
+
+            <Tooltip title="Export chat">
+              <IconButton
+                size="small"
+                onClick={handleExport}
+                disabled={messages.length === 0}
+                sx={{ color: 'text.secondary' }}
+              >
+                <Download size={18} />
+              </IconButton>
+            </Tooltip>
 
             <Tooltip title="Clear chat">
               <IconButton
@@ -183,7 +232,7 @@ export function ChatPanel({
             </Typography>
           </Box>
         ) : (
-          <MessageList messages={messages} debugMode={debugMode} />
+          <MessageList messages={messages} debugMode={debugMode} onFeedback={onFeedback} onRegenerate={onRegenerate} />
         )}
 
         {/* Thinking Panel (Debug Mode) - persists after completion to show progress */}
@@ -206,6 +255,8 @@ export function ChatPanel({
           placeholder={isPatientSelected ? "Ask about clinical data..." : "Select a patient first..."}
         />
       </Box>
+
+      <KeyboardShortcuts open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
     </motion.div>
   );
 }

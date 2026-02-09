@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { v4 as uuidv4 } from 'uuid';
+import { toast } from 'sonner';
 import { Message } from '@/types';
 import { streamAgent, StreamEvent } from '@/services/streamAgent';
 import { useSessions } from './useSessions';
@@ -156,7 +157,7 @@ export function useChat(sessionId?: string, patientId?: string) {
     try {
       const healthUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/agent/health`;
       const healthController = new AbortController();
-      const healthTimeout = setTimeout(() => healthController.abort(), 3000);
+      const healthTimeout = setTimeout(() => healthController.abort(), 30000);
 
       const healthResponse = await fetch(healthUrl, {
         signal: healthController.signal
@@ -169,6 +170,7 @@ export function useChat(sessionId?: string, patientId?: string) {
     } catch (err) {
       console.error('[useChat] Health check failed:', err);
       setError('Agent service unavailable. Is the backend running?');
+      toast.error('Agent service unavailable. Is the backend running?');
       return;
     }
 
@@ -189,6 +191,7 @@ export function useChat(sessionId?: string, patientId?: string) {
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Failed to create session. Please try again.';
         console.error('[useChat] Failed to create session:', err);
+        toast.error(errorMessage);
         setError(errorMessage);
         return;
       }
@@ -312,15 +315,17 @@ export function useChat(sessionId?: string, patientId?: string) {
               role: 'assistant',
               content: data.response || '',
               timestamp: new Date(),
-              sources: data.sources?.map(s => ({
-                doc_id: s.doc_id,
-                content_preview: s.content_preview,
-                metadata: {},
+              sources: data.sources?.map((s: Record<string, unknown>) => ({
+                doc_id: (s.doc_id as string) || '',
+                content_preview: (s.content_preview as string) || '',
+                metadata: (s.metadata as Record<string, unknown>) || {},
+                score: typeof s.score === 'number' ? s.score : undefined,
               })),
               toolCalls: data.tool_calls,
               researcherOutput: data.researcher_output,
               validatorOutput: data.validator_output,
               validationResult: data.validation_result,
+              iterationCount: data.iteration_count,
             };
 
             setMessages(prev =>
@@ -356,7 +361,7 @@ export function useChat(sessionId?: string, patientId?: string) {
           },
           onError: (errorMessage) => {
             setStreamingState(prev => ({ ...prev, isStreaming: false }));
-            setError(errorMessage);
+            toast.error(errorMessage);
 
             // Update loading message to show error
             setMessages(prev =>
@@ -378,7 +383,7 @@ export function useChat(sessionId?: string, patientId?: string) {
       );
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to get response';
-      setError(errorMessage);
+      toast.error(errorMessage);
       setStreamingState(prev => ({ ...prev, isStreaming: false }));
 
       // Update loading message to show error
@@ -403,6 +408,23 @@ export function useChat(sessionId?: string, patientId?: string) {
     resetStreamingState();
   }, [resetStreamingState]);
 
+  const setFeedback = useCallback((messageId: string, feedback: 'positive' | 'negative') => {
+    setMessages(prev => prev.map(m => m.id === messageId ? { ...m, feedback } : m));
+    localStorage.setItem(`feedback_${messageId}`, feedback);
+  }, []);
+
+  const regenerateMessage = useCallback((messageId: string) => {
+    const msgIndex = messages.findIndex(m => m.id === messageId);
+    if (msgIndex < 0) return;
+    let userMsg: Message | null = null;
+    for (let i = msgIndex - 1; i >= 0; i--) {
+      if (messages[i].role === 'user') { userMsg = messages[i]; break; }
+    }
+    if (!userMsg) return;
+    setMessages(prev => prev.filter(m => m.id !== messageId));
+    sendMessage(userMsg.content);
+  }, [messages, sendMessage]);
+
   const getLastResponse = useCallback((): Message | null => {
     const assistantMessages = messages.filter(m => m.role === 'assistant' && !m.isLoading);
     return assistantMessages[assistantMessages.length - 1] || null;
@@ -419,5 +441,7 @@ export function useChat(sessionId?: string, patientId?: string) {
     clearChat,
     stopGeneration,
     getLastResponse,
+    setFeedback,
+    regenerateMessage,
   };
 }
