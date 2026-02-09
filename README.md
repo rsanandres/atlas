@@ -64,7 +64,6 @@ A full-stack healthcare AI system that lets clinicians query patient records usi
 - PII masking on both input and output (patient names, SSNs, dates)
 - Guardrails validation layer for response safety checks
 - Patient context auto-injection prevents cross-patient data leaks
-- Anti-hallucination: 32B+ models required (8B models copy prompt examples as real data)
 
 ### Observability Dashboard
 - Live service health monitoring with latency tracking
@@ -239,16 +238,6 @@ The system indexes and retrieves 10 FHIR R4 resource types:
 | Organization | Healthcare facilities |
 | Medication | Drug reference data |
 
-## Model Selection
-
-| Model | VRAM | Recommendation |
-|-------|------|----------------|
-| `qwen2.5:32b` | ~20GB | Best instruction following for medical prompts |
-| `mixtral:8x7b` | ~26GB | Good MoE alternative |
-| `llama3.1:8b` | ~5GB | Not recommended -- hallucinates from prompt examples |
-
-8B parameter models cannot distinguish few-shot examples from real patient data in complex medical prompts. Use 32B+ for reliable clinical output.
-
 ## Testing
 
 ```bash
@@ -261,4 +250,4 @@ cd frontend && npm run build && npm run lint
 
 ## License
 
-All rights reserved.
+MIT

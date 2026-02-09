@@ -1,15 +1,43 @@
-data
-.venv
-.*
-*.json
+# Environment & secrets
+.env
+.env.*
+!.env.example
 
-# Python cache (catches __pycache__ at any directory level)
-**/__pycache__/
+# Python
+__pycache__/
 *.py[cod]
 *$py.class
+.venv/
+venv/
+*.egg-info/
 
-# Postgres data
+# Node
+node_modules/
+.next/
+frontend/.next/
+
+# Data (FHIR patient bundles - not committed)
+data/
+
+# Database
 /postgres/postgres_data
-
-# db
 *.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Internal dev notes
+agent_scratch_space/
+test_results/
+debug/
+DEBUG_*.md
+PLAN_*.md
+chunking.md
+CLAUDE.md
