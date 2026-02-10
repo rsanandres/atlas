@@ -1,0 +1,34 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # Lint
+      - run: pip install ruff
+      - run: ruff check api/ utils/ scripts/
+
+      # Standalone tests (no services needed)
+      - run: pip install -r requirements.txt
+      - run: python -m pytest POC_agent/tests/test_query_classifier.py POC_agent/tests/test_prompt_configuration.py -v
+      - run: python scripts/verify_imports.py
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: cd frontend && npm ci
+      - run: cd frontend && npm run lint
