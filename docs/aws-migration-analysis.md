@@ -271,13 +271,15 @@ Your canvas says "Claude Haiku" for both agents — Haiku is the right call for 
 | ECS Fargate or Amplify (frontend) | 0.5 vCPU, 1GB or Amplify free tier | ~$15-25 |
 | DynamoDB | On-demand, low traffic | ~$1-5 |
 | Bedrock (Claude Haiku) | ~50k queries/mo estimate | ~$15-30 |
-| Bedrock (Titan Embeddings) | One-time re-embed + queries | ~$2-5 |
+| Bedrock (Titan Embeddings) | One-time re-embed + queries | ~$36 actual (see note) |
 | ALB | 1 ALB, low traffic | ~$20 |
 | CloudWatch | Basic metrics + logs | ~$5-10 |
 | Secrets Manager | 5-10 secrets | ~$3 |
 | ECR | Container storage | ~$1 |
 | NAT Gateway | Required for private subnet internet | ~$35 |
 | **Total** | | **~$185-225/mo** |
+
+> **Embedding cost note (2026-02-11):** Titan Embed v2 one-time cost was ~$36 for embedding ~102,718 of 132,842 patients (77%). Embedding was stopped early to cap upfront costs. The remaining ~30K patients can be embedded later if more complete coverage is desired — all raw FHIR data remains in `fhir_raw_files`.
 
 **Cost reduction options:**
 - Use Fargate Spot for non-critical workloads (up to 70% savings)
@@ -660,7 +662,7 @@ After reviewing the production-grade architecture in Sections 2 and 5, a cost-op
 | Amplify (frontend) | Free tier (SSR) | ~$0 |
 | DynamoDB | On-demand, low traffic | ~$1-5 |
 | Bedrock (Claude Haiku) | ~50k queries/mo estimate | ~$15-30 |
-| Bedrock (Titan Embeddings) | One-time re-embed + queries | ~$2-5 |
+| Bedrock (Titan Embeddings) | One-time re-embed (77% done) | ~$36 actual |
 | ALB | 1 ALB, low traffic | ~$20 |
 | CloudWatch | Basic metrics + logs | ~$5-10 |
 | Secrets Manager | 5-10 secrets | ~$3 |
