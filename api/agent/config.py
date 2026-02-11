@@ -38,9 +38,9 @@ def get_llm() -> Any:
     if provider == "bedrock":
         model_name = os.getenv("LLM_MODEL", "haiku").lower()
         if model_name == "sonnet":
-            model_id = "anthropic.claude-3-5-sonnet-20241022-v2:0"
+            model_id = "us.anthropic.claude-3-5-sonnet-20241022-v2:0"
         else:
-            model_id = "anthropic.claude-3-5-haiku-20241022-v2:0"
+            model_id = "us.anthropic.claude-3-5-haiku-20241022-v1:0"
 
         return ChatBedrock(
             model_id=model_id,

@@ -1,0 +1,45 @@
+# Large data directories
+data/
+POC_*/
+
+# Frontend (separate deployment)
+frontend/
+
+# Version control
+.git/
+.gitignore
+
+# Environment files
+.env
+.env.*
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# IDE
+.cursor/
+.cursorrules
+.vscode/
+.idea/
+
+# Docker compose (not needed in image)
+docker-compose*.yml
+
+# Scripts (not needed at runtime)
+scripts/
+
+# Docs
+docs/
+*.md
+
+# Tests
+**/test_*.py
+**/tests/
+
+# Misc
+*.log
+.DS_Store

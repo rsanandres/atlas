@@ -1,23 +1,34 @@
-FROM python:3.12
+FROM python:3.12-slim
 
 WORKDIR /app
 
-# Install Python dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt python-dotenv
+# System deps for psycopg2 and general build
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends gcc libpq-dev && \
+    rm -rf /var/lib/apt/lists/*
 
-# Copy application code
+# Install Python dependencies (CPU-only torch via extra-index-url)
+COPY requirements-prod.txt .
+RUN pip install --no-cache-dir -r requirements-prod.txt
+
+# Pre-download cross-encoder model (~90MB) to avoid first-request delay
+RUN python -c "from sentence_transformers import CrossEncoder; CrossEncoder('sentence-transformers/all-MiniLM-L6-v2')"
+
+# Pre-download NLTK punkt tokenizer
+RUN python -c "import nltk; nltk.download('punkt', quiet=True); nltk.download('punkt_tab', quiet=True)"
+
+# Copy application code (only what's needed at runtime)
 COPY api/ ./api/
 COPY utils/ ./utils/
-COPY scripts/ ./scripts/
-COPY data/ ./data/
+COPY postgres/queue_storage.py ./postgres/queue_storage.py
 
-# Expose port
+# postgres/ needs to be a package for imports
+RUN touch ./postgres/__init__.py
+
 EXPOSE 8000
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
-    CMD python -c "import requests; requests.get('http://localhost:8000/health', timeout=3)" || exit 1
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)" || exit 1
 
-# Run with uvicorn
-CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Single worker — ECS task gets 0.5 vCPU
+CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]

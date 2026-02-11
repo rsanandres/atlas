@@ -1,3 +1,4 @@
+import os
 import time
 import json
 import logging
@@ -63,15 +64,24 @@ class LoggingMiddleware(BaseHTTPMiddleware):
         return response
 
 def setup_cors(app: FastAPI) -> None:
-    """Configure CORS middleware for the FastAPI app."""
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=[
-            "http://localhost:3000", 
+    """Configure CORS middleware for the FastAPI app.
+
+    Set CORS_ORIGINS env var (comma-separated) for production.
+    Falls back to localhost for development.
+    """
+    cors_env = os.environ.get("CORS_ORIGINS", "")
+    if cors_env:
+        origins = [o.strip() for o in cors_env.split(",") if o.strip()]
+    else:
+        origins = [
+            "http://localhost:3000",
             "http://localhost:3001",
             "http://127.0.0.1:3000",
             "http://127.0.0.1:3001",
-        ],
+        ]
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=origins,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
