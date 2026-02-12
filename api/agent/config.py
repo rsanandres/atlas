@@ -29,19 +29,27 @@ def _int_env(name: str, default: int) -> int:
     return default
 
 
-def get_llm() -> Any:
-    """Return a configured LLM client based on environment variables."""
+BEDROCK_MODELS = {
+    "haiku": "us.anthropic.claude-3-5-haiku-20241022-v1:0",
+    "sonnet": "us.anthropic.claude-3-5-sonnet-20241022-v2:0",
+}
+
+
+def get_llm(model_tier: str | None = None) -> Any:
+    """Return a configured LLM client based on environment variables.
+
+    Args:
+        model_tier: Override model selection. For Bedrock: "sonnet" or "haiku".
+                    If None, uses LLM_MODEL env var.
+    """
 
     provider = os.getenv("LLM_PROVIDER", "ollama").lower()
     temperature = float(os.getenv("LLM_TEMPERATURE", "0.1"))
     max_tokens = _int_env("LLM_MAX_TOKENS", 2048)
 
     if provider == "bedrock":
-        model_name = os.getenv("LLM_MODEL", "haiku").lower()
-        if model_name == "sonnet":
-            model_id = "us.anthropic.claude-3-5-sonnet-20241022-v2:0"
-        else:
-            model_id = "us.anthropic.claude-3-5-haiku-20241022-v1:0"
+        model_name = (model_tier or os.getenv("LLM_MODEL", "haiku")).lower()
+        model_id = BEDROCK_MODELS.get(model_name, BEDROCK_MODELS["haiku"])
 
         return ChatBedrock(
             model_id=model_id,

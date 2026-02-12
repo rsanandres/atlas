@@ -122,7 +122,7 @@ def _extract_response_text(messages: List[Any]) -> str:
 def _get_researcher_agent() -> Any:
     global _RESEARCHER_AGENT
     if _RESEARCHER_AGENT is None:
-        llm = get_llm()
+        llm = get_llm("sonnet")  # Sonnet for reasoning & tool selection
         tools = [
             search_patient_records,
             search_clinical_notes,
@@ -139,14 +139,14 @@ def _get_researcher_agent() -> Any:
 def _get_response_agent() -> Any:
     global _RESPONSE_AGENT
     if _RESPONSE_AGENT is None:
-        llm = get_llm()
+        llm = get_llm("haiku")  # Haiku for synthesis
         _RESPONSE_AGENT = create_agent(llm)
     return _RESPONSE_AGENT
 
 def _get_validator_agent() -> Any:
     global _VALIDATOR_AGENT
     if _VALIDATOR_AGENT is None:
-        llm = get_llm()
+        llm = get_llm("haiku")  # Haiku for validation
         tools = [
             validate_icd10_code,
             lookup_loinc,
@@ -688,7 +688,7 @@ async def _conversational_responder_node(state: AgentState) -> dict:
         HumanMessage(content=query)
     ]
     
-    llm = get_llm()
+    llm = get_llm("haiku")  # Haiku for conversational
     try:
         response_msg = await llm.ainvoke(messages)
         response = str(response_msg.content)
