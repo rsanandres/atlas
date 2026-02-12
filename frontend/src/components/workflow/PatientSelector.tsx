@@ -1,7 +1,8 @@
 'use client';
 
-import { Box, Typography, Card, CardContent, Chip, IconButton, Button, Stack, Tooltip, CardActionArea, Divider, CircularProgress } from '@mui/material';
-import { User, FileText, Database, RefreshCw } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { Box, Typography, Card, CardContent, Chip, IconButton, Button, Stack, Tooltip, CardActionArea, Divider, CircularProgress, TextField, InputAdornment } from '@mui/material';
+import { User, FileText, Database, RefreshCw, Search } from 'lucide-react';
 import { alpha } from '@mui/material/styles';
 import { PatientSummary } from '../../services/agentApi';
 
@@ -49,6 +50,15 @@ export function PatientSelector({
   patientsError,
   onRefresh,
 }: PatientSelectorProps) {
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Filter database patients by search query
+  const filteredDatabasePatients = useMemo(() => {
+    if (!searchQuery.trim()) return databasePatients.slice(0, 50); // Show top 50 by default
+    const q = searchQuery.toLowerCase();
+    return databasePatients.filter(p => p.name.toLowerCase().includes(q)).slice(0, 100);
+  }, [databasePatients, searchQuery]);
+
   // Find selected patient data
   const allPatients = [...featuredPatients, ...databasePatients];
   const selectedPatientData = selectedPatient
@@ -273,17 +283,37 @@ export function PatientSelector({
               <Divider sx={{ my: 2 }} />
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
                 <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary' }}>
-                  Database Patients ({databasePatients.length})
+                  Patient Directory ({databasePatients.length.toLocaleString()} patients)
                 </Typography>
-                <Tooltip title="Refresh">
-                  <IconButton size="small" onClick={onRefresh} disabled={isLoadingPatients} sx={{ p: 0.25 }}>
-                    {isLoadingPatients ? <CircularProgress size={12} /> : <RefreshCw size={12} />}
-                  </IconButton>
-                </Tooltip>
               </Box>
+              <TextField
+                size="small"
+                placeholder="Search patients by name..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                fullWidth
+                sx={{ mb: 1, '& .MuiInputBase-input': { fontSize: '0.8rem', py: 0.75 } }}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <Search size={14} />
+                    </InputAdornment>
+                  ),
+                }}
+              />
+              {!searchQuery && (
+                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.6rem', mb: 0.5, display: 'block' }}>
+                  Showing top 50 by data richness. Type to search all {databasePatients.length.toLocaleString()}.
+                </Typography>
+              )}
+              {searchQuery && (
+                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.6rem', mb: 0.5, display: 'block' }}>
+                  {filteredDatabasePatients.length} results{filteredDatabasePatients.length === 100 ? ' (showing first 100)' : ''}
+                </Typography>
+              )}
               <Box sx={{ maxHeight: 300, overflowY: 'auto', pr: 0.5 }}>
                 <Stack spacing={1}>
-                  {databasePatients.map((p) => {
+                  {filteredDatabasePatients.map((p) => {
                     const isSelected = selectedPatient?.id === p.id;
                     return (
                       <Card

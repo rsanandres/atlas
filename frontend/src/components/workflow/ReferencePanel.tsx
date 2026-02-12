@@ -16,15 +16,22 @@ import adamJson from '../../data/personas/abbott_adam.json';
 import alvaJson from '../../data/personas/abbott_alva.json';
 import amayaJson from '../../data/personas/abbott_amaya.json';
 
-import { listPatients, PatientSummary } from '../../services/agentApi';
+import { PatientSummary } from '../../services/agentApi';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type FhirBundle = any;
 
+// Static patient data from pre-generated JSON (served from /public/data/patients.json)
+interface StaticPatient {
+  name: string;
+  patient_id: string;
+  chunks: number;
+}
+
 // Local persona data with full FHIR bundles for detailed view
 const LOCAL_PERSONA_DATA: Record<string, { name: string; age: number; conditions: string[]; description: string; data: FhirBundle }> = {
   "5e81d5b2-af01-4367-9b2e-0cdf479094a4": { name: "Danial Larson", age: 65, conditions: ["Recurrent rectal polyp", "Hypertension", "Chronic kidney disease"], description: "Older male with multiple chronic conditions.", data: larsonJson },
-  "d8d9460b-4cb6-47f9-a94f-9e58390204b2": { name: "Ron Zieme", age: 86, conditions: ["Hypertension", "Fibromyalgia", "Osteoporosis", "Coronary Heart Disease"], description: "Elderly female with complex history including MI and heart disease.", data: ziemeJson },
+  "616d0449-c98e-46bb-a1f6-0170499fd4e4": { name: "Hailee Kovacek", age: 52, conditions: ["Allergies", "Conditions", "Labs", "Procedures"], description: "Richest patient data — 375 records across 13 resource types.", data: ziemeJson },
   "0beb6802-3353-4144-8ae3-97176bce86c3": { name: "Doug Christiansen", age: 24, conditions: ["Chronic sinusitis"], description: "Young adult with chronic sinus issues.", data: christiansenJson },
   "6a4168a1-2cfd-4269-8139-8a4a663adfe7": { name: "Jamie Hegmann", age: 71, conditions: ["Coronary Heart Disease", "Myocardial Infarction History"], description: "Female patient with significant cardiac history.", data: hegmannJson },
   "7f7ad77a-5dd5-4df0-ba36-f4f1e4b6d368": { name: "Carlo Herzog", age: 23, conditions: ["Childhood asthma", "Allergic rhinitis", "Nut allergy"], description: "Young male with multiple allergies and asthma.", data: herzogJson },
@@ -71,11 +78,21 @@ export function ReferencePanel({ onCopy, onPromptSelect, selectedPatient, onPati
     setIsLoadingPatients(true);
     setPatientsError(null);
     try {
-      const patients = await listPatients();
+      // Load from static JSON (served from /public/data/patients.json by Vercel CDN)
+      // This avoids the slow /db/patients RDS query that times out on 132K rows
+      const response = await fetch('/data/patients.json');
+      if (!response.ok) throw new Error(`Failed to load patients: ${response.status}`);
+      const data: StaticPatient[] = await response.json();
+      const patients: PatientSummary[] = data.map(p => ({
+        id: p.patient_id,
+        name: p.name,
+        chunk_count: p.chunks,
+        resource_types: [],
+      }));
       setLivePatients(patients);
     } catch (err) {
       console.error('Failed to fetch patients:', err);
-      setPatientsError('Failed to load patients from database');
+      setPatientsError('Failed to load patient directory');
     } finally {
       setIsLoadingPatients(false);
     }
