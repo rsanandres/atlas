@@ -169,8 +169,8 @@ export function useChat(sessionId?: string, patientId?: string) {
       }
     } catch (err) {
       console.error('[useChat] Health check failed:', err);
-      setError('Agent service unavailable. Is the backend running?');
-      toast.error('Agent service unavailable. Is the backend running?');
+      setError('System is updating. Please try again in a moment.');
+      toast.error('System is updating. Please try again in a moment.');
       return;
     }
 

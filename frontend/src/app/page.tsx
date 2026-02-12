@@ -8,7 +8,7 @@ import { ObservabilityPanel } from '@/components/observability/ObservabilityPane
 import { ConnectModal } from '@/components/lead-capture/ConnectModal';
 import { useChat } from '@/hooks/useChat';
 import { useWorkflow } from '@/hooks/useWorkflow';
-import { IconButton, Tooltip, alpha, Box } from '@mui/material';
+import { IconButton, Tooltip, alpha, Box, Alert } from '@mui/material';
 import { Menu } from 'lucide-react';
 import { useObservability } from '@/hooks/useObservability';
 import { useLeadCapture } from '@/hooks/useLeadCapture';
@@ -37,6 +37,7 @@ export default function Home() {
     lastUpdated,
     refreshData,
     isLoading: obsLoading,
+  isMaintenanceMode,
   } = useObservability();
   const { isOpen: leadOpen, dismiss: dismissLead } = useLeadCapture(messageCount);
 
@@ -110,6 +111,24 @@ export default function Home() {
 
   return (
     <>
+      {isMaintenanceMode && (
+        <Alert
+          severity="info"
+          sx={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            zIndex: 9999,
+            borderRadius: 0,
+            justifyContent: 'center',
+            py: 0.5,
+            '& .MuiAlert-message': { textAlign: 'center', width: '100%' },
+          }}
+        >
+          System is updating — queries may be temporarily unavailable. This page will auto-recover.
+        </Alert>
+      )}
       <MainLayout
         chatPanel={
           <ChatPanel

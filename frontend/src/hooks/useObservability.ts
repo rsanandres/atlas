@@ -50,6 +50,7 @@ export function useObservability() {
   const [data, setData] = useState(getInitialData);
   const [isLoading, setIsLoading] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
+  const [isMaintenanceMode, setIsMaintenanceMode] = useState(false);
 
   const refreshData = useCallback(async () => {
     setIsLoading(true);
@@ -203,9 +204,17 @@ export function useObservability() {
         costBreakdown,
       });
       setLastUpdated(new Date());
+
+      // Detect maintenance mode: all core services unhealthy = system updating
+      const coreServices = serviceHealth.filter(s =>
+        s.name === 'Agent Service' || s.name === 'PostgreSQL'
+      );
+      const allCoreDown = coreServices.length > 0 && coreServices.every(s => s.status === 'unhealthy');
+      setIsMaintenanceMode(allCoreDown);
     } catch (error) {
       console.error('Error refreshing observability data:', error);
-      // Keep existing data on error (graceful degradation)
+      // All fetches failed = likely maintenance
+      setIsMaintenanceMode(true);
     } finally {
       setIsLoading(false);
     }
@@ -255,6 +264,7 @@ export function useObservability() {
     metricSummaries: data.metricSummaries,
     costBreakdown: data.costBreakdown,
     isLoading,
+    isMaintenanceMode,
     lastUpdated,
     refreshData,
     getMetricsByNamespace,
