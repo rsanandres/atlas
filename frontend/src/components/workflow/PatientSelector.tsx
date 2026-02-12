@@ -193,7 +193,7 @@ export function PatientSelector({
 
           {/* Featured Patients Section */}
           <Typography variant="caption" sx={{ fontWeight: 600, mb: 1, display: 'block', color: 'text.secondary' }}>
-            Featured Patients (with full FHIR data)
+            Featured Patients
           </Typography>
           <Stack spacing={1.5} sx={{ mb: 2 }}>
             {featuredPatients.map((p) => {

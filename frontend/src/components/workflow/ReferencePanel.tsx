@@ -18,6 +18,9 @@ import amayaJson from '../../data/personas/abbott_amaya.json';
 
 import { PatientSummary } from '../../services/agentApi';
 
+// Example patients selected for data richness (280-375 chunks each, all 13 resource types)
+import examplePatients from '../../data/example-patients.json';
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type FhirBundle = any;
 
@@ -28,8 +31,19 @@ interface StaticPatient {
   chunks: number;
 }
 
+interface ExamplePatient {
+  name: string;
+  patient_id: string;
+  chunks: number;
+  resource_types: number;
+  age: number;
+  conditions: string[];
+  description: string;
+  note?: string;
+}
+
 // Local persona data with full FHIR bundles for detailed view
-const LOCAL_PERSONA_DATA: Record<string, { name: string; age: number; conditions: string[]; description: string; data: FhirBundle }> = {
+const LOCAL_PERSONA_DATA: Record<string, { name: string; age: number; conditions: string[]; description: string; data?: FhirBundle }> = {
   "5e81d5b2-af01-4367-9b2e-0cdf479094a4": { name: "Danial Larson", age: 65, conditions: ["Recurrent rectal polyp", "Hypertension", "Chronic kidney disease"], description: "Older male with multiple chronic conditions.", data: larsonJson },
   "616d0449-c98e-46bb-a1f6-0170499fd4e4": { name: "Hailee Kovacek", age: 52, conditions: ["Allergies", "Conditions", "Labs", "Procedures"], description: "Richest patient data — 375 records across 13 resource types.", data: ziemeJson },
   "0beb6802-3353-4144-8ae3-97176bce86c3": { name: "Doug Christiansen", age: 24, conditions: ["Chronic sinusitis"], description: "Young adult with chronic sinus issues.", data: christiansenJson },
@@ -39,6 +53,18 @@ const LOCAL_PERSONA_DATA: Record<string, { name: string; age: number; conditions
   "f883318e-9a81-4f77-9cff-5318a00b777f": { name: "Alva Abbott", age: 67, conditions: ["Prediabetes"], description: "Older male managing prediabetes.", data: alvaJson },
   "4b7098a8-13b8-4916-a379-6ae2c8a70a8a": { name: "Amaya Abbott", age: 69, conditions: ["Hypertension", "Chronic sinusitis", "Concussion History"], description: "Older male with hypertension and history of head injury.", data: amayaJson },
 };
+
+// Merge example patients (data-rich) into LOCAL_PERSONA_DATA, skipping duplicates
+for (const ep of examplePatients as ExamplePatient[]) {
+  if (!LOCAL_PERSONA_DATA[ep.patient_id]) {
+    LOCAL_PERSONA_DATA[ep.patient_id] = {
+      name: ep.name,
+      age: ep.age,
+      conditions: ep.conditions,
+      description: ep.description,
+    };
+  }
+}
 
 const PERSONAS = Object.entries(LOCAL_PERSONA_DATA).map(([id, data]) => ({ id, ...data }));
 
