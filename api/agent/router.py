@@ -208,19 +208,58 @@ async def query_agent_stream(payload: AgentQueryRequest):
 
             # print(f"[STREAM {request_id}] Starting astream_events loop...")
 
-            # Use astream_events for real-time streaming (removed version parameter for compatibility)
+            # Use astream_events for real-time streaming
+            # Keepalive: yield SSE comments to prevent ALB idle timeout during long Bedrock calls
+            KEEPALIVE_INTERVAL = 15  # seconds
+            event_queue: asyncio.Queue = asyncio.Queue()
+            stream_done = False
+
+            async def _stream_events():
+                """Consume astream_events and push to queue."""
+                nonlocal stream_done
+                try:
+                    async for ev in agent.astream_events(
+                        state,
+                        config={"recursion_limit": recursion_limit}
+                    ):
+                        await event_queue.put(ev)
+                except GraphRecursionError as e:
+                    await event_queue.put(("__recursion_error__", e))
+                except Exception as e:
+                    await event_queue.put(("__error__", e))
+                finally:
+                    stream_done = True
+                    await event_queue.put(None)  # sentinel
+
+            stream_task = asyncio.create_task(_stream_events())
+
             try:
-                async for event in agent.astream_events(
-                    state,
-                    config={"recursion_limit": recursion_limit}
-                ):
+                while True:
+                    try:
+                        event = await asyncio.wait_for(event_queue.get(), timeout=KEEPALIVE_INTERVAL)
+                    except asyncio.TimeoutError:
+                        # No event in 15s — send SSE comment keepalive
+                        yield ": keepalive\n\n"
+                        continue
+
+                    if event is None:
+                        break  # stream done
+
+                    # Handle errors forwarded from stream task
+                    if isinstance(event, tuple) and len(event) == 2:
+                        tag, exc = event
+                        if tag == "__recursion_error__":
+                            raise GraphRecursionError(str(exc))
+                        elif tag == "__error__":
+                            raise exc
+
                     event_count += 1
-                    # print(f"[STREAM {request_id}] Event {event_count}: {event.get('event')} - {event.get('name', 'unknown')}")
-                    
+
                     # Check timeout manually during streaming
                     if asyncio.get_event_loop().time() - start_time > agent_timeout:
                         error_msg = f"Agent request {request_id} timed out after {agent_timeout} seconds"
                         print(f"Error: {error_msg}")
+                        stream_task.cancel()
                         yield f"data: {json.dumps({'type': 'error', 'message': error_msg})}\n\n"
                         return
                     
@@ -286,12 +325,13 @@ async def query_agent_stream(payload: AgentQueryRequest):
                             
                             if "final_response" in output and output["final_response"] and "respond" in event_name.lower():
                                 yield f"data: {json.dumps({'type': 'response_output', 'output': output['final_response'], 'iteration': iteration_count})}\n\n"
-                
-                # print(f"[STREAM {request_id}] astream_events loop completed. Total events: {event_count}")
-                
+
+                # Stream finished — clean up task
+                await stream_task
+
                 # After streaming completes, use accumulated state as result
                 result = accumulated_state
-                
+
             except GraphRecursionError as e:
                 # Agent hit recursion limit - return graceful response with what we have
                 current_iter = accumulated_state.get("iteration_count", 0)

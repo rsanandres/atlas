@@ -136,7 +136,7 @@ export async function streamAgent(
                 callbacks.onStatus?.('Stopped by user');
                 return; // Clean exit on user stop
             }
-            callbacks.onError?.('Request timed out after 5 minutes');
+            callbacks.onError?.('Request timed out after 30 minutes');
         } else {
             callbacks.onError?.(error instanceof Error ? error.message : String(error));
         }
