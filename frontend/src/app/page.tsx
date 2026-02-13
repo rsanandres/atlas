@@ -7,6 +7,7 @@ import { WorkflowPanel } from '@/components/workflow/WorkflowPanel';
 import { ObservabilityPanel } from '@/components/observability/ObservabilityPanel';
 import { ConnectModal } from '@/components/lead-capture/ConnectModal';
 import { WelcomeScreen } from '@/components/WelcomeScreen';
+import { OnboardingTour } from '@/components/OnboardingTour';
 import { useChat } from '@/hooks/useChat';
 import { useWorkflow } from '@/hooks/useWorkflow';
 import { Alert } from '@mui/material';
@@ -192,6 +193,8 @@ export default function Home() {
       />
 
 
+
+      <OnboardingTour />
 
       <ConnectModal
         open={leadOpen}
