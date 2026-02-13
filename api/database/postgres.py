@@ -120,11 +120,11 @@ def get_engine() -> AsyncEngine:
         )
 
         # Set IVFFlat probes on every new connection for optimal index recall.
-        # probes = sqrt(lists) where lists = 2775 → probes ≈ 53
+        # probes = sqrt(lists) where lists = 512 → probes ≈ 23
         @event.listens_for(_engine.sync_engine, "connect")
         def set_ivfflat_probes(dbapi_conn, connection_record):
             cursor = dbapi_conn.cursor()
-            cursor.execute("SET ivfflat.probes = 53")
+            cursor.execute("SET ivfflat.probes = 23")
             cursor.close()
 
     return _engine
