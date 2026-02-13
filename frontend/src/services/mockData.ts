@@ -1,5 +1,5 @@
 import { ServiceHealth } from '@/types';
-import { CloudWatchMetric, LangSmithTrace, MetricSummary, RerankerStats, CostBreakdown } from '@/types/observability';
+import { CloudWatchMetric, MetricSummary, RerankerStats, CostBreakdown } from '@/types/observability';
 
 // Helper to generate random values within a range
 const randomInRange = (min: number, max: number) => Math.random() * (max - min) + min;
@@ -93,36 +93,6 @@ export function getMockCloudWatchMetrics(): CloudWatchMetric[] {
       unit: 'Count',
     },
   ];
-}
-
-// Mock LangSmith Traces
-export function getMockLangSmithTraces(limit = 10): LangSmithTrace[] {
-  const traces: LangSmithTrace[] = [];
-  const toolNames = ['search_clinical_notes', 'get_patient_timeline', 'cross_reference_meds', 'calculate'];
-  
-  for (let i = 0; i < limit; i++) {
-    const startTime = new Date(Date.now() - randomInt(0, 3600000)); // Last hour
-    const latency = randomInRange(100, 3000);
-    const endTime = new Date(startTime.getTime() + latency);
-    
-    traces.push({
-      runId: `run_${crypto.randomUUID().slice(0, 8)}`,
-      name: i % 3 === 0 ? 'RAG Agent Chain' : toolNames[randomInt(0, toolNames.length)],
-      runType: i % 3 === 0 ? 'chain' : (i % 2 === 0 ? 'llm' : 'tool'),
-      startTime: startTime.toISOString(),
-      endTime: endTime.toISOString(),
-      latencyMs: latency,
-      tokenUsage: i % 3 === 0 ? {
-        prompt: randomInt(500, 2000),
-        completion: randomInt(100, 500),
-        total: randomInt(600, 2500),
-      } : undefined,
-      status: Math.random() > 0.95 ? 'error' : 'success',
-      parentRunId: i % 3 !== 0 ? traces[Math.floor(i / 3) * 3]?.runId : undefined,
-    });
-  }
-  
-  return traces.sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
 }
 
 // Mock Reranker Stats

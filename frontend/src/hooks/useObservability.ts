@@ -5,13 +5,12 @@ import {
   getAgentHealth,
   getRerankerHealth,
   getRerankerStats,
-  getLangSmithTraces,
   getEmbeddingsHealth,
   getDatabaseStats,
   getErrorCounts,
   getCloudWatchMetrics,
 } from '@/services/agentApi';
-import { CloudWatchMetric, CloudWatchTimeSeries, LangSmithTrace, MetricSummary, RerankerStats, CostBreakdown } from '@/types/observability';
+import { CloudWatchMetric, CloudWatchTimeSeries, MetricSummary, RerankerStats, CostBreakdown } from '@/types/observability';
 import { ServiceHealth } from '@/types';
 
 const REFRESH_INTERVAL = 5000; // 5 seconds for real-time updates
@@ -38,7 +37,6 @@ function getInitialData() {
   return {
     cloudWatchMetrics: [] as CloudWatchMetric[],
     cloudWatchTimeSeries: [] as CloudWatchTimeSeries[],
-    langSmithTraces: [] as LangSmithTrace[],
     rerankerStats: null as RerankerStats | null,
     databaseStats: null as DatabaseStats | null,
     serviceHealth: [] as ServiceHealth[],
@@ -59,12 +57,11 @@ export function useObservability() {
     
     try {
       // Fetch all service health checks in parallel (graceful degradation)
-      const [agentHealth, rerankerHealth, embeddingsHealth, rerankerStats, langSmithTraces, dbStats, errorCounts, cwMetrics] = await Promise.allSettled([
+      const [agentHealth, rerankerHealth, embeddingsHealth, rerankerStats, dbStats, errorCounts, cwMetrics] = await Promise.allSettled([
         getAgentHealth(),
         getRerankerHealth(),
         getEmbeddingsHealth(),
         getRerankerStats(),
-        getLangSmithTraces(10),
         getDatabaseStats(),
         getErrorCounts(),
         getCloudWatchMetrics(),
@@ -106,9 +103,6 @@ export function useObservability() {
 
       // Get reranker stats (null if failed)
       const stats = rerankerStats.status === 'fulfilled' ? rerankerStats.value : null;
-
-      // Get LangSmith traces (empty array if failed or no API key)
-      const traces = langSmithTraces.status === 'fulfilled' ? langSmithTraces.value : [];
 
       // Get database stats (null if failed)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -213,7 +207,6 @@ export function useObservability() {
       setData({
         cloudWatchMetrics,
         cloudWatchTimeSeries,
-        langSmithTraces: traces,
         rerankerStats: stats,
         databaseStats: databaseStats && !databaseStats.error ? databaseStats : null,
         serviceHealth,
@@ -275,7 +268,6 @@ export function useObservability() {
   return {
     cloudWatchMetrics: data.cloudWatchMetrics,
     cloudWatchTimeSeries: data.cloudWatchTimeSeries,
-    langSmithTraces: data.langSmithTraces,
     rerankerStats: data.rerankerStats,
     databaseStats: data.databaseStats,
     serviceHealth: data.serviceHealth,

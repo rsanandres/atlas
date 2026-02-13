@@ -1,11 +1,8 @@
 import { AgentQueryRequest, AgentQueryResponse, ServiceHealth } from '@/types';
-import { RerankerStats, LangSmithTrace } from '@/types/observability';
+import { RerankerStats } from '@/types/observability';
 import { getEmbeddingsHealth } from './embeddingsApi';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-const LANGSMITH_API_URL = process.env.NEXT_PUBLIC_LANGSMITH_API_URL || 'https://api.smith.langchain.com';
-const LANGSMITH_API_KEY = process.env.NEXT_PUBLIC_LANGSMITH_API_KEY;
-
 // Retry configuration
 const MAX_RETRIES = 3;
 const RETRY_DELAY = 1000; // 1 second base delay
@@ -275,55 +272,6 @@ export async function clearSession(sessionId: string): Promise<void> {
       throw new Error(`Failed to clear session: ${response.statusText}`);
     }
   });
-}
-
-// LangSmith API integration
-export async function getLangSmithTraces(limit: number = 10): Promise<LangSmithTrace[]> {
-  if (!LANGSMITH_API_KEY) {
-    return [];
-  }
-
-  try {
-    const projectName = 'hc_ai testing';
-    const response = await fetchWithTimeout(
-      `${LANGSMITH_API_URL}/api/v1/runs?project_name=${encodeURIComponent(projectName)}&limit=${limit}`,
-      {
-        headers: {
-          'Authorization': `Bearer ${LANGSMITH_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-      },
-      HEALTH_CHECK_TIMEOUT
-    );
-
-    if (!response.ok) {
-      console.warn('Failed to fetch LangSmith traces:', response.statusText);
-      return [];
-    }
-
-    const data = await response.json();
-    const runs = data.runs || [];
-
-    return runs.map(      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (run: any) => ({
-        runId: run.id || '',
-        name: run.name || 'Unknown',
-        runType: (run.run_type || 'chain') as 'chain' | 'llm' | 'tool' | 'retriever',
-        startTime: run.start_time || new Date().toISOString(),
-        endTime: run.end_time || new Date().toISOString(),
-        latencyMs: run.total_tokens ? 0 : (run.latency_ms || 0),
-        tokenUsage: run.total_tokens ? {
-          prompt: run.prompt_tokens || 0,
-          completion: run.completion_tokens || 0,
-          total: run.total_tokens || 0,
-        } : undefined,
-        status: run.status === 'error' ? 'error' : 'success',
-        parentRunId: run.parent_run_id,
-      }));
-  } catch (error) {
-    console.warn('Error fetching LangSmith traces:', error);
-    return [];
-  }
 }
 
 // Re-export embeddings health for convenience

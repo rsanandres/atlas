@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import { Activity, RefreshCw, Layers, HardDrive, Database, Cloud } from 'lucide-react';
 import { BarChart, Bar, AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip as RechartsTooltip, PieChart, Pie, Cell } from 'recharts';
 import { ServiceHealth } from '@/types';
-import { CloudWatchTimeSeries, LangSmithTrace, MetricSummary, RerankerStats } from '@/types/observability';
+import { CloudWatchTimeSeries, MetricSummary, RerankerStats } from '@/types/observability';
 import { DatabaseStats } from '@/hooks/useObservability';
 import { HealthIndicator } from './HealthIndicator';
 import { MetricsCard } from './MetricsCard';
@@ -14,7 +14,6 @@ import { glassStyle } from '@/theme/theme';
 interface ObservabilityPanelProps {
   serviceHealth: ServiceHealth[];
   metricSummaries: MetricSummary[];
-  langSmithTraces: LangSmithTrace[];
   rerankerStats: RerankerStats | null;
   databaseStats: DatabaseStats | null;
   cloudWatchTimeSeries: CloudWatchTimeSeries[];
@@ -52,7 +51,6 @@ function Sparkline({ data, color, height = 40 }: { data: number[]; color: string
 export function ObservabilityPanel({
   serviceHealth,
   metricSummaries,
-  langSmithTraces,
   rerankerStats,
   databaseStats,
   cloudWatchTimeSeries,
@@ -83,13 +81,6 @@ export function ObservabilityPanel({
 
   // Queue stats for display
   const queueStats = databaseStats?.queue_stats || { queued: 0, processed: 0, failed: 0, retries: 0 };
-
-  // LangSmith stats
-  const totalTokens = langSmithTraces.reduce((sum, t) => sum + (t.tokenUsage?.total || 0), 0);
-  const avgLatency = langSmithTraces.length > 0
-    ? Math.round(langSmithTraces.reduce((sum, t) => sum + t.latencyMs, 0) / langSmithTraces.length)
-    : 0;
-  const errorCount = langSmithTraces.filter(t => t.status === 'error').length;
 
   return (
     <motion.div
@@ -467,51 +458,6 @@ export function ObservabilityPanel({
             </Box>
           </Box>
 
-          {/* LangSmith Traces */}
-          <Box>
-            <Typography variant="caption" sx={{ fontWeight: 600, mb: 1, display: 'flex', alignItems: 'center', gap: 0.5, color: 'text.secondary' }}>
-              <Activity size={12} /> LangSmith Traces
-            </Typography>
-            <Box
-              sx={{
-                p: 1.5,
-                borderRadius: '8px',
-                bgcolor: (theme) => alpha(theme.palette.common.white, 0.02),
-                border: '1px solid',
-                borderColor: 'divider',
-              }}
-            >
-              {langSmithTraces.length > 0 ? (
-                <Grid container spacing={1}>
-                  <Grid size={{ xs: 4 }}>
-                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.6rem' }}>Total</Typography>
-                    <Typography variant="body2" fontWeight={600}>{langSmithTraces.length}</Typography>
-                  </Grid>
-                  <Grid size={{ xs: 4 }}>
-                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.6rem' }}>Avg Latency</Typography>
-                    <Typography variant="body2" fontWeight={600}>{avgLatency}ms</Typography>
-                  </Grid>
-                  <Grid size={{ xs: 4 }}>
-                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.6rem' }}>Errors</Typography>
-                    <Typography variant="body2" fontWeight={600} color={errorCount > 0 ? 'error.main' : 'success.main'}>
-                      {errorCount}
-                    </Typography>
-                  </Grid>
-                  {totalTokens > 0 && (
-                    <Grid size={{ xs: 12 }}>
-                      <Typography variant="caption" color="text.secondary">
-                        Tokens: {(totalTokens / 1000).toFixed(1)}K (~${((totalTokens / 1000) * 0.0015).toFixed(3)})
-                      </Typography>
-                    </Grid>
-                  )}
-                </Grid>
-              ) : (
-                <Typography variant="caption" color="text.disabled">
-                  No traces. Set LANGSMITH_API_KEY to enable.
-                </Typography>
-              )}
-            </Box>
-          </Box>
           </>
           )}
         </Box>

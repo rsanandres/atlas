@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Box, Typography, Button, IconButton, alpha, useTheme } from '@mui/material';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, ChevronRight, ChevronLeft, MessageSquare, Workflow, Activity, BookOpen, Users, Bug } from 'lucide-react';
+import { X, ChevronRight, ChevronLeft, MessageSquare, Workflow, Activity, Users, Bug, Clock } from 'lucide-react';
 
 const STORAGE_KEY = 'hcai-tour-completed';
 
@@ -22,6 +22,13 @@ const TOUR_STEPS: TourStep[] = [
     icon: MessageSquare,
     position: 'left',
     highlight: 'chat',
+  },
+  {
+    title: 'A Note on Performance',
+    description: 'This is a portfolio project, so responses may take a moment. To keep costs reasonable I opted for smaller infrastructure, but there are clear improvements I could make with additional investment (larger instances, vector indexing, caching).',
+    icon: Clock,
+    position: 'left',
+    highlight: 'performance',
   },
   {
     title: 'Reference Panel',

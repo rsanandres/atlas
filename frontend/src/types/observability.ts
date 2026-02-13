@@ -8,23 +8,6 @@ export interface CloudWatchMetric {
   unit: string;                // "Count", "Milliseconds", "Percent"
 }
 
-// LangSmith-compatible structure (mirrors LangSmith Run schema)
-export interface LangSmithTrace {
-  runId: string;
-  name: string;
-  runType: 'chain' | 'llm' | 'tool' | 'retriever';
-  startTime: string;
-  endTime: string;
-  latencyMs: number;
-  tokenUsage?: {
-    prompt: number;
-    completion: number;
-    total: number;
-  };
-  status: 'success' | 'error';
-  parentRunId?: string;
-}
-
 // Reranker Stats (from /rerank/stats endpoint)
 export interface RerankerStats {
   model_name: string;
@@ -65,7 +48,6 @@ export interface CloudWatchTimeSeries {
 // Service abstraction interface for future migration
 export interface ObservabilityService {
   getCloudWatchMetrics(namespace?: string): Promise<CloudWatchMetric[]>;
-  getLangSmithTraces(limit?: number): Promise<LangSmithTrace[]>;
   getRerankerStats(): Promise<RerankerStats>;
   getServiceHealth(): Promise<import('./index').ServiceHealth[]>;
 }

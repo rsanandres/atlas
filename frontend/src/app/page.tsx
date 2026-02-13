@@ -32,7 +32,6 @@ export default function Home() {
   const {
     serviceHealth,
     metricSummaries,
-    langSmithTraces,
     rerankerStats,
     databaseStats,
     cloudWatchTimeSeries,
@@ -181,7 +180,6 @@ export default function Home() {
           <ObservabilityPanel
             serviceHealth={serviceHealth}
             metricSummaries={metricSummaries}
-            langSmithTraces={langSmithTraces}
             rerankerStats={rerankerStats}
             databaseStats={databaseStats}
             cloudWatchTimeSeries={cloudWatchTimeSeries}
