@@ -66,15 +66,12 @@ interface OnboardingTourProps {
 }
 
 export function OnboardingTour({ forceShow }: OnboardingTourProps) {
-  const [visible, setVisible] = useState(false);
+  const [visible, setVisible] = useState(!!forceShow);
   const [step, setStep] = useState(0);
   const theme = useTheme();
 
   useEffect(() => {
-    if (forceShow) {
-      setVisible(true);
-      return;
-    }
+    if (forceShow) return;
     const completed = localStorage.getItem(STORAGE_KEY);
     if (!completed) {
       // Small delay so the main UI renders first
