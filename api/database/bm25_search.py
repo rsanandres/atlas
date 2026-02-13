@@ -75,7 +75,7 @@ async def bm25_search(
     params: Dict[str, Any] = {"query": query_param, "k": k}
     
     # Add metadata filters if provided (whitelist keys to prevent SQL injection)
-    ALLOWED_METADATA_KEYS = {"patient_id", "resource_type", "date", "encounter_id"}
+    ALLOWED_METADATA_KEYS = {"patient_id", "resource_type", "effective_date", "encounter_id", "status"}
     where_clauses = []
     if filter_metadata:
         for key, value in filter_metadata.items():
@@ -167,7 +167,7 @@ async def bm25_search_with_phrase(
     params: Dict[str, Any] = {"query": query, "k": k}
     
     # Add metadata filters (whitelist keys to prevent SQL injection)
-    ALLOWED_METADATA_KEYS = {"patient_id", "resource_type", "date", "encounter_id"}
+    ALLOWED_METADATA_KEYS = {"patient_id", "resource_type", "effective_date", "encounter_id", "status"}
     where_clauses = []
     if filter_metadata:
         for key, value in filter_metadata.items():

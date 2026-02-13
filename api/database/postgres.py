@@ -446,7 +446,7 @@ async def _search_similar_with_sql_filter(
     where_clauses = []
     params: Dict[str, Any] = {"k": k}
 
-    ALLOWED_METADATA_KEYS = {"patient_id", "resource_type", "date", "encounter_id"}
+    ALLOWED_METADATA_KEYS = {"patient_id", "resource_type", "effective_date", "encounter_id", "status"}
     for key, value in filter_metadata.items():
         if key not in ALLOWED_METADATA_KEYS:
             continue
@@ -675,7 +675,7 @@ async def get_patient_timeline(
     
     # Sort by effectiveDate descending (newest first)
     base_sql += """
-        ORDER BY langchain_metadata->>'effectiveDate' DESC NULLS LAST
+        ORDER BY langchain_metadata->>'effective_date' DESC NULLS LAST
         LIMIT :k
     """
     

@@ -98,11 +98,12 @@ def _document_id(doc: Document, fallback_index: int) -> str:
     return f"content:{fallback_index}:{content_hash}"
 
 
-def _to_response(doc: Document, doc_id: str) -> DocumentResponse:
+def _to_response(doc: Document, doc_id: str, score: float = 0.0) -> DocumentResponse:
     return DocumentResponse(
         id=doc_id,
         content=doc.page_content,
         metadata=doc.metadata or {},
+        score=score,
     )
 
 
@@ -141,7 +142,7 @@ async def _rerank_single(request: RerankRequest) -> RerankResponse:
             scored = [(idx, doc, doc_id) for idx, (doc, doc_id) in enumerate(candidate_pairs)]
             scored.sort(key=lambda item: (-cached_map[item[2]], item[0]))
             top_docs = scored[:k_return]
-            results = [_to_response(doc, doc_id) for _idx, doc, doc_id in top_docs]
+            results = [_to_response(doc, doc_id, cached_map[doc_id]) for _idx, doc, doc_id in top_docs]
             return RerankResponse(query=query, results=results)
 
     reranker = _get_reranker()
@@ -155,7 +156,7 @@ async def _rerank_single(request: RerankRequest) -> RerankResponse:
     cache.set(cache_key, scored_pairs)
 
     top_docs = scored_docs[:k_return]
-    results = [_to_response(doc, doc_id_map.get(id(doc), _document_id(doc, idx))) for idx, (doc, _score) in enumerate(top_docs)]
+    results = [_to_response(doc, doc_id_map.get(id(doc), _document_id(doc, idx)), score) for idx, (doc, score) in enumerate(top_docs)]
     return RerankResponse(query=query, results=results)
 
 

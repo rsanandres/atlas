@@ -54,6 +54,7 @@ def _call_reranker(
                 "id": item.get("id", ""),
                 "content": _mask_content(content),
                 "metadata": item.get("metadata", {}),
+                "score": item.get("score", 0.0),
             }
         )
     return masked_results

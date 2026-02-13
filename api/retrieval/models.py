@@ -33,6 +33,7 @@ class DocumentResponse(BaseModel):
     id: str
     content: str
     metadata: Dict[str, Any]
+    score: float = 0.0
 
 
 class RerankResponse(BaseModel):
