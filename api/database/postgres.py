@@ -10,7 +10,7 @@ from datetime import datetime
 from typing import List, Optional, Dict, Any, Tuple
 
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncEngine
-from sqlalchemy import text
+from sqlalchemy import text, event
 from langchain_postgres import PGVectorStore, PGEngine
 from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
@@ -118,6 +118,15 @@ def get_engine() -> AsyncEngine:
             echo=False,
             connect_args=connect_args,
         )
+
+        # Set IVFFlat probes on every new connection for optimal index recall.
+        # probes = sqrt(lists) where lists = 2775 → probes ≈ 53
+        @event.listens_for(_engine.sync_engine, "connect")
+        def set_ivfflat_probes(dbapi_conn, connection_record):
+            cursor = dbapi_conn.cursor()
+            cursor.execute("SET ivfflat.probes = 53")
+            cursor.close()
+
     return _engine
 
 
