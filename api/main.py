@@ -62,7 +62,7 @@ app.include_router(database_router, prefix="/db", tags=["database"])
 def _startup_diagnostics() -> None:
     ddb_endpoint = os.getenv("DDB_ENDPOINT", "http://localhost:8001")
     ddb_summary = os.getenv("DDB_SUMMARY_TABLE", "")
-    reranker_url = os.getenv("RERANKER_SERVICE_URL", "http://localhost:8000/retrieval")
+    reranker_url = os.getenv("RERANKER_SERVICE_URL") or os.getenv("API_BASE_URL", "")
 
     if "localhost:8000" in ddb_endpoint:
         print(
