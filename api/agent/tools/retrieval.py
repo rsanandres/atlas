@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
+import asyncio
 import os
 import re
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
-import httpx
 from langchain_core.tools import tool
 
 
@@ -160,22 +160,6 @@ def _get_reranker() -> Reranker:
     return _RERANKER_INSTANCE
 
 
-def _reranker_url(path: str) -> str:
-    """Get reranker URL with path - unified API endpoint on port 8000."""
-    # Prefer explicit reranker URL, fallback to API base (unified API on port 8000)
-    api_base = os.getenv("RERANKER_SERVICE_URL") or os.getenv("API_BASE_URL") or "http://localhost:8000"
-    api_base = api_base.rstrip("/")
-    # If caller already included /retrieval, honor it
-    if "/retrieval" in api_base:
-        if path.startswith("/"):
-            return f"{api_base}{path}"
-        return f"{api_base}/{path}"
-    # Construct path: /retrieval/rerank or /retrieval/rerank/with-context
-    if path.startswith("/"):
-        return f"{api_base}/retrieval{path}"
-    return f"{api_base}/retrieval/{path}"
-
-
 @tool
 async def search_patient_records(
     query: str,
@@ -241,66 +225,82 @@ async def search_patient_records(
         # Auto-detect resource type from query keywords
         detected_resource_type = detect_resource_type_from_query(original_query)
 
-        payload = {
-            "query": cleaned_query,
-            "k_retrieve": k_chunks,
-            "k_return": k_chunks,
-        }
         filter_metadata = {"patient_id": patient_id}
         if detected_resource_type:
             filter_metadata["resource_type"] = detected_resource_type
-        payload["filter_metadata"] = filter_metadata
     else:
         cleaned_query = query
         # Auto-detect resource type from query keywords
         detected_resource_type = detect_resource_type_from_query(query)
+        filter_metadata = {"resource_type": detected_resource_type} if detected_resource_type else None
 
-        payload = {
-            "query": cleaned_query,
-            "k_retrieve": k_chunks,
-            "k_return": k_chunks,
-        }
-        if detected_resource_type:
-            payload["filter_metadata"] = {"resource_type": detected_resource_type}
-    if include_full_json:
-        payload["include_full_json"] = True
-    path = "/rerank/with-context" if include_full_json else "/rerank"
-    async with httpx.AsyncClient(timeout=120) as client:
-        response = await client.post(_reranker_url(path), json=payload)
-        response.raise_for_status()
-        data = response.json()
+    # Direct DB + reranker call (no self-referencing HTTP to avoid event-loop deadlock)
+    from api.database.postgres import hybrid_search
 
-    if include_full_json:
-        response = RetrievalResponse(
+    candidates = await hybrid_search(
+        cleaned_query,
+        k=k_chunks,
+        filter_metadata=filter_metadata,
+        bm25_weight=0.5,
+        semantic_weight=0.5,
+    )
+
+    if not candidates:
+        return RetrievalResponse(
             query=cleaned_query,
             original_query=original_query if original_query != cleaned_query else None,
-            chunks=[
-                ChunkResult(
-                    id=str(item.get("id", "")),
-                    content=str(item.get("content", "")),
-                    score=float(item.get("score", 0.0)),
-                    metadata=item.get("metadata", {}) or {},
-                )
-                for item in data.get("chunks", [])
-            ],
-            count=len(data.get("chunks", [])),
+            chunks=[],
+            count=0,
         ).model_dump()
-        response["full_documents"] = data.get("full_documents", [])
-        return response
-    return RetrievalResponse(
+
+    reranker = _get_reranker()
+    # Run CPU-bound cross-encoder in thread pool to avoid blocking event loop
+    scored = await asyncio.to_thread(reranker.rerank_with_scores, cleaned_query, candidates)
+    top_docs = scored[:k_chunks]
+
+    chunks = [
+        ChunkResult(
+            id=str(getattr(doc, "id", "")),
+            content=doc.page_content,
+            score=score,
+            metadata=doc.metadata or {},
+        )
+        for doc, score in top_docs
+    ]
+
+    result = RetrievalResponse(
         query=cleaned_query,
         original_query=original_query if original_query != cleaned_query else None,
-        chunks=[
-            ChunkResult(
-                id=str(item.get("id", "")),
-                content=str(item.get("content", "")),
-                score=float(item.get("score", 0.0)),
-                metadata=item.get("metadata", {}) or {},
-            )
-            for item in data.get("results", [])
-        ],
-        count=len(data.get("results", [])),
+        chunks=chunks,
+        count=len(chunks),
     ).model_dump()
+
+    # Fetch full FHIR bundles if requested
+    if include_full_json:
+        patient_ids_found: List[str] = []
+        for chunk in chunks:
+            pid = (chunk.metadata or {}).get("patient_id")
+            if pid:
+                patient_ids_found.append(str(pid))
+        if patient_ids_found:
+            try:
+                from postgres.ingest_fhir_json import get_latest_raw_files_by_patient_ids
+                raw_files = await get_latest_raw_files_by_patient_ids(sorted(set(patient_ids_found)))
+                result["full_documents"] = [
+                    {
+                        "patient_id": item.get("patient_id", ""),
+                        "source_filename": item.get("source_filename", ""),
+                        "bundle_json": item.get("bundle_json", {}),
+                    }
+                    for item in raw_files
+                ]
+            except Exception as e:
+                print(f"[RETRIEVAL] Failed to fetch full documents: {e}")
+                result["full_documents"] = []
+        else:
+            result["full_documents"] = []
+
+    return result
 
 
 @tool
@@ -404,7 +404,8 @@ async def retrieve_patient_data(
         ).model_dump()
 
     reranker = _get_reranker()
-    scored = reranker.rerank_with_scores(cleaned_query, candidates)
+    # Run CPU-bound cross-encoder in thread pool to avoid blocking event loop
+    scored = await asyncio.to_thread(reranker.rerank_with_scores, cleaned_query, candidates)
     top_docs = scored[:k_return]
     chunks = [
         ChunkResult(
