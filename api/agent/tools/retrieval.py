@@ -96,6 +96,22 @@ RESOURCE_TYPE_KEYWORDS = {
         "allergy", "allergies", "allergic", "intolerance", "intolerances",
         "allergen", "allergens", "hypersensitivity", "anaphylaxis",
     ],
+    "CarePlan": [
+        "care plan", "careplan", "care plans", "treatment plan",
+        "treatment plans", "care coordination", "plan of care",
+    ],
+    "Goal": [
+        "goal", "goals", "objective", "objectives", "care goal",
+        "care goals", "treatment goal", "treatment goals",
+    ],
+    "Patient": [
+        "demographics", "demographic", "patient info", "patient information",
+        "date of birth", "dob", "gender", "address", "marital status",
+    ],
+    "Organization": [
+        "organization", "provider", "hospital", "clinic", "facility",
+        "medical center", "healthcare provider", "physician",
+    ],
 }
 
 
