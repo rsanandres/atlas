@@ -140,7 +140,7 @@ def _get_response_agent() -> Any:
     global _RESPONSE_AGENT
     if _RESPONSE_AGENT is None:
         llm = get_llm("haiku")  # Haiku for synthesis
-        _RESPONSE_AGENT = create_agent(llm)
+        _RESPONSE_AGENT = create_agent(llm, [])  # No tools needed for synthesis
     return _RESPONSE_AGENT
 
 def _get_validator_agent() -> Any:
