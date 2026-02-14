@@ -40,6 +40,7 @@ export function Providers({ children }: ProvidersProps) {
                 <Toaster
                   position="bottom-right"
                   theme="dark"
+                  style={{ zIndex: 9000 }}
                   toastOptions={{
                     style: {
                       background: '#1a1a24',

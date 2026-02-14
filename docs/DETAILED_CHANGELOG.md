@@ -371,33 +371,235 @@ Complete file-level history reconstructed from git commits.
 
 ---
 
+## Week 6: The Travel Sprint (Feb 9, 2026)
+
+### Feb 9 - Frontend Overhaul, Containerization & Repo Cleanup
+**Commits:** 5
+
+**Frontend UX Overhaul (12 improvements):**
+| Action | Files |
+|--------|-------|
+| M | `frontend/src/app/page.tsx` - SSE-driven pipeline timing |
+| M | `frontend/src/hooks/useChat.ts` - Real step transitions |
+| M | `frontend/src/hooks/useWorkflow.ts` - `activateStep()` with `Date.now()` |
+| M | `frontend/src/components/workflow/PipelineStep.tsx` - Source scores |
+| M | `frontend/src/services/streamAgent.ts` - Streaming improvements |
+
+**README Rewrite:**
+| Action | Files |
+|--------|-------|
+| M | `README.md` - Full project scope, recommended prompts |
+
+**Repo Cleanup for Public Visibility:**
+| Action | Files |
+|--------|-------|
+| D | Various internal dev files |
+| A | `LICENSE` - MIT license |
+
+**Containerization & CI:**
+| Action | Files |
+|--------|-------|
+| A | `Dockerfile` - Backend container |
+| A | `.github/workflows/ci.yml` - Lint + build checks |
+
+---
+
+## Week 7: AWS Migration (Feb 10-13, 2026)
+
+### Feb 10 - AWS Migration Analysis & Initial Deployment
+**Commits:** 1
+
+| Action | Files |
+|--------|-------|
+| A | `docs/aws-migration-analysis.md` - Cost-optimized architecture plan |
+
+**Infrastructure work (not in git):**
+- RDS PostgreSQL 16 deployed (db.t4g.medium, 50 GB → 100 GB gp3)
+- Bedrock Titan embedding: 83,098 patients in first run
+- EC2 t3.medium for embedding (same VPC, direct Bedrock calls)
+- Secrets Manager configured (`hcai/prod`, 5 keys)
+- Security group lockdown (ECS→RDS only)
+
+---
+
+### Feb 11 - Production Config & Bedrock Integration
+**Commits:** 5
+
+**Production Deployment Config:**
+| Action | Files |
+|--------|-------|
+| A | `api/agent/config.py` - Bedrock model IDs (Sonnet + Haiku) |
+| M | `api/agent/multi_agent_graph.py` - `get_llm()` with model tiers |
+| M | `api/main.py` - Production environment detection |
+
+**Frontend Persona Data:**
+| Action | Files |
+|--------|-------|
+| A | `frontend/public/data/patients.json` - 91,094 patients (static) |
+| A | `frontend/src/data/featured-patients.ts` - 9 featured patients |
+
+**Embedding Cost Documentation:**
+| Action | Files |
+|--------|-------|
+| M | `docs/aws-migration-analysis.md` - Updated cost estimates |
+
+**Production Fixes (v5):**
+| Action | Files |
+|--------|-------|
+| M | `api/database/postgres.py` - SSL context for asyncpg (non-localhost) |
+| M | `api/session/router.py` - Stub DynamoDB endpoints (200 when disabled) |
+
+**Static Patient Directory:**
+| Action | Files |
+|--------|-------|
+| M | `frontend/src/components/PatientSelector.tsx` - Load from static JSON |
+| M | `api/database/router.py` - Removed expensive `/db/patients` scan |
+
+---
+
+### Feb 12 - CI/CD, Observability & Security Hardening
+**Commits:** 10
+
+**Connection Pool Consolidation:**
+| Action | Files |
+|--------|-------|
+| M | `api/auth/router.py` - Share engine with database module |
+| M | `api/database/postgres.py` - Single connection pool |
+
+**Maintenance Mode:**
+| Action | Files |
+|--------|-------|
+| A | `frontend/src/components/MaintenanceBanner.tsx` - Auto-detect downtime |
+| M | `frontend/src/hooks/useChat.ts` - Health check integration |
+
+**Agent Performance:**
+| Action | Files |
+|--------|-------|
+| M | `api/agent/config.py` - Bedrock timeout (60s read, 10s connect, 2 retries) |
+| M | `api/agent/multi_agent_graph.py` - Max iterations 10, step limit warning at 8 |
+| M | `api/agent/multi_agent_graph.py` - Sonnet for researcher, Haiku for others |
+
+**SSE Keepalive:**
+| Action | Files |
+|--------|-------|
+| M | `api/agent/router.py` - Keepalive pings every 15s via asyncio.Queue |
+
+**CI/CD Pipeline:**
+| Action | Files |
+|--------|-------|
+| A | `.github/workflows/deploy.yml` - GitHub Actions → ECR → ECS |
+| M | `.github/workflows/ci.yml` - Fixed lint errors |
+
+**CloudWatch Observability:**
+| Action | Files |
+|--------|-------|
+| A | `api/database/cloudwatch.py` - CloudWatch metrics API |
+| A | `infra/cloudwatch-dashboard.json` - Dashboard definition |
+| M | `api/database/router.py` - `/db/cloudwatch` endpoint |
+| M | `frontend/src/components/workflow/ObservabilityPanel.tsx` - Sparklines |
+
+**Security Hardening:**
+| Action | Files |
+|--------|-------|
+| M | `api/database/postgres.py` - Parameterized queries (SQL injection fix) |
+| M | `api/agent/router.py` - Auth required on admin endpoints |
+| M | `api/auth/router.py` - Rate limiting |
+
+**Featured Patients:**
+| Action | Files |
+|--------|-------|
+| M | `frontend/src/data/featured-patients.ts` - 9 data-rich patients |
+| M | `frontend/src/components/WelcomeScreen.tsx` - Featured patient cards |
+
+---
+
+### Feb 13 - Frontend Polish, IVFFlat & Index Planning
+**Commits:** 9
+
+**Onboarding System:**
+| Action | Files |
+|--------|-------|
+| A | `frontend/src/components/WelcomeScreen.tsx` - Full-page onboarding |
+| A | `frontend/src/components/OnboardingTour.tsx` - 6-step UI tour |
+
+**Frontend Fixes:**
+| Action | Files |
+|--------|-------|
+| M | `frontend/src/app/page.tsx` - Debug mode default true, auto-open side panel |
+| M | `frontend/src/components/workflow/PipelineStep.tsx` - Correct model names |
+| M | `frontend/src/components/workflow/PipelineVisualization.tsx` - Step transitions |
+
+**LangSmith Removal:**
+| Action | Files |
+|--------|-------|
+| D | `frontend/src/components/workflow/LangSmithPanel.tsx` |
+| D | `frontend/src/hooks/useLangSmith.ts` |
+| M | `frontend/src/app/page.tsx` - Removed LangSmith integration |
+| M | 4 other files - Stripped LangSmith references (-170 lines total) |
+
+**Backports from hc_ai_mcp:**
+| Action | Files |
+|--------|-------|
+| M | `api/agent/tools/retrieval.py` - Timeline ORDER BY fix |
+| M | `api/agent/router.py` - Reranker score propagation |
+| M | `api/agent/multi_agent_graph.py` - Metadata key whitelist |
+
+**IVFFlat Index Work:**
+| Action | Files |
+|--------|-------|
+| M | `api/database/postgres.py` - `SET ivfflat.probes = 53` (then updated to 23) |
+
+**Lint Fix:**
+| Action | Files |
+|--------|-------|
+| M | `frontend/src/components/OnboardingTour.tsx` - Initialize from prop, not effect |
+
+---
+
 ## File Statistics
 
-### Most Modified Files (Top 10)
-1. `api/agent/prompts.yaml` - 15+ modifications
-2. `api/agent/multi_agent_graph.py` - 12+ modifications
-3. `frontend/src/hooks/useChat.ts` - 10+ modifications
-4. `api/agent/router.py` - 8+ modifications
-5. `frontend/src/app/page.tsx` - 8+ modifications
-6. `api/agent/tools/retrieval.py` - 7+ modifications
-7. `frontend/src/components/chat/ChatPanel.tsx` - 6+ modifications
-8. `api/database/postgres.py` - 5+ modifications
-9. `POC_agent/prompts.yaml` - 5+ modifications
-10. `frontend/src/services/streamAgent.ts` - 5+ modifications
+### Most Modified Files (Top 15)
+1. `api/agent/prompts.yaml` — 15+ modifications
+2. `api/agent/multi_agent_graph.py` — 15+ modifications
+3. `frontend/src/hooks/useChat.ts` — 12+ modifications
+4. `frontend/src/app/page.tsx` — 12+ modifications
+5. `api/agent/router.py` — 10+ modifications
+6. `api/database/postgres.py` — 10+ modifications
+7. `api/agent/tools/retrieval.py` — 8+ modifications
+8. `frontend/src/components/chat/ChatPanel.tsx` — 7+ modifications
+9. `frontend/src/services/streamAgent.ts` — 6+ modifications
+10. `api/agent/config.py` — 5+ modifications
+11. `api/auth/router.py` — 4+ modifications
+12. `api/database/router.py` — 4+ modifications
+13. `frontend/src/components/workflow/PipelineStep.tsx` — 4+ modifications
+14. `frontend/src/data/featured-patients.ts` — 3+ modifications
+15. `api/main.py` — 3+ modifications
 
 ### Files Added by Category
-- **Agent System:** ~50 files
-- **Frontend:** ~45 files
-- **Database:** ~15 files
+- **Agent System:** ~55 files
+- **Frontend:** ~55 files
+- **Database:** ~18 files
 - **Testing/RAGAS:** ~40 files
-- **Scripts/Utils:** ~30 files
-- **Documentation:** ~10 files
+- **Scripts/Utils:** ~32 files
+- **Infrastructure:** ~8 files (CI/CD, Docker, CloudWatch)
+- **Documentation:** ~12 files
 
 ### Files Deleted
-- `api/agent/mcp/` - MCP integration removed (not needed)
-- `POC_embeddings/*.log` - Log files cleaned up
-- `api.log` - Log file removed
-- `AWSCLIV2.pkg` - Accidentally committed, removed
+- `api/agent/mcp/` — MCP integration removed (not needed)
+- `POC_embeddings/*.log` — Log files cleaned up
+- `api.log` — Log file removed
+- `AWSCLIV2.pkg` — Accidentally committed, removed
+- `frontend/src/components/workflow/LangSmithPanel.tsx` — Replaced by CloudWatch
+- `frontend/src/hooks/useLangSmith.ts` — Removed with LangSmith
+
+### Total Commits
+- **73 commits** across 6 weeks (Jan 9 – Feb 13, 2026)
+- Week 1: 10 commits (foundation)
+- Week 2: 10 commits (agent development)
+- Week 3: 11 commits (integration)
+- Week 4: 5 commits (production prep)
+- Week 5: 14 commits (major fixes — single day Feb 4)
+- Week 6-7: 23 commits (AWS migration + frontend polish)
 
 ---
 

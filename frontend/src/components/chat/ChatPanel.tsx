@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Box, Typography, IconButton, Tooltip, alpha, Switch, FormControlLabel, Chip } from '@mui/material';
-import { Trash2, Bug, User, Download, Keyboard } from 'lucide-react';
+import { Trash2, Bug, User, Download, Keyboard, HelpCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { Message } from '@/types';
@@ -34,6 +34,7 @@ interface ChatPanelProps {
   selectedPatient?: SelectedPatient | null;
   onFeedback?: (messageId: string, feedback: 'positive' | 'negative') => void;
   onRegenerate?: (messageId: string) => void;
+  onShowTour?: () => void;
 }
 
 export function ChatPanel({
@@ -49,6 +50,7 @@ export function ChatPanel({
   selectedPatient,
   onFeedback,
   onRegenerate,
+  onShowTour,
 }: ChatPanelProps) {
   const { debugMode, toggleDebugMode } = useDebugMode();
   const isPatientSelected = !!selectedPatient;
@@ -74,12 +76,7 @@ export function ChatPanel({
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, x: -20 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ duration: 0.3 }}
-      style={{ height: '100%' }}
-    >
+    <div style={{ height: '100%' }}>
       <Box
         sx={{
           height: '100%',
@@ -158,6 +155,16 @@ export function ChatPanel({
                   },
                 }}
               />
+            </Tooltip>
+
+            <Tooltip title="Show tour">
+              <IconButton
+                size="small"
+                onClick={onShowTour}
+                sx={{ color: 'text.secondary' }}
+              >
+                <HelpCircle size={18} />
+              </IconButton>
             </Tooltip>
 
             <Tooltip title="Keyboard shortcuts (Cmd+/)">
@@ -257,6 +264,6 @@ export function ChatPanel({
       </Box>
 
       <KeyboardShortcuts open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
-    </motion.div>
+    </div>
   );
 }

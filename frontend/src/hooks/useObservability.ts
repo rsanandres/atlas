@@ -220,11 +220,13 @@ export function useObservability() {
         s.name === 'Agent Service' || s.name === 'PostgreSQL'
       );
       const allCoreDown = coreServices.length > 0 && coreServices.every(s => s.status === 'unhealthy');
-      setIsMaintenanceMode(allCoreDown);
+      const skipMaintenance = process.env.NEXT_PUBLIC_DISABLE_MAINTENANCE === 'true';
+      setIsMaintenanceMode(skipMaintenance ? false : allCoreDown);
     } catch (error) {
       console.error('Error refreshing observability data:', error);
       // All fetches failed = likely maintenance
-      setIsMaintenanceMode(true);
+      const skipMaintenance = process.env.NEXT_PUBLIC_DISABLE_MAINTENANCE === 'true';
+      setIsMaintenanceMode(skipMaintenance ? false : true);
     } finally {
       setIsLoading(false);
     }

@@ -11,11 +11,16 @@ RUN apt-get update && \
 COPY requirements-prod.txt .
 RUN pip install --no-cache-dir -r requirements-prod.txt
 
-# Pre-download cross-encoder model (~90MB) to avoid first-request delay
-RUN python -c "from sentence_transformers import CrossEncoder; CrossEncoder('sentence-transformers/all-MiniLM-L6-v2')"
+# Create non-root user early so downloads go to accessible locations
+RUN groupadd -r appuser && useradd -r -g appuser -m appuser
 
-# Pre-download NLTK punkt tokenizer
-RUN python -c "import nltk; nltk.download('punkt', quiet=True); nltk.download('punkt_tab', quiet=True)"
+# Pre-download cross-encoder model to shared cache accessible by appuser
+ENV HF_HOME=/app/.cache/huggingface
+RUN python -c "from sentence_transformers import CrossEncoder; CrossEncoder('sentence-transformers/all-MiniLM-L6-v2')" && \
+    chmod -R a+r /app/.cache
+
+# Pre-download NLTK punkt tokenizer to shared location accessible by appuser
+RUN python -c "import nltk; nltk.download('punkt', download_dir='/usr/local/nltk_data', quiet=True); nltk.download('punkt_tab', download_dir='/usr/local/nltk_data', quiet=True)"
 
 # Download RDS CA bundle for SSL certificate verification
 RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates && \
@@ -30,8 +35,7 @@ COPY postgres/queue_storage.py ./postgres/queue_storage.py
 # postgres/ needs to be a package for imports
 RUN touch ./postgres/__init__.py
 
-# Run as non-root user
-RUN groupadd -r appuser && useradd -r -g appuser appuser
+# Switch to non-root user
 USER appuser
 
 EXPOSE 8000

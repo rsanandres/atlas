@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Box, Divider } from '@mui/material';
 
 // Import sub-components
@@ -67,6 +67,8 @@ interface ReferencePanelProps {
 }
 
 export function ReferencePanel({ onCopy, onPromptSelect, selectedPatient, onPatientSelect }: ReferencePanelProps) {
+  const promptsRef = useRef<HTMLDivElement>(null);
+
   // Modal state
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [selectedJson, setSelectedJson] = useState<any>(null);
@@ -103,6 +105,15 @@ export function ReferencePanel({ onCopy, onPromptSelect, selectedPatient, onPati
   useEffect(() => {
     fetchPatients();
   }, []);
+
+  // Auto-scroll to prompts when patient is selected
+  useEffect(() => {
+    if (selectedPatient && promptsRef.current) {
+      setTimeout(() => {
+        promptsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 100);
+    }
+  }, [selectedPatient]);
 
   // Featured patients (those with full local FHIR data)
   const featuredPatients = PERSONAS.map(p => {
@@ -166,13 +177,13 @@ export function ReferencePanel({ onCopy, onPromptSelect, selectedPatient, onPati
 
       {/* Step 2: Recommended Prompts (only shown after patient selection) */}
       {selectedPatient && (
-        <>
-          <Divider />
+        <div ref={promptsRef}>
+          <Divider sx={{ mb: 3 }} />
           <RecommendedPrompts
             prompts={RECOMMENDED_PROMPTS}
             onPromptClick={handlePromptClick}
           />
-        </>
+        </div>
       )}
 
       {/* Patient Details Modal */}

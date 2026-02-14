@@ -653,23 +653,33 @@ After reviewing the production-grade architecture in Sections 2 and 5, a cost-op
 | **Private subnets** | $0 (indirect) | Simplifies networking. Security groups still restrict access. No compliance requirement. |
 | **ECS frontend task** | ~$15-25 | Amplify free tier handles Next.js SSR. Eliminates a whole Fargate task. |
 
-### Revised Monthly Cost Estimate
+### Revised Monthly Cost Estimate (Updated 2026-02-14 with actuals)
 
 | Service | Spec | Est. Cost |
 |---------|------|-----------|
-| RDS PostgreSQL | db.t4g.micro, single-AZ, 20GB gp3 | ~$13 |
-| ECS Fargate (backend) | 0.5 vCPU, 1GB, always-on | ~$18 |
-| Amplify (frontend) | Free tier (SSR) | ~$0 |
-| DynamoDB | On-demand, low traffic | ~$1-5 |
-| Bedrock (Claude Haiku) | ~50k queries/mo estimate | ~$15-30 |
-| Bedrock (Titan Embeddings) | One-time re-embed (77% done) | ~$36 actual |
-| ALB | 1 ALB, low traffic | ~$20 |
-| CloudWatch | Basic metrics + logs | ~$5-10 |
-| Secrets Manager | 5-10 secrets | ~$3 |
+| RDS PostgreSQL | db.t4g.small, single-AZ, 250GB gp3 | ~$46 |
+| ECS Fargate (backend) | 0.5 vCPU, 2GB, always-on | ~$15 |
+| Vercel (frontend) | Free tier (SSR) | ~$0 |
+| Bedrock (Claude Haiku) | Query-time inference only | ~$1-2 |
+| ALB | 1 ALB, low traffic | ~$16 |
+| VPC | Public subnets only, no NAT | ~$3 |
+| CloudWatch | Basic metrics + logs | ~$2-3 |
+| Secrets Manager | 5 secrets | ~$1 |
 | ECR | Container storage | ~$1 |
-| **Total** | | **~$78-105/mo** |
+| **Total (recurring)** | | **~$85-87/mo** |
 
-**Savings: ~$100/mo compared to the original estimate ($185-225/mo).**
+**One-time costs (February 2026):**
+
+| Item | Cost | Notes |
+|------|------|-------|
+| Bedrock Titan Embeddings | ~$36 | 102,718 patients embedded (77% of 132,842) |
+| Temp EC2 instances | ~$5 | Embedding + migration work |
+| RDS t4g.medium time | ~$10 | Temporarily scaled up for IVFFlat index build |
+| **Total one-time** | **~$51** | |
+
+> **Why 250GB RDS storage?** IVFFlat index build for 7.7M vectors (1024-dim) peaks at ~161GB disk usage during construction. RDS storage can only increase, never decrease. The migration to a smaller instance was attempted via pg_dump/pg_restore but abandoned — pg_restore replays `CREATE INDEX` DDL, requiring the same peak disk on the target. The extra storage cost (~$10/mo over 120GB) was accepted as the pragmatic choice.
+
+**Savings: ~$100-140/mo compared to the original estimate ($185-225/mo).**
 
 ### Production Upgrade Path
 

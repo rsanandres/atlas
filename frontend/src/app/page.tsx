@@ -45,6 +45,8 @@ export default function Home() {
   // Track the last query for workflow display
   const [lastQuery, setLastQuery] = useState<string>('');
   const [chatInput, setChatInput] = useState<string>(''); // Added external input state
+  const [referencePanelCollapsed, setReferencePanelCollapsed] = useState(false);
+  const [showTour, setShowTour] = useState(false);
 
   // Track which pipeline steps have been activated to avoid duplicates
   const activatedStepsRef = useRef(new Set<string>());
@@ -117,9 +119,19 @@ export default function Home() {
   // Welcome screen handler
   const handleWelcomeStart = (patient: { id: string; name: string }, prompt: string) => {
     setSelectedPatient(patient);
+    setReferencePanelCollapsed(true); // Switch right panel to Pipeline tab
     // Delay send slightly so patient context is set before the message fires
     setTimeout(() => handleSend(prompt), 50);
   };
+
+  // Handle prompt selection from reference panel — send immediately and collapse
+  const handlePromptSelect = (prompt: string) => {
+    setReferencePanelCollapsed(true);
+    handleSend(prompt);
+  };
+
+  // Disable maintenance banner for local testing
+  const disableMaintenance = process.env.NEXT_PUBLIC_DISABLE_MAINTENANCE === 'true';
 
   // Show welcome screen when no patient selected and no messages
   const showWelcome = !selectedPatient && messages.length === 0;
@@ -130,7 +142,7 @@ export default function Home() {
 
   return (
     <>
-      {isMaintenanceMode && (
+      {isMaintenanceMode && !disableMaintenance && (
         <Alert
           severity="info"
           sx={{
@@ -142,6 +154,7 @@ export default function Home() {
             borderRadius: 0,
             justifyContent: 'center',
             py: 0.5,
+            pointerEvents: 'none',
             '& .MuiAlert-message': { textAlign: 'center', width: '100%' },
           }}
         >
@@ -149,6 +162,7 @@ export default function Home() {
         </Alert>
       )}
       <MainLayout
+        closeRightPanel={referencePanelCollapsed}
         chatPanel={
           <ChatPanel
             messages={messages}
@@ -162,6 +176,7 @@ export default function Home() {
             selectedPatient={selectedPatient}
             onFeedback={setFeedback}
             onRegenerate={regenerateMessage}
+            onShowTour={() => setShowTour(true)}
           />
         }
         workflowPanel={
@@ -171,9 +186,10 @@ export default function Home() {
             lastResponse={getLastResponse()}
             isProcessing={isProcessing}
             lastQuery={displayQuery}
-            onPromptSelect={setChatInput}
+            onPromptSelect={handlePromptSelect}
             selectedPatient={selectedPatient}
             onPatientSelect={setSelectedPatient}
+            referencePanelCollapsed={referencePanelCollapsed}
           />
         }
         observabilityPanel={
@@ -192,7 +208,7 @@ export default function Home() {
 
 
 
-      <OnboardingTour />
+      <OnboardingTour forceShow={showTour} onDismiss={() => setShowTour(false)} />
 
       <ConnectModal
         open={leadOpen}

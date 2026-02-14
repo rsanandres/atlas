@@ -83,12 +83,7 @@ export function ObservabilityPanel({
   const queueStats = databaseStats?.queue_stats || { queued: 0, processed: 0, failed: 0, retries: 0 };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, x: 20 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ duration: 0.3, delay: 0.2 }}
-      style={{ height: '100%' }}
-    >
+    <div style={{ height: '100%' }}>
       <Box
         sx={{
           height: '100%',
@@ -462,6 +457,6 @@ export function ObservabilityPanel({
           )}
         </Box>
       </Box>
-    </motion.div>
+    </div>
   );
 }

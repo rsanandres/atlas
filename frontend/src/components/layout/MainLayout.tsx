@@ -1,20 +1,29 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Box, Drawer, Fab, alpha, useMediaQuery, useTheme } from '@mui/material';
-import { motion } from 'framer-motion';
+// motion removed — React 19 strict mode breaks framer-motion initial animations
 import { PanelRight, X } from 'lucide-react';
 
 interface MainLayoutProps {
   chatPanel: React.ReactNode;
   workflowPanel: React.ReactNode;
   observabilityPanel: React.ReactNode;
+  closeRightPanel?: boolean;
 }
 
-export function MainLayout({ chatPanel, workflowPanel, observabilityPanel }: MainLayoutProps) {
+export function MainLayout({ chatPanel, workflowPanel, observabilityPanel, closeRightPanel }: MainLayoutProps) {
   const theme = useTheme();
   const isDesktop = useMediaQuery(theme.breakpoints.up('lg')); // >1200px
-  const [rightPanelOpen, setRightPanelOpen] = useState(true);
+  // Start closed on mobile/tablet so the modal backdrop doesn't block the page
+  const [rightPanelOpen, setRightPanelOpen] = useState(false);
+
+  // Close drawer when prompt is sent (mobile)
+  useEffect(() => {
+    if (closeRightPanel && !isDesktop) {
+      setRightPanelOpen(false);
+    }
+  }, [closeRightPanel, isDesktop]);
 
   return (
     <Box
@@ -65,14 +74,12 @@ export function MainLayout({ chatPanel, workflowPanel, observabilityPanel }: Mai
         }}
       >
         {/* Left side - Chat (Flex fill) */}
-        <motion.div
+        <div
+          data-tour="chat"
           style={{ flex: 1, height: '100%', minWidth: 0 }}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.4 }}
         >
           {chatPanel}
-        </motion.div>
+        </div>
 
         {/* Right side - Desktop: inline panels; Mobile/Tablet: drawer */}
         {isDesktop ? (
@@ -85,10 +92,10 @@ export function MainLayout({ chatPanel, workflowPanel, observabilityPanel }: Mai
               height: '100%',
             }}
           >
-            <Box sx={{ flex: '1 1 50%', minHeight: 0 }}>
+            <Box data-tour="workflow" sx={{ flex: '1 1 50%', minHeight: 0 }}>
               {workflowPanel}
             </Box>
-            <Box sx={{ flex: '1 1 50%', minHeight: 0 }}>
+            <Box data-tour="observability" sx={{ flex: '1 1 50%', minHeight: 0 }}>
               {observabilityPanel}
             </Box>
           </Box>
@@ -123,21 +130,29 @@ export function MainLayout({ chatPanel, workflowPanel, observabilityPanel }: Mai
               </Box>
             </Drawer>
 
-            <Fab
-              size="small"
+            <Box
               onClick={() => setRightPanelOpen(true)}
               sx={{
                 position: 'fixed',
-                bottom: 80,
-                right: 16,
+                right: 0,
+                top: '50%',
+                transform: 'translateY(-50%)',
                 zIndex: 10,
-                bgcolor: (theme) => alpha(theme.palette.primary.main, 0.9),
+                width: 28,
+                height: 52,
+                borderRadius: '8px 0 0 8px',
+                bgcolor: (theme) => alpha(theme.palette.primary.main, 0.7),
                 color: 'primary.contrastText',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
                 '&:hover': { bgcolor: 'primary.main' },
+                transition: 'background-color 0.2s',
               }}
             >
-              <PanelRight size={20} />
-            </Fab>
+              <PanelRight size={16} />
+            </Box>
           </>
         )}
       </Box>

@@ -170,7 +170,9 @@ export function useChat(sessionId?: string, patientId?: string) {
     } catch (err) {
       console.error('[useChat] Health check failed:', err);
       setError('System is updating. Please try again in a moment.');
-      toast.error('System is updating. Please try again in a moment.');
+      if (process.env.NEXT_PUBLIC_DISABLE_MAINTENANCE !== 'true') {
+        toast.error('System is updating. Please try again in a moment.');
+      }
       return;
     }
 

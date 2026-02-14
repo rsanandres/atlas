@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Box, Typography, Chip, Stack, Divider, alpha, Tabs, Tab, Skeleton } from '@mui/material';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Workflow, Wrench, Info, Users } from 'lucide-react';
@@ -24,10 +24,18 @@ interface WorkflowPanelProps {
   onPromptSelect?: (text: string) => void;
   selectedPatient?: SelectedPatient | null;
   onPatientSelect?: (patient: SelectedPatient | null) => void;
+  referencePanelCollapsed?: boolean;
 }
 
-export function WorkflowPanel({ pipeline, toolCalls, lastResponse, isProcessing, lastQuery, onPromptSelect, selectedPatient, onPatientSelect }: WorkflowPanelProps) {
+export function WorkflowPanel({ pipeline, toolCalls, lastResponse, isProcessing, lastQuery, onPromptSelect, selectedPatient, onPatientSelect, referencePanelCollapsed }: WorkflowPanelProps) {
   const [tabIndex, setTabIndex] = useState(0);
+
+  // Switch to Pipeline tab when a prompt is sent (reference panel collapsed)
+  useEffect(() => {
+    if (referencePanelCollapsed) {
+      setTabIndex(1);
+    }
+  }, [referencePanelCollapsed]);
   const sources = lastResponse?.sources || [];
   const hasActivity = pipeline.some(s => s.status === 'completed' || s.status === 'active');
   const hasCompletedSteps = pipeline.some(s => s.status === 'completed');
@@ -38,12 +46,7 @@ export function WorkflowPanel({ pipeline, toolCalls, lastResponse, isProcessing,
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, x: 20 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ duration: 0.3, delay: 0.1 }}
-      style={{ height: '100%' }}
-    >
+    <div style={{ height: '100%' }}>
       <Box
         sx={{
           height: '100%',
@@ -207,6 +210,6 @@ export function WorkflowPanel({ pipeline, toolCalls, lastResponse, isProcessing,
           )}
         </Box>
       </Box>
-    </motion.div>
+    </div>
   );
 }
