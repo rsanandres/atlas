@@ -105,6 +105,26 @@ def _startup_diagnostics() -> None:
 async def _on_startup() -> None:
     _startup_diagnostics()
 
+    # Pre-warm vector store so first user query doesn't cold-start timeout
+    try:
+        from api.database.postgres import initialize_vector_store
+        print("[STARTUP] Pre-warming vector store connection...")
+        await initialize_vector_store()
+        print("[STARTUP] Vector store ready")
+    except Exception as e:
+        print(f"[STARTUP] Vector store pre-warm failed (will retry on first query): {e}")
+
+    # Pre-warm reranker model
+    try:
+        from api.retrieval.cross_encoder import Reranker
+        import os
+        model = os.getenv("RERANKER_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
+        print(f"[STARTUP] Pre-warming reranker model: {model}")
+        Reranker(model_name=model, device=os.getenv("RERANKER_DEVICE", "auto"))
+        print("[STARTUP] Reranker model ready")
+    except Exception as e:
+        print(f"[STARTUP] Reranker pre-warm failed (will retry on first query): {e}")
+
 
 @app.get("/")
 async def root():
