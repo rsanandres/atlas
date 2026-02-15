@@ -294,7 +294,7 @@ export function PipelineStep({ step, isLast, queryText, details }: PipelineStepP
           </Box>
         </Collapse>
 
-        {step.duration && !expanded && (
+        {step.duration != null && !expanded && (
           <Typography
             variant="caption"
             sx={{ color: 'success.main', fontWeight: 500, ml: canExpand ? 2.5 : 0 }}

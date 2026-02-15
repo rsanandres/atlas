@@ -73,6 +73,7 @@ export function useWorkflow() {
     setPipeline(DEFAULT_PIPELINE.map(step => ({ ...step, status: 'pending', details: undefined })));
     setLastToolCalls([]);
     stepTimings.current = {};
+    processingStartTime.current = 0;
   }, []);
 
   // Activate a pipeline step based on real SSE events.

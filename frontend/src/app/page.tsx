@@ -80,13 +80,6 @@ export default function Home() {
 
     // Status-based transitions (match backend SSE status messages)
     if (status.includes('Starting')) activate('pii_mask');
-    if (status.includes('Researcher') || status.includes('investigating')) {
-      activate('llm_react');
-    }
-    if (status.includes('Using ')) {
-      // Tool usage — activate llm_react if not already
-      activate('llm_react');
-    }
     if (status.includes('Synthesizing')) {
       activate('response');
     }
