@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import os
 import re
+import time as _time
 from typing import Any, Dict, List, Optional
 
 from langchain_core.tools import tool
@@ -237,6 +238,8 @@ async def search_patient_records(
     # Direct DB + reranker call (no self-referencing HTTP to avoid event-loop deadlock)
     from api.database.postgres import hybrid_search
 
+    print(f"[DEBUG tool] search_patient_records: calling hybrid_search (query='{cleaned_query[:60]}', filters={list(filter_metadata.keys()) if filter_metadata else None})")
+    t0 = _time.time()
     candidates = await hybrid_search(
         cleaned_query,
         k=k_chunks,
@@ -244,6 +247,7 @@ async def search_patient_records(
         bm25_weight=0.5,
         semantic_weight=0.5,
     )
+    print(f"[DEBUG tool] hybrid_search returned {len(candidates)} candidates in {_time.time() - t0:.2f}s")
 
     if not candidates:
         return RetrievalResponse(
@@ -255,7 +259,10 @@ async def search_patient_records(
 
     reranker = _get_reranker()
     # Run CPU-bound cross-encoder in thread pool to avoid blocking event loop
+    print(f"[DEBUG tool] calling reranker on {len(candidates)} candidates...")
+    t1 = _time.time()
     scored = await asyncio.to_thread(reranker.rerank_with_scores, cleaned_query, candidates)
+    print(f"[DEBUG tool] reranker done in {_time.time() - t1:.2f}s")
     top_docs = scored[:k_chunks]
 
     chunks = [

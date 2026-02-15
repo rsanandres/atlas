@@ -431,14 +431,21 @@ async def _search_similar_with_sql_filter(
     """
     global _engine
 
+    print(f"[DEBUG semantic] _search_similar_with_sql_filter entered (k={k})")
+
     if _engine is None:
+        print("[DEBUG semantic] engine is None, initializing...")
         await initialize_vector_store()
 
     if not _engine:
+        print("[DEBUG semantic] engine still None after init, returning []")
         return []
 
     # Get the query embedding
+    print(f"[DEBUG semantic] calling async_get_chunk_embedding...")
+    t0 = time.time()
     query_embedding = await async_get_chunk_embedding(query)
+    print(f"[DEBUG semantic] embedding returned in {time.time() - t0:.2f}s (got={'yes' if query_embedding else 'None'})")
     if not query_embedding:
         print(f"Warning: Could not get embedding for query: {query[:50]}...")
         return []
@@ -476,9 +483,12 @@ async def _search_similar_with_sql_filter(
     """
 
     try:
+        print(f"[DEBUG semantic] executing SQL query...")
+        t1 = time.time()
         async with _engine.begin() as conn:
             result = await conn.execute(text(sql), params)
             rows = result.fetchall()
+        print(f"[DEBUG semantic] SQL query returned {len(rows)} rows in {time.time() - t1:.2f}s")
 
         documents = []
         for row in rows:
@@ -495,6 +505,7 @@ async def _search_similar_with_sql_filter(
             doc.metadata["_similarity_score"] = float(similarity) if similarity else 0.0
             documents.append(doc)
 
+        print(f"[DEBUG semantic] returning {len(documents)} documents")
         return documents
     except Exception as e:
         print(f"Error in SQL similarity search: {e}")
@@ -570,16 +581,32 @@ async def hybrid_search(
     """
     import asyncio
     from api.database.bm25_search import bm25_search
-    
-    # Run both searches in parallel
+
+    print(f"[DEBUG hybrid] hybrid_search entered (k={k}, bm25_k={bm25_k}, semantic_k={semantic_k}, filters={list(filter_metadata.keys()) if filter_metadata else None})")
+    t_start = time.time()
+
+    # Run both searches in parallel with timeout
     bm25_task = asyncio.create_task(
         bm25_search(query, k=bm25_k, filter_metadata=filter_metadata)
     )
     semantic_task = asyncio.create_task(
         search_similar_chunks(query, k=semantic_k, filter_metadata=filter_metadata)
     )
-    
-    bm25_results, semantic_results = await asyncio.gather(bm25_task, semantic_task)
+
+    try:
+        bm25_results, semantic_results = await asyncio.wait_for(
+            asyncio.gather(bm25_task, semantic_task),
+            timeout=45.0,
+        )
+        print(f"[DEBUG hybrid] both searches done in {time.time() - t_start:.2f}s (bm25={len(bm25_results)}, semantic={len(semantic_results)})")
+    except asyncio.TimeoutError:
+        print(f"[DEBUG hybrid] TIMED OUT after {time.time() - t_start:.2f}s — cancelling tasks")
+        bm25_task.cancel()
+        semantic_task.cancel()
+        # Try to salvage whatever finished
+        bm25_results = bm25_task.result() if bm25_task.done() and not bm25_task.cancelled() else []
+        semantic_results = semantic_task.result() if semantic_task.done() and not semantic_task.cancelled() else []
+        print(f"[DEBUG hybrid] salvaged: bm25={len(bm25_results)}, semantic={len(semantic_results)}")
     
     # Create a dict to merge results by document ID
     merged: Dict[str, Dict[str, Any]] = {}

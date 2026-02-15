@@ -7,6 +7,7 @@ full-text search capabilities, complementing semantic vector search.
 from __future__ import annotations
 
 import os
+import time as _time
 from typing import Any, Dict, List, Optional
 
 from sqlalchemy import text
@@ -97,34 +98,37 @@ async def bm25_search(
     """
     
     try:
+        print(f"[DEBUG bm25] executing SQL query...")
+        t0 = _time.time()
         async with engine.begin() as conn:
             result = await conn.execute(text(base_sql), params)
             rows = result.fetchall()
-            
-            documents = []
-            for row in rows:
-                # Handle both tuple and mapping access
-                if hasattr(row, '_mapping'):
-                    langchain_id = row._mapping['langchain_id']
-                    content = row._mapping['content']
-                    metadata = row._mapping['langchain_metadata'] or {}
-                    rank = row._mapping['rank']
-                else:
-                    langchain_id, content, metadata, rank = row
-                    
-                # Add BM25 score to metadata for debugging
-                if isinstance(metadata, dict):
-                    metadata = {**metadata, "_bm25_score": float(rank)}
-                    
-                doc = Document(
-                    id=str(langchain_id),
-                    page_content=content or "",
-                    metadata=metadata,
-                )
-                documents.append(doc)
-                
-            return documents
-            
+        print(f"[DEBUG bm25] SQL returned {len(rows)} rows in {_time.time() - t0:.2f}s")
+
+        documents = []
+        for row in rows:
+            # Handle both tuple and mapping access
+            if hasattr(row, '_mapping'):
+                langchain_id = row._mapping['langchain_id']
+                content = row._mapping['content']
+                metadata = row._mapping['langchain_metadata'] or {}
+                rank = row._mapping['rank']
+            else:
+                langchain_id, content, metadata, rank = row
+
+            # Add BM25 score to metadata for debugging
+            if isinstance(metadata, dict):
+                metadata = {**metadata, "_bm25_score": float(rank)}
+
+            doc = Document(
+                id=str(langchain_id),
+                page_content=content or "",
+                metadata=metadata,
+            )
+            documents.append(doc)
+
+        return documents
+
     except Exception as e:
         print(f"BM25 search error: {e}")
         return []

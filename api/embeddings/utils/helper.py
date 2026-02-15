@@ -62,7 +62,16 @@ bedrock_runtime = None
 if EMBEDDING_PROVIDER == "bedrock":
     try:
         import boto3
-        bedrock_runtime = boto3.client("bedrock-runtime", region_name=BEDROCK_REGION)
+        from botocore.config import Config as BotoConfig
+        bedrock_runtime = boto3.client(
+            "bedrock-runtime",
+            region_name=BEDROCK_REGION,
+            config=BotoConfig(
+                connect_timeout=5,
+                read_timeout=15,
+                retries={"max_attempts": 2, "mode": "standard"},
+            ),
+        )
         BEDROCK_AVAILABLE = True
         logger.info(f"Bedrock embedding provider initialized (region: {BEDROCK_REGION}, model: {BEDROCK_MODEL_ID})")
     except ImportError as e:
@@ -626,17 +635,36 @@ def _get_embeddings_bedrock(texts: list) -> list:
 
 def get_chunk_embedding(chunk_text: str):
     """Get embedding for a single chunk."""
+    import time as _time
     if not EMBEDDINGS_AVAILABLE:
+        print(f"[DEBUG embedding] EMBEDDINGS_AVAILABLE=False, returning None")
         return None
-    
+
+    print(f"[DEBUG embedding] calling get_embeddings (provider={EMBEDDING_PROVIDER})...")
+    t0 = _time.time()
     embeddings = get_embeddings([chunk_text])
+    elapsed = _time.time() - t0
+    dim = len(embeddings[0]) if embeddings and embeddings[0] else 0
+    print(f"[DEBUG embedding] get_embeddings returned in {elapsed:.2f}s (dim={dim})")
     return embeddings[0] if embeddings and len(embeddings) > 0 else None
 
 
 async def async_get_chunk_embedding(chunk_text: str):
-    """Async wrapper — offloads sync Bedrock call to thread pool."""
+    """Async wrapper — offloads sync Bedrock call to thread pool with timeout."""
     import asyncio
-    return await asyncio.to_thread(get_chunk_embedding, chunk_text)
+    import time as _time
+    print(f"[DEBUG embedding] async wrapper: submitting to thread pool...")
+    t0 = _time.time()
+    try:
+        result = await asyncio.wait_for(
+            asyncio.to_thread(get_chunk_embedding, chunk_text),
+            timeout=30.0,
+        )
+        print(f"[DEBUG embedding] async wrapper: done in {_time.time() - t0:.2f}s")
+        return result
+    except asyncio.TimeoutError:
+        print(f"[DEBUG embedding] async wrapper: TIMED OUT after {_time.time() - t0:.2f}s")
+        return None
 
 
 def extract_resource_metadata(resource_json: str) -> dict:
