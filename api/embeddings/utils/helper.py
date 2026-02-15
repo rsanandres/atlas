@@ -633,6 +633,12 @@ def get_chunk_embedding(chunk_text: str):
     return embeddings[0] if embeddings and len(embeddings) > 0 else None
 
 
+async def async_get_chunk_embedding(chunk_text: str):
+    """Async wrapper — offloads sync Bedrock call to thread pool."""
+    import asyncio
+    return await asyncio.to_thread(get_chunk_embedding, chunk_text)
+
+
 def extract_resource_metadata(resource_json: str) -> dict:
     """
     Extract common metadata fields from FHIR resource JSON.

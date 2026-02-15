@@ -18,7 +18,7 @@ from langchain_core.embeddings import Embeddings
 # Add parent directory to path to import from api/embeddings/utils/helper.py
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..'))
 try:
-    from api.embeddings.utils.helper import get_chunk_embedding
+    from api.embeddings.utils.helper import get_chunk_embedding, async_get_chunk_embedding
 except ImportError:
     # Fallback to old location during migration
     from POC_embeddings.helper import get_chunk_embedding
@@ -438,7 +438,7 @@ async def _search_similar_with_sql_filter(
         return []
 
     # Get the query embedding
-    query_embedding = get_chunk_embedding(query)
+    query_embedding = await async_get_chunk_embedding(query)
     if not query_embedding:
         print(f"Warning: Could not get embedding for query: {query[:50]}...")
         return []
