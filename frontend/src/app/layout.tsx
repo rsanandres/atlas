@@ -17,13 +17,13 @@ const geistMono = Geist_Mono({
 const description = 'Healthcare AI powered by retrieval-augmented generation with Claude 3.5 Sonnet & Haiku';
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://hcai.rsanandres.com'),
+  metadataBase: new URL('https://atlas.rsanandres.com'),
   title: 'HC AI — Healthcare RAG Demo by Raphael San Andres',
   description,
   openGraph: {
     title: 'HC AI — Healthcare RAG Demo',
     description,
-    url: 'https://hcai.rsanandres.com',
+    url: 'https://atlas.rsanandres.com',
     siteName: 'HC AI',
     type: 'website',
   },

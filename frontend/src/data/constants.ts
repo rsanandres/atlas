@@ -5,4 +5,4 @@ export const MY_EMAIL = 'rysanandres@gmail.com';
 export const MY_LINKEDIN = 'https://www.linkedin.com/in/raphael-san-andres/';
 export const MY_GITHUB = 'https://github.com/rsanandres';
 export const GITHUB_REPO = 'https://github.com/rsanandres/atlas';
-export const SITE_URL = 'https://hcai.rsanandres.com';
+export const SITE_URL = 'https://atlas.rsanandres.com';
