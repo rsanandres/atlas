@@ -51,7 +51,7 @@ The journey from local to production revealed challenges that only appear at sca
 
 ### Phase 1: Local Development
 
-![Local Development Architecture](/local_architecture_diagram_1769617325723.png)
+![Local Development Architecture](/local_architecture.png)
 
 **Technology Stack (Local):**
 
@@ -77,7 +77,7 @@ The journey from local to production revealed challenges that only appear at sca
 
 ### Phase 2: AWS Production (Current)
 
-![AWS Production Architecture](/aws_architecture_diagram_1769617381606.png)
+![AWS Production Architecture](/aws_architecture.png)
 
 **Technology Stack (AWS Production):**
 
@@ -262,7 +262,7 @@ This section details the end-to-end data processing pipeline from raw FHIR Bundl
 
 ### Pipeline Overview
 
-![Data Flow Pipeline](/data_flow_pipeline_1769617480980.png)
+![Data Flow Pipeline](/data_flow_pipeline.png)
 
 The pipeline consists of **8 stages** with built-in error handling and retry logic at every step.
 
@@ -822,7 +822,7 @@ PostgreSQL was chosen for its:
 - **ACID compliance**: Data integrity guarantees
 - **Cost-effective**: Open-source, runs on standard hardware
 
-![Database Schema](/database_schema_diagram_1769617752692.png)
+![Database Schema](/database_schema.png)
 
 **Production Instance**: RDS db.t4g.small (2 vCPU, 2GB RAM, 250GB gp3 SSD)
 
@@ -883,7 +883,7 @@ See [Section 10](#10-what-id-do-with-more-resources) for scaling strategies.
 
 ### Retrieval Pipeline
 
-![Retrieval Pipeline](/retrieval_pipeline_diagram_1769617645651.png)
+![Retrieval Pipeline](/retrieval_pipeline.png)
 
 The system supports **3 retrieval methods** that can be used independently or combined.
 
@@ -1265,7 +1265,7 @@ This retrieval system demonstrates:
 
 The agent system is the brain of hc_ai, orchestrating retrieval, medical knowledge lookup, and response generation through a LangGraph state machine.
 
-![Agent Architecture](/agent_architecture_diagram_1769617822333.png)
+![Agent Architecture](/agent_architecture.png)
 
 ### LangGraph Multi-Agent Architecture
 
