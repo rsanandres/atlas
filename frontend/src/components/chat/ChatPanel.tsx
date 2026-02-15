@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Box, Typography, IconButton, Tooltip, alpha, Switch, FormControlLabel, Chip } from '@mui/material';
-import { Trash2, Bug, User, Download, Keyboard, HelpCircle } from 'lucide-react';
+import { Trash2, Bug, User, Download, Keyboard, HelpCircle, FileText } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { Message } from '@/types';
@@ -14,6 +14,8 @@ import { glassStyle } from '@/theme/theme';
 import { useDebugMode } from '@/hooks/useDebugMode';
 import { StreamingState } from '@/hooks/useChat';
 import { exportChatAsMarkdown, downloadMarkdown } from '@/utils/exportChat';
+import { FHIR_BUNDLES } from '@/data/fhir-bundles';
+import { PatientDataModal } from '@/components/workflow/PatientDataModal';
 
 // Patient type for selection
 interface SelectedPatient {
@@ -55,6 +57,9 @@ export function ChatPanel({
   const { debugMode, toggleDebugMode } = useDebugMode();
   const isPatientSelected = !!selectedPatient;
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [patientDataOpen, setPatientDataOpen] = useState(false);
+
+  const patientBundle = selectedPatient ? FHIR_BUNDLES[selectedPatient.id] : null;
 
   // Global Cmd+/ shortcut
   const handleKeyDown = useCallback((e: globalThis.KeyboardEvent) => {
@@ -104,14 +109,27 @@ export function ChatPanel({
               Atlas Chat
             </Typography>
             {selectedPatient ? (
-              <Chip
-                icon={<User size={12} />}
-                label={selectedPatient.name}
-                size="small"
-                color="primary"
-                variant="outlined"
-                sx={{ mt: 0.5, height: 22, fontSize: '0.7rem' }}
-              />
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.5 }}>
+                <Chip
+                  icon={<User size={12} />}
+                  label={selectedPatient.name}
+                  size="small"
+                  color="primary"
+                  variant="outlined"
+                  sx={{ height: 22, fontSize: '0.7rem' }}
+                />
+                {patientBundle && (
+                  <Tooltip title="View patient data">
+                    <IconButton
+                      size="small"
+                      onClick={() => setPatientDataOpen(true)}
+                      sx={{ p: 0.25 }}
+                    >
+                      <FileText size={14} />
+                    </IconButton>
+                  </Tooltip>
+                )}
+              </Box>
             ) : (
               <Typography variant="caption" color="text.secondary">
                 Select a patient to begin
@@ -264,6 +282,13 @@ export function ChatPanel({
       </Box>
 
       <KeyboardShortcuts open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
+
+      <PatientDataModal
+        open={patientDataOpen}
+        onClose={() => setPatientDataOpen(false)}
+        data={patientBundle}
+        patientName={selectedPatient?.name}
+      />
     </div>
   );
 }
