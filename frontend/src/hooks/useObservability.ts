@@ -180,11 +180,11 @@ export function useObservability() {
       if (hasCW) {
         const cards: { ts: CloudWatchTimeSeries | undefined; label: string; unit: string; color: string }[] = [
           { ts: ecsCpu, label: 'ECS CPU', unit: '%', color: '#14b8a6' },
-          { ts: ecsMem, label: 'ECS Memory', unit: '%', color: '#8b5cf6' },
+          { ts: ecsMem, label: 'ECS Memory', unit: '%', color: '#14b8a6' },
           { ts: albReq, label: 'ALB Requests', unit: 'count', color: '#3b82f6' },
-          { ts: rdsCpu, label: 'RDS CPU', unit: '%', color: '#14b8a6' },
+          { ts: rdsCpu, label: 'RDS CPU', unit: '%', color: '#8b5cf6' },
           { ts: rdsConn, label: 'RDS Connections', unit: 'count', color: '#8b5cf6' },
-          { ts: albP99, label: 'p99 Latency', unit: 's', color: '#ef4444' },
+          { ts: albP99, label: 'p99 Latency', unit: 's', color: '#3b82f6' },
         ];
         for (const card of cards) {
           if (!card.ts) continue;

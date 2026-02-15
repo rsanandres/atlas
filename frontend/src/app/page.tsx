@@ -28,7 +28,7 @@ export default function Home() {
   const [selectedPatient, setSelectedPatient] = useState<SelectedPatient | null>(null);
 
   const { messages, isLoading, error, sendMessage, stopGeneration, clearChat, getLastResponse, messageCount, streamingState, setFeedback, regenerateMessage } = useChat(activeSessionId, selectedPatient?.id);
-  const { pipeline, lastToolCalls, isProcessing, activateStep, updateFromResponse, resetPipeline } = useWorkflow();
+  const { pipeline, lastToolCalls, isProcessing, activateStep, completeStep, updateFromResponse, resetPipeline } = useWorkflow();
   const {
     serviceHealth,
     metricSummaries,
@@ -76,24 +76,29 @@ export default function Home() {
     const status = streamingState.currentStatus;
 
     // Status-based transitions (match backend SSE status messages)
+    // Main flow: query → pii_mask → llm_react → response
     if (status.includes('Starting')) activate('pii_mask');
-    if (status.includes('Synthesizing')) {
-      activate('response');
-    }
+    if (status.includes('Researcher')) activate('llm_react');
+    if (status.includes('Synthesizing')) activate('response');
 
-    // Tool and step-based transitions
+    // Tool-based transitions: mark as completed without interrupting active step.
+    // Tools run INSIDE the researcher, so they shouldn't take over as active step.
+    const complete = (stepId: string) => {
+      if (!activatedStepsRef.current.has(stepId)) {
+        activatedStepsRef.current.add(stepId);
+        completeStep(stepId);
+      }
+    };
+
     for (const step of streamingState.steps) {
       if (step.type === 'tool_call' && step.toolName && SEARCH_TOOLS.includes(step.toolName)) {
-        activate('vector_search');
+        complete('vector_search');
       }
       if (step.type === 'tool_result' && step.toolName && SEARCH_TOOLS.includes(step.toolName)) {
-        activate('rerank');
-      }
-      if (step.type === 'researcher') {
-        activate('llm_react');
+        complete('rerank');
       }
     }
-  }, [streamingState, activateStep]);
+  }, [streamingState, activateStep, completeStep]);
 
   // Finalize pipeline when response arrives
   useEffect(() => {

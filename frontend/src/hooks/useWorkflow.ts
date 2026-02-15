@@ -212,9 +212,26 @@ export function useWorkflow() {
         ...step,
         status: usedSteps.has(step.id) ? 'completed' : 'skipped',
         details: stepDetails[step.id],
-        duration: realDuration,
+        // Only show duration where we have real data:
+        // - pii_mask has no real timing (absorbs LLM thinking time)
+        // - response shows totalLatency (most useful metric)
+        // - other steps use gap-based timing (approximate)
+        duration: step.id === 'pii_mask' ? undefined
+                : step.id === 'response' ? totalLatency
+                : realDuration,
       };
     }));
+  }, []);
+
+  // Mark a step as completed without changing the currently active step.
+  // Used for tool-related steps (vector_search, rerank) that happen
+  // inside the researcher's execution, not as separate sequential phases.
+  const completeStep = useCallback((stepId: string) => {
+    setPipeline(prev => prev.map(step =>
+      step.id === stepId && step.status === 'pending'
+        ? { ...step, status: 'completed' }
+        : step
+    ));
   }, []);
 
   return {
@@ -223,6 +240,7 @@ export function useWorkflow() {
     isProcessing,
     resetPipeline,
     activateStep,
+    completeStep,
     updateFromResponse,
   };
 }
