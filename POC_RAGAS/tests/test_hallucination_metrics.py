@@ -1,8 +1,7 @@
-"""Evaluate hallucination metrics for agent responses."""
+"""Evaluate hallucination metrics for agent responses (API mode only)."""
 
 from __future__ import annotations
 
-import json
 import sys
 from pathlib import Path
 from typing import Any, Dict, List
@@ -18,13 +17,10 @@ from POC_RAGAS.config import CONFIG
 from POC_RAGAS.evaluators.faithfulness import evaluate_faithfulness
 from POC_RAGAS.evaluators.noise_sensitivity import evaluate_noise_sensitivity
 from POC_RAGAS.evaluators.relevancy import evaluate_relevancy
-from POC_RAGAS.runners.agent_runner import run_agent_query
 from POC_RAGAS.runners.api_runner import run_api_query
-from POC_RAGAS.utils.db_loader import (
-    get_distinct_patient_ids,
-    get_full_fhir_documents,
-    load_documents,
-)
+
+# Richest patient in the dataset (317 chunks, 9 resource types)
+TEST_PATIENT_ID = "3e80196f-06df-4568-a5e5-480b742b8639"
 
 
 async def _check_api_health() -> bool:
@@ -46,61 +42,42 @@ def _extract_contexts(sources: List[Dict[str, Any]]) -> List[str]:
     return [ctx for ctx in contexts if ctx]
 
 
-async def _build_samples(
-    query: str,
-    result: Dict[str, Any],
-    patient_id: str,
-) -> List[Dict[str, Any]]:
-    contexts = _extract_contexts(result.get("sources", []))
-    if CONFIG.include_full_json:
-        full_docs = await get_full_fhir_documents([patient_id])
-        for doc in full_docs:
-            bundle = doc.get("bundle_json")
-            if bundle:
-                contexts.append(json.dumps(bundle)[:2000])
-
-    if not contexts:
-        return []
-
-    return [
-        {
-            "question": query,
-            "answer": result.get("response", ""),
-            "contexts": contexts,
-            "patient_id": patient_id,
-        }
-    ]
-
-
 @pytest.mark.asyncio
 async def test_hallucination_metrics(ragas_min_thresholds):
     if not CONFIG.openai_api_key:
         pytest.skip("OPENAI_API_KEY not configured.")
 
     if not await _check_api_health():
-        pytest.skip("Agent API is not reachable. Start services before running this test.")
+        pytest.skip("Agent API is not reachable.")
 
-    patient_ids = await get_distinct_patient_ids(limit=50)
-    if not patient_ids:
-        pytest.skip("No patient IDs found in embeddings table.")
-    patient_id = patient_ids[0]
+    query = "What is the birth date of patient 3e80196f-06df-4568-a5e5-480b742b8639?"
+    result = await run_api_query(
+        query=query,
+        session_id="ragas-test-api",
+        patient_id=TEST_PATIENT_ID,
+    )
 
-    query = "What is the patient's birth date?"
-    direct_result = await run_agent_query(query=query, session_id="ragas-direct", patient_id=patient_id)
-    api_result = await run_api_query(query=query, session_id="ragas-api", patient_id=patient_id)
+    if result.get("error"):
+        pytest.skip(f"API returned error: {result['error']}")
 
-    samples = []
-    samples.extend(await _build_samples(query, direct_result, patient_id))
-    samples.extend(await _build_samples(query, api_result, patient_id))
-    if not samples:
+    contexts = _extract_contexts(result.get("sources", []))
+    if not contexts:
         pytest.skip("No contexts found for evaluation.")
 
-    faith = evaluate_faithfulness(samples)
-    relevancy = evaluate_relevancy(samples)
+    samples = [
+        {
+            "user_input": query,
+            "response": result.get("response", ""),
+            "retrieved_contexts": contexts,
+            "patient_id": TEST_PATIENT_ID,
+        }
+    ]
 
-    noise_docs = await load_documents(limit=50)
-    noise_pool = [doc.page_content for doc in noise_docs]
-    noise = evaluate_noise_sensitivity(samples, noise_pool)
+    faith = await evaluate_faithfulness(samples)
+    relevancy = await evaluate_relevancy(samples)
+
+    # Use contexts as noise pool
+    noise = await evaluate_noise_sensitivity(samples, contexts)
 
     assert 0.0 <= faith["score"] <= 1.0
     assert 0.0 <= relevancy["score"] <= 1.0

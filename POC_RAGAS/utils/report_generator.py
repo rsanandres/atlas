@@ -51,8 +51,8 @@ def write_markdown_report(
 
     sample_lines = []
     for sample in list(samples)[:5]:
-        sample_lines.append(f"- Question: {sample.get('question')}")
-        sample_lines.append(f"  Answer: {sample.get('answer')}")
+        sample_lines.append(f"- Question: {sample.get('user_input') or sample.get('question')}")
+        sample_lines.append(f"  Answer: {(sample.get('response') or sample.get('answer', ''))[:120]}")
         sample_lines.append(f"  Patient: {sample.get('patient_id')}")
 
     failed_lines = []

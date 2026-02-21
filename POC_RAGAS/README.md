@@ -1,91 +1,89 @@
 # POC_RAGAS Evaluation Suite
 
-This folder contains RAGAS-based evaluation tooling for the medical RAG agent.
+RAGAS-based evaluation tooling for the Atlas medical RAG agent. Runs against the **production API** using OpenAI gpt-4o-mini as the judge LLM.
 
-## What it covers
-- Synthetic test generation from embedded FHIR chunks
-- Hallucination evaluation:
-  - Faithfulness
-  - Response relevancy
-  - Noise sensitivity
-- Runs against both direct agent invocation and the API endpoint
-- Outputs JSON + Markdown reports
+**RAGAS version:** v0.4.3+
+
+## What it evaluates
+
+- **Faithfulness** — Are responses grounded in the retrieved contexts?
+- **Response relevancy** — Does the response actually answer the question?
+- **Noise sensitivity** — How much does injecting irrelevant context degrade faithfulness?
 
 ## Prerequisites
-- PostgreSQL with pgvector running and populated (first 2000 files embedded)
-- Ollama running for embeddings (if used by the system)
-- Unified API service running on `:8000` (includes agent, retrieval, embeddings)
-- `OPENAI_API_KEY` available for RAGAS metrics and test generation
 
-## Install
+- Atlas production API running (ALB endpoint or custom domain via `AGENT_API_URL`)
+- `OPENAI_API_KEY` in the repo root `.env` file
+- Python 3.11+
+
+## Setup
 
 ```bash
 pip install -r POC_RAGAS/requirements.txt
 ```
 
-## Service startup
+Create a `.env` file in the repo root (already in `.gitignore`):
 
-```bash
-# PostgreSQL (if using docker-compose)
-cd postgres && docker-compose up -d
-
-# Ollama
-ollama serve
-
-# Unified API service (includes agent, retrieval, embeddings)
-uvicorn api.main:app --port 8000
+```
+OPENAI_API_KEY=sk-...
 ```
 
-## Health checks
+## Health check
 
 ```bash
 python POC_RAGAS/scripts/check_services.py
 ```
 
-## Generate a synthetic testset
+## Run smoke test (5 questions)
 
 ```bash
-python POC_RAGAS/scripts/generate_testset.py --size 120
+python POC_RAGAS/scripts/run_evaluation.py \
+    --testset POC_RAGAS/data/testsets/smoke_test.json \
+    --cooldown 7 \
+    --output-id smoke_v04
 ```
 
-Output: `POC_RAGAS/data/testsets/synthetic_testset.json`
+Results saved to:
+- `POC_RAGAS/data/results/results_smoke_v04.json`
+- `POC_RAGAS/data/results/report_smoke_v04.md`
 
-## Run evaluation (CLI)
+## Run full evaluation
 
 ```bash
-python POC_RAGAS/scripts/run_evaluation.py --mode both --patient-mode both
+python POC_RAGAS/scripts/run_evaluation.py \
+    --testset POC_RAGAS/data/testsets/patient_tests.json \
+    --cooldown 7 \
+    --output-id full
 ```
 
-Outputs:
-- `POC_RAGAS/data/results/results.json`
-- `POC_RAGAS/data/results/report.md`
+## Generate testsets
 
-## Run evaluation (Pytest)
+Template-based generation (no RAGAS dependency):
 
 ```bash
-pytest POC_RAGAS/tests -v
+python POC_RAGAS/scripts/generate_patient_tests.py
 ```
 
-### Optional thresholds
-Set environment variables to enforce minimum scores:
-```bash
-export RAGAS_MIN_FAITHFULNESS=0.7
-export RAGAS_MIN_RELEVANCY=0.7
-export RAGAS_MAX_NOISE_DEGRADATION=0.2
-```
+## Rate limiting
+
+The production API has a **10 req/min rate limit**. The default cooldown is 7 seconds between requests (`RAGAS_API_COOLDOWN` env var or `--cooldown` flag). 429 responses are automatically retried with backoff.
 
 ## Configuration
 
-Environment variables used (all optional unless noted):
-- `OPENAI_API_KEY` (required for metrics and test generation)
-- `RAGAS_MODEL` (default: `gpt-4`)
-- `RAGAS_TEST_SET_SIZE` (default: `120`)
-- `RAGAS_Q_SIMPLE`, `RAGAS_Q_MULTI`, `RAGAS_Q_COND`
-- `RAGAS_NOISE_RATIO` (default: `0.25`)
-- `RAGAS_NOISE_SEED` (default: `42`)
-- `RAGAS_INCLUDE_FULL_JSON` (default: `true`)
-- `AGENT_API_URL` (default: `http://localhost:8000/agent/query`)
-- `RERANKER_SERVICE_URL` (default: `http://localhost:8001`)
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `OPENAI_API_KEY` | (required) | OpenAI API key for judge LLM |
+| `RAGAS_MODEL` | `gpt-4o-mini` | OpenAI model for RAGAS scoring |
+| `AGENT_API_URL` | `https://api.hcai.rsanandres.com/agent/query` | Atlas API endpoint |
+| `RAGAS_API_COOLDOWN` | `7` | Seconds between API requests |
+| `RAGAS_NOISE_RATIO` | `0.25` | Fraction of noise contexts to inject |
+| `RAGAS_CHECKPOINT_INTERVAL` | `10` | Save checkpoint every N samples |
 
-Database settings (required for DB access):
-- `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `DB_HOST`, `DB_PORT`
+## API cost estimates
+
+| Run | OpenAI cost |
+|-----|-------------|
+| Smoke test (5 questions) | ~$0.01-0.05 |
+| Full eval (200 questions) | ~$1-5 |
+
+Uses gpt-4o-mini for judging and text-embedding-3-small for relevancy embeddings.

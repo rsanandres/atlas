@@ -1,4 +1,4 @@
-"""Health checks for required services."""
+"""Health checks for the production API."""
 
 from __future__ import annotations
 
@@ -13,7 +13,6 @@ if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
 from POC_RAGAS.config import CONFIG
-from POC_RAGAS.utils.db_loader import get_total_chunks
 
 
 async def check_http(url: str) -> bool:
@@ -26,20 +25,15 @@ async def check_http(url: str) -> bool:
 
 
 async def main() -> int:
-    agent_health = await check_http(CONFIG.agent_api_url.replace("/agent/query", "/agent/health"))
-    reranker_health = await check_http(f"{CONFIG.reranker_url}/rerank/health")
+    base_url = CONFIG.agent_api_url.replace("/agent/query", "")
+    agent_health = await check_http(f"{base_url}/agent/health")
 
-    db_ok = False
-    try:
-        count = await get_total_chunks()
-        db_ok = count > 0
-    except Exception:
-        count = 0
-
-    print(f"Agent API health: {'OK' if agent_health else 'FAILED'}")
-    print(f"Reranker health: {'OK' if reranker_health else 'FAILED'}")
-    print(f"Postgres embeddings: {'OK' if db_ok else 'FAILED'} (rows: {count})")
-    return 0
+    print(f"API URL:        {CONFIG.agent_api_url}")
+    print(f"Agent health:   {'OK' if agent_health else 'FAILED'}")
+    print(f"RAGAS model:    {CONFIG.ragas_model}")
+    print(f"API cooldown:   {CONFIG.api_cooldown_seconds}s")
+    print(f"OpenAI key set: {'yes' if CONFIG.openai_api_key else 'NO'}")
+    return 0 if agent_health else 1
 
 
 if __name__ == "__main__":

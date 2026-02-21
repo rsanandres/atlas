@@ -1,12 +1,13 @@
-"""CLI to run RAGAS evaluation."""
+"""CLI to run RAGAS evaluation against the production API."""
 
 from __future__ import annotations
 
 import argparse
 import asyncio
 import json
+import re
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -18,51 +19,46 @@ from POC_RAGAS.config import CONFIG
 from POC_RAGAS.evaluators.faithfulness import evaluate_faithfulness
 from POC_RAGAS.evaluators.noise_sensitivity import evaluate_noise_sensitivity
 from POC_RAGAS.evaluators.relevancy import evaluate_relevancy
-from POC_RAGAS.runners.agent_runner import run_agent_query
 from POC_RAGAS.runners.api_runner import run_api_query
 from POC_RAGAS.utils.checkpoint import load_latest_checkpoint, save_checkpoint, should_checkpoint
-from POC_RAGAS.utils.db_loader import get_distinct_patient_ids, get_full_fhir_documents
 from POC_RAGAS.utils.report_generator import write_json_report, write_markdown_report
-from POC_RAGAS.utils.service_manager import ensure_service_running
+from POC_RAGAS.utils.service_manager import check_service_health
+
+
+UUID_RE = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Run RAGAS evaluation.")
+    parser = argparse.ArgumentParser(description="Run RAGAS evaluation (API mode).")
     parser.add_argument(
         "--testset",
         type=Path,
-        default=Path(CONFIG.testset_dir) / "synthetic_testset.json",
+        default=Path(CONFIG.testset_dir) / "smoke_test.json",
         help="Path to testset JSON.",
     )
     parser.add_argument(
         "--mode",
-        choices=["direct", "api", "both"],
-        default="both",
-        help="Run direct agent, API, or both.",
-    )
-    parser.add_argument(
-        "--patient-mode",
-        choices=["with", "without", "both"],
-        default="both",
-        help="Use patient_id filter or not.",
+        choices=["api"],
+        default="api",
+        help="Evaluation mode (API only).",
     )
     parser.add_argument(
         "--start-from",
         type=int,
         default=None,
-        help="Start evaluation from this question index (0-based). Clears checkpoint and starts fresh.",
+        help="Start evaluation from this question index (0-based).",
     )
     parser.add_argument(
         "--output-id",
         type=str,
         default=None,
-        help="Optional identifier to append to output filenames (e.g., timestamp).",
+        help="Optional identifier for output filenames.",
     )
     parser.add_argument(
         "--cooldown",
         type=int,
-        default=0,
-        help="Seconds to wait between questions to let the agent clear background processes.",
+        default=None,
+        help=f"Seconds between API requests (default: {CONFIG.api_cooldown_seconds} from config).",
     )
     return parser.parse_args()
 
@@ -76,285 +72,195 @@ def _extract_questions(testset_path: Path) -> List[Dict[str, Any]]:
     return data
 
 
-async def _build_samples(query: str, result: Dict[str, Any], patient_id: str | None):
+def _get_question_text(item: Dict[str, Any]) -> str:
+    return (
+        item.get("user_input")
+        or item.get("question")
+        or item.get("query")
+        or item.get("prompt")
+        or ""
+    )
+
+
+def _get_patient_id(item: Dict[str, Any], question: str) -> str | None:
+    """Extract patient_id from item metadata or question text."""
+    meta = item.get("metadata", {})
+    if meta.get("patient_id"):
+        return meta["patient_id"]
+    match = UUID_RE.search(question)
+    return match.group(0) if match else None
+
+
+def _build_sample(
+    query: str, result: Dict[str, Any], patient_id: str | None
+) -> Dict[str, Any] | None:
     contexts = []
     for source in result.get("sources", []):
         if isinstance(source, dict):
             contexts.append(source.get("content_preview") or source.get("content") or "")
         else:
             contexts.append(str(source))
-    if CONFIG.include_full_json and patient_id:
-        full_docs = await get_full_fhir_documents([patient_id])
-        for doc in full_docs:
-            bundle = doc.get("bundle_json")
-            if bundle:
-                contexts.append(json.dumps(bundle)[:2000])
     contexts = [ctx for ctx in contexts if ctx]
     if not contexts:
-        return []
-    return [
-        {
-            "question": query,
-            "answer": result.get("response", ""),
-            "contexts": contexts,
-            "patient_id": patient_id,
-        }
-    ]
+        return None
+    return {
+        "user_input": query,
+        "response": result.get("response", ""),
+        "retrieved_contexts": contexts,
+        "patient_id": patient_id,
+    }
 
 
 async def main() -> int:
     args = parse_args()
+    cooldown = args.cooldown if args.cooldown is not None else CONFIG.api_cooldown_seconds
     testset = _extract_questions(args.testset)
-    
-    # Pre-flight: Check agent API service health (if using API mode)
-    if args.mode in {"api", "both"}:
-        print("Checking agent API service health...")
-        if not await ensure_service_running():
-            print("ERROR: Agent API service is not running.")
-            print("Please start it manually: uvicorn api.main:app --port 8000")
-            return 1
-        print("Agent API service is ready")
-    
-    patient_ids = await get_distinct_patient_ids(limit=100)
-    patient_id = patient_ids[0] if patient_ids else None
 
-    # Generate run_id for this evaluation
-    run_id = datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
-    
-    # Determine modes to run (needed early for checkpoint resume)
-    modes = []
-    if args.mode in {"direct", "both"}:
-        modes.append("direct")
-    if args.mode in {"api", "both"}:
-        modes.append("api")
-    
-    # Handle --start-from argument
-    start_from_index = args.start_from
+    # Pre-flight health check
+    print(f"Checking API health at {CONFIG.agent_api_url}...")
+    if not await check_service_health():
+        print("ERROR: Agent API is not reachable.")
+        return 1
+    print("API is healthy.")
+
+    run_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     samples: List[Dict[str, Any]] = []
     failed: List[Dict[str, Any]] = []
-    completed_combinations: set[tuple[int, str]] = set()
-    
-    if start_from_index is not None:
-        if start_from_index < 0 or start_from_index >= len(testset):
+    start_index = 0
+
+    if args.start_from is not None:
+        if args.start_from < 0 or args.start_from >= len(testset):
             print(f"ERROR: --start-from must be between 0 and {len(testset) - 1}")
             return 1
-        print(f"Starting fresh from question {start_from_index} (clearing checkpoint)")
-        # Mark all questions before start_from as completed (skip them)
-        for q_idx in range(start_from_index):
-            for mode in modes:
-                completed_combinations.add((q_idx, mode))
-        print(f"Skipping questions 0-{start_from_index - 1}, starting from question {start_from_index}")
+        start_index = args.start_from
+        print(f"Starting from question {start_index}")
     else:
-        # Try to load checkpoint
         checkpoint = load_latest_checkpoint()
         if checkpoint:
-            # Validate checkpoint matches current config
-            checkpoint_config = checkpoint.get("config", {})
-            if checkpoint_config.get("testset") != str(args.testset):
-                print(f"Warning: Checkpoint testset ({checkpoint_config.get('testset')}) differs from current ({args.testset})")
-            
-            # Load existing samples and failed queries
             samples = checkpoint.get("samples", [])
             failed = checkpoint.get("failed", [])
-            
-            # Track completed combinations from samples count
-            # Since we process sequentially (question 0 direct, question 0 api, question 1 direct, etc.)
-            # we can estimate which questions have been fully completed
-            checkpoint_progress = checkpoint.get("progress", {})
-            completed_count = checkpoint_progress.get("completed_questions", 0)
-            
-            # Estimate completed questions based on samples count
-            # This works because we process in order: Q0-direct, Q0-api, Q1-direct, Q1-api, etc.
-            total_modes = 2 if args.mode == "both" else 1
-            estimated_completed_questions = completed_count // total_modes if total_modes > 0 else 0
-            
-            # Mark all questions up to estimated_completed as done (for both modes)
-            for q_idx in range(estimated_completed_questions):
-                for mode in modes:
-                    completed_combinations.add((q_idx, mode))
-            
-            print(f"Resumed from checkpoint: {checkpoint.get('run_id', 'unknown')}")
-            print(f"  Progress: {completed_count} samples completed")
-            print(f"  Failed queries: {len(failed)}")
-            print(f"  Estimated completed questions: {estimated_completed_questions}/{len(testset)}")
-            print(f"  Resuming from question {estimated_completed_questions + 1}")
-        else:
-            print("Starting new evaluation run")
+            progress = checkpoint.get("progress", {})
+            start_index = progress.get("completed_questions", 0)
+            print(f"Resumed from checkpoint: {len(samples)} samples, starting at question {start_index}")
 
-    # Process questions
-    total_questions = len(testset)
-    print(f"DEBUG: total_questions={total_questions}")
-    print(f"DEBUG: modes={modes}")
-    print(f"DEBUG: completed_combinations len={len(completed_combinations)}")
-    
-    for question_idx, item in enumerate(testset):
-        question = item.get("question") or item.get("query") or item.get("prompt") or item.get("user_input")
+    total = len(testset)
+    for idx in range(start_index, total):
+        item = testset[idx]
+        question = _get_question_text(item)
         if not question:
             continue
 
-        # Extract patient_id from the question if possible
-        # Standard UUID regex
-        import re
-        uuid_pattern = r'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'
-        match = re.search(uuid_pattern, question)
-        
-        # Allow individual question patient_id override, or fallback to global patient_id
-        current_patient_id = match.group(0) if match else patient_id
-        
-        # Unique session per question to avoid context bleeding
-        current_session_id_base = f"ragas-{run_id}-{question_idx}"
+        patient_id = _get_patient_id(item, question)
+        session_id = f"ragas-{run_id}-{idx}"
 
-        for mode in modes:
-            # Check if this combination was already completed
-            combination = (question_idx, mode)
-            if combination in completed_combinations:
-                continue
+        try:
+            print(f"[{idx + 1}/{total}] {question[:70]}...")
+            result = await run_api_query(
+                query=question,
+                session_id=session_id,
+                patient_id=patient_id,
+                cooldown=cooldown,
+            )
 
-            try:
-                print(f"Processing [{question_idx+1}/{total_questions}] {mode}: {question[:60]}... (PID: {current_patient_id})")
-                if mode == "direct":
-                    result = await run_agent_query(
-                        query=question,
-                        session_id=f"{current_session_id_base}-direct",
-                        patient_id=current_patient_id if args.patient_mode != "without" else None,
-                    )
-                else:
-                    result = await run_api_query(
-                        query=question,
-                        session_id=f"{current_session_id_base}-api",
-                        patient_id=current_patient_id if args.patient_mode != "without" else None,
-                    )
-            
-                # Check for errors in result
-                if result.get("error"):
-                    error_msg = result.get("error", "")
-                    failed.append({
-                        "question_index": question_idx,
-                        "question": question,
-                        "mode": mode,
-                        "error": error_msg,
-                        "timestamp": datetime.utcnow().isoformat(),
-                    })
-                    print(f"Failed [{question_idx+1}/{total_questions}] {mode}: {error_msg[:100]}")
-                    
-                    # If API service is down, save checkpoint and exit
-                    if mode == "api" and ("ConnectError" in error_msg or "not running" in error_msg.lower()):
-                        print("\n" + "="*60)
-                        print("ALERT: Agent API service is down!")
-                        print("="*60)
-                        print(f"Progress saved to checkpoint before exit.")
-                        print(f"Completed: {len(samples)} samples")
-                        print(f"Failed: {len(failed)} queries")
-                        print(f"Last successful question: {question_idx}")
-                        print("\nTo resume:")
-                        print(f"  1. Start unified API service: uvicorn api.main:app --port 8000")
-                        print(f"  2. Run: python POC_RAGAS/scripts/run_evaluation.py --start-from {question_idx + 1}")
-                        print("="*60)
-                        
-                        # Save checkpoint before exiting
-                        config_dict = {
-                            "mode": args.mode,
-                            "patient_mode": args.patient_mode,
-                            "testset": str(args.testset),
-                        }
-                        checkpoint_path = save_checkpoint(
-                            run_id=run_id,
-                            config=config_dict,
-                            samples=samples,
-                            failed=failed,
-                            total_questions=total_questions,
-                            completed_questions=len(samples),
-                        )
-                        print(f"\nCheckpoint saved: {checkpoint_path}")
-                        return 1
-                else:
-                    new_samples = await _build_samples(question, result, current_patient_id)
-                    samples.extend(new_samples)
-                    completed_combinations.add(combination)
-                    print(f"Completed [{question_idx+1}/{total_questions}] {mode}: {question[:60]}...")
-            except Exception as e:
+            if result.get("error"):
+                error_msg = result["error"]
                 failed.append({
-                    "question_index": question_idx,
+                    "question_index": idx,
                     "question": question,
-                    "mode": mode,
-                    "error": f"{type(e).__name__}: {str(e)}",
-                    "timestamp": datetime.utcnow().isoformat(),
+                    "error": error_msg,
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
                 })
-                print(f"Exception [{question_idx+1}/{total_questions}] {mode}: {type(e).__name__} - {str(e)[:100]}")
+                print(f"  FAILED: {error_msg[:100]}")
 
-            # Cooldown between questions to let agent clear background processes
-            if args.cooldown > 0:
-                print(f"Cooldown: waiting {args.cooldown}s before next question...")
-                await asyncio.sleep(args.cooldown)
+                if "ConnectError" in error_msg or "not reachable" in error_msg.lower():
+                    print("\nAPI is down — saving checkpoint and exiting.")
+                    save_checkpoint(
+                        run_id=run_id,
+                        config={"testset": str(args.testset)},
+                        samples=samples,
+                        failed=failed,
+                        total_questions=total,
+                        completed_questions=idx,
+                    )
+                    return 1
+            else:
+                sample = _build_sample(question, result, patient_id)
+                if sample:
+                    samples.append(sample)
+                    print(f"  OK ({len(result.get('sources', []))} sources)")
+                else:
+                    print("  WARN: no contexts returned")
+        except Exception as e:
+            failed.append({
+                "question_index": idx,
+                "question": question,
+                "error": f"{type(e).__name__}: {e}",
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            })
+            print(f"  EXCEPTION: {type(e).__name__}: {e}")
 
-            # Save checkpoint every N questions
-            completed_count = len(samples)
-            if should_checkpoint(completed_count, CONFIG.checkpoint_interval):
-                config_dict = {
-                    "mode": args.mode,
-                    "patient_mode": args.patient_mode,
-                    "testset": str(args.testset),
-                }
-                checkpoint_path = save_checkpoint(
-                    run_id=run_id,
-                    config=config_dict,
-                    samples=samples,
-                    failed=failed,
-                    total_questions=total_questions,
-                    completed_questions=completed_count,
-                )
-                print(f"Checkpoint saved: {checkpoint_path} ({completed_count} samples)")
+        if should_checkpoint(len(samples), CONFIG.checkpoint_interval):
+            save_checkpoint(
+                run_id=run_id,
+                config={"testset": str(args.testset)},
+                samples=samples,
+                failed=failed,
+                total_questions=total,
+                completed_questions=idx + 1,
+            )
 
     if not samples:
-        raise RuntimeError("No samples available for evaluation.")
+        print("No samples collected — nothing to evaluate.")
+        return 1
 
-    # Evaluate metrics
-    faith = evaluate_faithfulness(samples)
-    relevancy = evaluate_relevancy(samples)
-    noise = evaluate_noise_sensitivity(samples, [s["contexts"][0] for s in samples])
+    # Score with RAGAS metrics
+    print(f"\nScoring {len(samples)} samples with RAGAS v0.4...")
+    faith = await evaluate_faithfulness(samples)
+    relevancy = await evaluate_relevancy(samples)
 
-    summary = {
+    # Noise sensitivity (use first context from each sample as noise pool)
+    noise_pool = []
+    for s in samples:
+        ctxs = s.get("retrieved_contexts") or s.get("contexts", [])
+        if ctxs:
+            noise_pool.append(ctxs[0])
+    noise = await evaluate_noise_sensitivity(samples, noise_pool) if noise_pool else None
+
+    summary: Dict[str, Any] = {
         "run_id": run_id,
-        "timestamp": datetime.utcnow().isoformat(),
-        "config": {
-            "mode": args.mode,
-            "patient_mode": args.patient_mode,
-            "testset": str(args.testset),
-        },
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "config": {"testset": str(args.testset), "cooldown": cooldown},
         "progress": {
-            "total_questions": total_questions,
+            "total_questions": total,
             "completed_questions": len(samples),
             "failed_questions": len(failed),
         },
         "metrics": {
             "faithfulness": {"score": faith["score"]},
             "relevancy": {"score": relevancy["score"]},
-            "noise_sensitivity": {
-                "baseline_score": noise["baseline_score"],
-                "noisy_score": noise["noisy_score"],
-                "degradation": noise["degradation"],
-            },
         },
         "failed": failed,
     }
+    if noise:
+        summary["metrics"]["noise_sensitivity"] = {
+            "baseline_score": noise["baseline_score"],
+            "noisy_score": noise["noisy_score"],
+            "degradation": noise["degradation"],
+        }
 
-    if args.output_id:
-        results_filename = f"results_{args.output_id}.json"
-        report_filename = f"report_{args.output_id}.md"
-    else:
-        results_filename = "results.json"
-        report_filename = "report.md"
-
-    results_path = Path(CONFIG.results_dir) / results_filename
-    report_path = Path(CONFIG.results_dir) / report_filename
+    suffix = f"_{args.output_id}" if args.output_id else ""
+    results_path = Path(CONFIG.results_dir) / f"results{suffix}.json"
+    report_path = Path(CONFIG.results_dir) / f"report{suffix}.md"
     write_json_report(summary, results_path)
     write_markdown_report(summary, samples, report_path)
 
     print(f"\nEvaluation complete!")
-    print(f"  Completed: {len(samples)} samples")
-    print(f"  Failed: {len(failed)} queries")
-    print(f"  Saved results to {results_path}")
-    print(f"  Saved report to {report_path}")
+    print(f"  Faithfulness: {faith['score']:.3f}")
+    print(f"  Relevancy:    {relevancy['score']:.3f}")
+    if noise:
+        print(f"  Noise degradation: {noise['degradation']:.3f}")
+    print(f"  Results: {results_path}")
+    print(f"  Report:  {report_path}")
     return 0
 
 

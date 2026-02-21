@@ -71,12 +71,16 @@ export function DocumentationPanel() {
                         <Typography variant="caption">Agent System & LangGraph</Typography>
                     </Box>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, pl: 1 }}>
+                        <FileText size={14} color="#888" />
+                        <Typography variant="caption">RAGAS Evaluation & Metrics</Typography>
+                    </Box>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, pl: 1 }}>
                         <Cloud size={14} color="#888" />
-                        <Typography variant="caption">AWS Migration Plan</Typography>
+                        <Typography variant="caption">AWS Production Architecture</Typography>
                     </Box>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, pl: 1 }}>
                         <FileText size={14} color="#888" />
-                        <Typography variant="caption">And 5 more sections...</Typography>
+                        <Typography variant="caption">And 4 more sections...</Typography>
                     </Box>
                 </Stack>
             </Box>

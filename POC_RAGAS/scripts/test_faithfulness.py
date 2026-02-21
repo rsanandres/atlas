@@ -29,7 +29,9 @@ samples = [
 ]
 
 if __name__ == "__main__":
+    import asyncio
     print("Running faithfulness evaluation...")
-    result = evaluate_faithfulness(samples)
+    result = asyncio.run(evaluate_faithfulness(samples))
     print(f"\nFaithfulness Score: {result['score']:.3f}")
-    print(f"\nRaw result: {result['raw']}")
+    for ps in result.get("per_sample", []):
+        print(f"  Sample score: {ps['score']}")

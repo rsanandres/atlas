@@ -1705,14 +1705,45 @@ The application includes 8 featured patient personas with pre-loaded FHIR data f
 
 ## 8. Metrics & Evaluation
 
-**RAGAS Framework** (POC): `POC_RAGAS/`
+### RAG Quality Evaluation (RAGAS v0.4)
 
-> **Status**: Standalone evaluation framework, not integrated into the main application. Used for offline agent quality testing.
+The agent's response quality is measured using [RAGAS](https://docs.ragas.io/) (Retrieval Augmented Generation Assessment), an industry-standard framework for evaluating RAG pipelines. Evaluation runs offline against the production API.
 
-- Faithfulness evaluation
-- Relevancy scoring
-- Hallucination detection
-- Custom healthcare metrics
+**Evaluation Pipeline:**
+
+```
+200 template questions (10 patients x 20 each)
+    → Production API (Claude 3.5 Haiku via Bedrock)
+    → Collect responses + retrieved source chunks
+    → Score with RAGAS (gpt-4o-mini as judge LLM)
+    → Faithfulness, Relevancy, Noise Sensitivity
+```
+
+**Results** (120 samples, 6 patients with indexed data):
+
+| Metric | Score | What It Measures |
+|--------|-------|-----------------|
+| Faithfulness | **0.759** | Are response claims grounded in retrieved contexts? |
+| Relevancy | **0.618** | Does the response actually answer the question? |
+| Noise Degradation | **0.013** | How much does irrelevant context degrade quality? |
+
+**Key Observations:**
+- **Faithfulness (0.76)**: ~76% of claims are supported by retrieved FHIR source chunks. Reasonable for a medical RAG system using Haiku (a fast, cost-optimized model) — verbose clinical JSON contexts make exact grounding harder than plain-text domains.
+- **Relevancy (0.62)**: The weaker metric. Haiku tends toward comprehensive responses that address adjacent topics, diluting relevance scores. Tuning retrieval top-k and response prompts would improve this.
+- **Noise Degradation (0.01)**: Near-zero degradation when irrelevant contexts are injected — the agent is robust to noisy retrieval results.
+
+**Evaluation Infrastructure:**
+- **Judge LLM**: OpenAI gpt-4o-mini (cost-effective for batch scoring at ~$2-5 per 200 questions)
+- **Testset**: Template-based generation — 10 factual retrieval + 10 complex reasoning questions per patient
+- **Checkpointing**: Saves progress every 10 samples for long-running evaluations
+- **Rate limiting**: 7s cooldown between API calls with automatic 429 backoff and retry
+
+**Next Steps:**
+- Re-run with gpt-4o as judge for higher-fidelity scoring
+- Ingest remaining patients (4 of 10 missing from vector store)
+- Tune retrieval top-k and agent prompts to improve relevancy
+- Add per-question-type breakdowns (factual vs. complex reasoning)
+- Integrate LangSmith for per-query tracing alongside RAGAS scoring
 
 ### Observability Dashboard
 
@@ -1928,12 +1959,13 @@ This documentation showcases a **production healthcare RAG system** that evolved
 - **Hybrid retrieval** combining semantic + keyword search with cross-encoder reranking
 - **Multi-model agent** with 28 healthcare-specific tools (8 active in researcher)
 - **Production-proven** on ECS Fargate with PostgreSQL 16 + pgvector
+- **Quantified quality**: RAGAS evaluation pipeline measuring faithfulness (0.76), relevancy (0.62), and noise robustness (0.01 degradation) across 120 real patient queries
 - **Honest engineering**: Cache strategies tested and documented when ineffective, production bugs catalogued as learning opportunities
 
 ---
 
 **Documentation Metadata**:
-- Last Updated: 2026-02-14
+- Last Updated: 2026-02-20
 - Author: Technical Documentation for Portfolio
 - Purpose: Showcase full-stack AI engineering skills
 - Status: Production system, actively maintained

@@ -6,11 +6,11 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
-from utils.env_loader import load_env_recursive
+from dotenv import load_dotenv
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-load_env_recursive(REPO_ROOT)
+load_dotenv(REPO_ROOT / ".env")
 
 
 @dataclass(frozen=True)
@@ -30,16 +30,10 @@ class RagasConfig:
     checkpoint_dir: Path = Path(os.getenv("RAGAS_CHECKPOINT_DIR", Path(__file__).resolve().parent / "data" / "checkpoints"))
     checkpoint_interval: int = int(os.getenv("RAGAS_CHECKPOINT_INTERVAL", "10"))
 
-    reranker_url: str = os.getenv("RERANKER_SERVICE_URL", "http://localhost:8000/retrieval")
-    agent_api_url: str = os.getenv("AGENT_API_URL", "http://localhost:8000/agent/query")
+    agent_api_url: str = os.getenv("AGENT_API_URL", "https://api.hcai.rsanandres.com/agent/query")
+    api_cooldown_seconds: int = int(os.getenv("RAGAS_API_COOLDOWN", "7"))
 
-    db_user: str | None = os.getenv("DB_USER")
-    db_password: str | None = os.getenv("DB_PASSWORD")
-    db_host: str = os.getenv("DB_HOST", "localhost")
-    db_port: str = os.getenv("DB_PORT", "5432")
-    db_name: str | None = os.getenv("DB_NAME")
-
-    include_full_json: bool = os.getenv("RAGAS_INCLUDE_FULL_JSON", "true").lower() in {"1", "true", "yes"}
+    include_full_json: bool = os.getenv("RAGAS_INCLUDE_FULL_JSON", "false").lower() in {"1", "true", "yes"}
 
 
 CONFIG = RagasConfig()

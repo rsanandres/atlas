@@ -1,162 +1,122 @@
+"""Score batch evaluation results using RAGAS v0.4 metrics."""
 
 import argparse
 import json
-import os
 import sys
 from glob import glob
 from pathlib import Path
-from typing import List, Dict
+from typing import Any, Dict, List
 
-from datasets import Dataset
-from ragas import evaluate
-# Revert to original imports to match installed version compatibility
-from ragas.metrics import (
-    answer_relevancy,
-    faithfulness,
-    context_precision,
-    context_recall,
-)
-
-# Import local modules
 _REPO_ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(_REPO_ROOT))
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
 
 from POC_RAGAS.config import CONFIG
-from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+from POC_RAGAS.evaluators.faithfulness import evaluate_faithfulness
+from POC_RAGAS.evaluators.relevancy import evaluate_relevancy
 
-# Define metrics
-METRICS = [
-    faithfulness,
-    answer_relevancy,
-    context_precision,
-    context_recall,
-]
 
-def load_batch_results(batch_dir: Path) -> List[Dict]:
+def load_batch_results(batch_dir: Path) -> List[Dict[str, Any]]:
     """Load all result_*.json files from the directory."""
-    results = []
     pattern = str(batch_dir / "result_*.json")
     files = sorted(glob(pattern))
-    
+
     if not files:
         print(f"No result files found in {batch_dir}")
         return []
-        
+
     print(f"Found {len(files)} result files.")
-    
+    results: List[Dict[str, Any]] = []
+
     for fpath in files:
         try:
-            with open(fpath, 'r') as f:
+            with open(fpath) as f:
                 data = json.load(f)
-                
+
             if data.get("status") != "success":
                 continue
-                
+
             response_data = data.get("response", {})
             if isinstance(response_data, str):
-                 # Handle case where response might be just a string (though unlikely in recent runs)
-                 answer = response_data
-                 sources = []
+                answer = response_data
+                sources = []
             else:
                 answer = response_data.get("response", "")
                 sources = response_data.get("sources", [])
-            
-            # Extract basic fields
-            question = data.get("question")
-            ground_truths = data.get("ground_truths", [])
-            
-            # Extract contexts from sources
+
+            question = data.get("question") or data.get("user_input", "")
+
             contexts = []
             for src in sources:
                 if isinstance(src, dict):
                     contexts.append(src.get("content_preview", ""))
                 elif isinstance(src, str):
                     contexts.append(src)
-            
-            # RAGAS expects list of strings for contexts
+
             results.append({
-                "question": question,
-                "answer": answer,
-                "contexts": contexts if contexts else ["N/A"], # Prevent empty context error
-                "ground_truth": ground_truths[0] if ground_truths else ""
+                "user_input": question,
+                "response": answer,
+                "retrieved_contexts": contexts if contexts else ["N/A"],
             })
-            
         except Exception as e:
             print(f"Error loading {fpath}: {e}")
-            
+
     return results
 
-def main():
+
+async def main() -> None:
     parser = argparse.ArgumentParser(description="Score RAGAS batch results.")
     parser.add_argument("--batch-dir", type=Path, required=True, help="Directory containing result_*.json files")
     args = parser.parse_args()
-    
+
     if not args.batch_dir.exists():
         print(f"Directory not found: {args.batch_dir}")
         sys.exit(1)
-        
+
     print(f"Loading results from {args.batch_dir}...")
-    raw_results = load_batch_results(args.batch_dir)
-    
-    if not raw_results:
+    samples = load_batch_results(args.batch_dir)
+
+    if not samples:
         print("No valid successful results to score.")
         sys.exit(0)
-        
-    # Prepare dataset for RAGAS
-    ragas_data = {
-        "question": [r["question"] for r in raw_results],
-        "answer": [r["answer"] for r in raw_results],
-        "contexts": [r["contexts"] for r in raw_results],
-        "ground_truth": [r["ground_truth"] for r in raw_results]
-    }
-    
-    dataset = Dataset.from_dict(ragas_data)
-    
-    # Configure OpenAI LLM and Embeddings (User Reguested)
-    print("Configuring OpenAI models (gpt-4o-mini)...")
+
     if not CONFIG.openai_api_key:
         print("Error: OPENAI_API_KEY not found in environment!")
         sys.exit(1)
-        
-    llm_model = CONFIG.ragas_model or "gpt-4o-mini"
-    
-    # Initialize OpenAI components
-    llm = ChatOpenAI(model=llm_model, api_key=CONFIG.openai_api_key)
-    embeddings = OpenAIEmbeddings(api_key=CONFIG.openai_api_key)
-    
-    print(f"Running RAGAS evaluation with LLM={llm_model}...")
-    results = evaluate(
-        dataset=dataset,
-        metrics=METRICS,
-        llm=llm,
-        embeddings=embeddings,
-        raise_exceptions=False
-    )
-    
-    print("\nEvaluation Complete!")
-    print(results)
-    
-    # Save Report
+
+    print(f"Scoring {len(samples)} samples with RAGAS v0.4 (model: {CONFIG.ragas_model})...")
+    faith = await evaluate_faithfulness(samples)
+    relevancy = await evaluate_relevancy(samples)
+
+    print(f"\nFaithfulness:  {faith['score']:.4f}")
+    print(f"Relevancy:     {relevancy['score']:.4f}")
+
+    # Write report
+    from datetime import datetime, timezone
+
     output_file = args.batch_dir / "report.md"
-    df = results.to_pandas()
-    
-    # Calculate averages safely using pandas
-    means = df.mean(numeric_only=True)
-    
     with open(output_file, "w") as f:
-        f.write(f"# Batch Evaluation Report\n\n")
-        f.write(f"**Date:** {os.getenv('RunDate', datetime.now().isoformat())}\n")
-        f.write(f"**Total Questions Scored:** {len(df)}\n\n")
-        
-        f.write("## Aggregate Metrics\n")
-        for metric, score in means.items():
-             f.write(f"- **{metric}:** {score:.4f}\n")
-            
-        f.write("\n## Detailed Results\n")
-        f.write(df.to_markdown(index=False))
-        
+        f.write("# Batch Evaluation Report\n\n")
+        f.write(f"**Date:** {datetime.now(timezone.utc).isoformat()}\n")
+        f.write(f"**Model:** {CONFIG.ragas_model}\n")
+        f.write(f"**Total Questions Scored:** {len(samples)}\n\n")
+        f.write("## Metrics\n\n")
+        f.write(f"| Metric | Score |\n")
+        f.write(f"|--------|-------|\n")
+        f.write(f"| Faithfulness | {faith['score']:.4f} |\n")
+        f.write(f"| Relevancy | {relevancy['score']:.4f} |\n")
+
+        if faith.get("per_sample"):
+            f.write("\n## Per-Sample Faithfulness\n\n")
+            f.write("| # | Score | Question |\n")
+            f.write("|---|-------|----------|\n")
+            for i, ps in enumerate(faith["per_sample"]):
+                q = samples[i]["user_input"][:60]
+                f.write(f"| {i} | {ps['score']:.3f} | {q}... |\n")
+
     print(f"\nReport saved to: {output_file}")
 
+
 if __name__ == "__main__":
-    from datetime import datetime
-    main()
+    import asyncio
+    asyncio.run(main())
