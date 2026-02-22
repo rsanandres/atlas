@@ -1,6 +1,6 @@
 # Atlas - Healthcare RAG System: Technical Documentation
 
-> **Professional Portfolio:** This documentation showcases a production healthcare RAG system demonstrating expertise in full-stack AI engineering, cloud architecture, and cost-conscious system design. The system evolved from a local development environment to a lean AWS production deployment serving real queries at ~$124/month.
+> **Professional Portfolio:** This documentation showcases a production healthcare RAG system demonstrating expertise in full-stack AI engineering, cloud architecture, and cost-conscious system design. The system evolved from a local development environment to a self-funded AWS production deployment serving real queries at ~$150/month.
 
 ---
 
@@ -28,14 +28,14 @@
 **Production Scale:**
 - **91,000 patients** with complete medical histories
 - **7.7 million vector chunks** (1024-dimensional embeddings)
-- Running on AWS at **~$124/month**
+- Running on AWS at **~$150/month**
 
 **Key Capabilities:**
 - **FHIR Data Processing**: Parses and chunks complex healthcare records maintaining JSON structure integrity
 - **Semantic Search**: 1024-dimensional vector embeddings with hybrid search (BM25 + semantic)
 - **Intelligent Agent**: LangGraph-based agent with Claude 3.5 Sonnet (reasoning) and Haiku (synthesis), plus 28 healthcare-specific tools
 - **Production-Ready**: Deployed on AWS ECS Fargate with RDS PostgreSQL, Bedrock LLM, and real-time observability
-- **Cost-Conscious Design**: Evolved from local development to lean AWS production (~$124/month)
+- **Cost-Conscious Design**: Evolved from local development to lean AWS production (~$150/month)
 
 ### Design Philosophy & Journey
 
@@ -83,17 +83,19 @@ The journey from local to production revealed challenges that only appear at sca
 
 | Component | AWS Service | Configuration | Cost |
 |-----------|------------|---------------|------|
-| **API** | ECS Fargate | 0.5 vCPU, 2GB RAM, single task | ~$21/mo |
-| **LLM** | Bedrock Claude | Sonnet (researcher) + Haiku (response) | ~$46/mo |
+| **API** | ECS Fargate | 0.5 vCPU, 2GB RAM, single task | ~$15/mo |
+| **LLM** | Bedrock Claude | Sonnet (researcher) + Haiku (response) | ~$50/mo |
 | **Embeddings** | Bedrock Titan | amazon.titan-embed-text-v2:0 (1024-dim) | ~$0.20/mo |
-| **Vector DB** | RDS PostgreSQL 16 | db.t4g.small (2 vCPU, 2GB RAM, 250GB gp3) | ~$52/mo |
+| **Vector DB** | RDS PostgreSQL 16 | db.t4g.small (2 vCPU, 2GB RAM, 250GB gp3) | ~$46/mo |
+| **Networking** | ALB + VPC | Load balancer, public subnets | ~$25/mo |
 | **Session Store** | DynamoDB | On-demand pricing | ~$2/mo |
 | **FHIR Storage** | S3 Standard | ~100GB synthetic data | ~$2.50/mo |
-| **Container Registry** | ECR | Docker image storage | ~$0.20/mo |
+| **Container Registry** | ECR | Docker image storage | ~$0.50/mo |
+| **Secrets** | Secrets Manager | 5 secrets | ~$1/mo |
 | **Frontend** | Vercel | Next.js deployment | Free tier |
 | **CI/CD** | GitHub Actions | Build → ECR → ECS deploy | Free tier |
-| **Monitoring** | CloudWatch | ECS/RDS/ALB metrics | Included |
-| **Total** | | | **~$124/mo** |
+| **Monitoring** | CloudWatch | ECS/RDS/ALB metrics | ~$2/mo |
+| **Total** | | | **~$150/mo** |
 
 ---
 
@@ -1839,20 +1841,22 @@ The system was developed locally with zero cloud costs, then migrated to AWS. Th
 
 | Service | Configuration | Monthly Cost |
 |---------|--------------|-------------|
-| RDS PostgreSQL | db.t4g.small (2 vCPU, 2GB), 250GB gp3 | ~$52 |
-| ECS Fargate | 0.5 vCPU, 2GB RAM, 24/7 | ~$21 |
-| Bedrock Claude | Sonnet ($3/$15 per 1M in/out tokens) + Haiku ($0.80/$4 per 1M in/out tokens) | ~$46 |
+| RDS PostgreSQL | db.t4g.small (2 vCPU, 2GB), 250GB gp3 | ~$46 |
+| ECS Fargate | 0.5 vCPU, 2GB RAM, 24/7 | ~$15 |
+| Bedrock Claude | Sonnet ($3/$15 per 1M in/out tokens) + Haiku ($0.80/$4 per 1M in/out tokens) | ~$50 |
 | Bedrock Titan | Embeddings v2 ($0.02 per 1M tokens) | ~$0.20 |
+| ALB + VPC | Load balancer, public subnets | ~$25 |
 | DynamoDB | On-demand (session reads/writes) | ~$2 |
 | S3 | ~100GB FHIR data | ~$2.50 |
-| ECR | Docker image storage | ~$0.20 |
-| **Total** | | **~$124/mo** |
+| Secrets Manager + ECR + CloudWatch | Supporting services | ~$4 |
+| **Total** | | **~$150/mo** |
 
 **Cost Notes**:
+- Entire project is **self-funded** — all infrastructure costs paid out of pocket
 - Bedrock costs scale linearly with usage — 10x traffic would push Bedrock costs to ~$460/mo
 - RDS reserved instance (1-year) would reduce to ~$25/mo (-52%)
 - DynamoDB and S3 are negligible at current usage levels
-- Does not include: data transfer egress, NAT Gateway (if used: ~$33/mo), Route 53 DNS
+- One-time costs: ~$85 for Bedrock Titan embedding (102K patients) and RAGAS evaluation runs
 
 ### CI/CD Pipeline
 
@@ -1879,7 +1883,7 @@ on:
 
 ## 10. What I'd Do With More Resources
 
-The current system runs at ~$124/month on minimal infrastructure. Here's what would improve with additional budget:
+The current system runs at ~$150/month on minimal infrastructure. Here's what would improve with additional budget:
 
 ### More RAM for RDS (~$350/mo → db.r6g.xlarge)
 
@@ -1951,7 +1955,7 @@ This documentation showcases a **production healthcare RAG system** that evolved
 - **Full-Stack Engineering**: Go parser, Python API, PostgreSQL, Next.js frontend
 - **AI/ML Expertise**: Vector embeddings, hybrid search, cross-encoder reranking, multi-model LLM agent
 - **Production Challenges Solved**: Sync I/O deadlocks, IVFFlat scaling, index validation, event loop blocking, ALB timeout management
-- **Cost-Conscious Design**: Running at ~$124/month serving 91K patients and 7.7M vector chunks
+- **Cost-Conscious Design**: Self-funded at ~$150/month serving 91K patients and 7.7M vector chunks
 - **Operational Maturity**: CloudWatch observability, CI/CD pipeline, structured debug logging
 
 **Key Technical Achievements**:

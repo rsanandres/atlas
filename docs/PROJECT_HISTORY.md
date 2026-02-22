@@ -217,7 +217,7 @@ This was the most infrastructure-intensive day of the project. Everything that c
 
 #### AWS Migration Analysis
 - Wrote comprehensive `docs/aws-migration-analysis.md` with cost-optimized architecture
-- Target: ~$85-95/mo for the full stack
+- Target: ~$150/mo for the full stack (including Bedrock LLM usage)
 
 ### Feb 11 - Production Hardening
 
@@ -458,16 +458,21 @@ Vercel Frontend → ALB → ECS Fargate → Bedrock Claude 3.5 → RDS PostgreSQ
 
 ## Cost Evolution
 
+All infrastructure costs are **self-funded** — paid out of pocket as a personal investment in the project.
+
 | Phase | Monthly Cost | Notes |
 |-------|-------------|-------|
 | Local dev (Jan-Feb 4) | $0 | Ollama on local GPU, local Postgres |
 | AWS initial (Feb 10) | ~$95 | t4g.medium + 50GB + ECS + ALB |
 | AWS peak (Feb 10-13) | ~$115 | t4g.medium + 150GB + embedding EC2 |
-| AWS target (post-migration) | ~$75 | t4g.small + 120GB (fresh instance) |
+| AWS steady-state (Feb 14+) | ~$150 | t4g.small + 250GB + Bedrock Sonnet/Haiku |
 
-One-time costs:
-- Bedrock Titan embedding: ~$36 (102K patients)
+One-time costs (February 2026):
+- Bedrock Titan embedding: ~$45 (102K patients, 7.7M vectors)
+- Bedrock Sonnet RAGAS evaluation: ~$40 (120 queries through full agent pipeline)
 - EC2 embedding instance: ~$2 (t3.medium, ~48 hours)
+
+**Total February 2026 spend: ~$149** (includes one-time costs; recurring infra alone is ~$85-90/mo, Bedrock usage varies with activity)
 
 ---
 

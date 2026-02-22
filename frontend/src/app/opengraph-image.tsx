@@ -10,7 +10,7 @@ export default function OGImage() {
     { label: 'Patients', value: '91K' },
     { label: 'Vectors', value: '7.7M' },
     { label: 'Medical Tools', value: '20+' },
-    { label: 'AWS Monthly', value: '~$120' },
+    { label: 'AWS Monthly', value: '~$150' },
   ];
 
   return new ImageResponse(

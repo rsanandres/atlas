@@ -653,20 +653,21 @@ After reviewing the production-grade architecture in Sections 2 and 5, a cost-op
 | **Private subnets** | $0 (indirect) | Simplifies networking. Security groups still restrict access. No compliance requirement. |
 | **ECS frontend task** | ~$15-25 | Amplify free tier handles Next.js SSR. Eliminates a whole Fargate task. |
 
-### Revised Monthly Cost Estimate (Updated 2026-02-14 with actuals)
+### Revised Monthly Cost Estimate (Updated 2026-02-21 with actuals)
+
+Based on actual AWS Cost Explorer data from February 2026 (first full month of production):
 
 | Service | Spec | Est. Cost |
 |---------|------|-----------|
 | RDS PostgreSQL | db.t4g.small, single-AZ, 250GB gp3 | ~$46 |
+| Bedrock Claude | Sonnet (researcher) + Haiku (response/validator) | ~$50 |
+| ALB + VPC | Load balancer, public subnets | ~$25 |
 | ECS Fargate (backend) | 0.5 vCPU, 2GB, always-on | ~$15 |
 | Vercel (frontend) | Free tier (SSR) | ~$0 |
-| Bedrock (Claude Haiku) | Query-time inference only | ~$1-2 |
-| ALB | 1 ALB, low traffic | ~$16 |
-| VPC | Public subnets only, no NAT | ~$3 |
-| CloudWatch | Basic metrics + logs | ~$2-3 |
-| Secrets Manager | 5 secrets | ~$1 |
-| ECR | Container storage | ~$1 |
-| **Total (recurring)** | | **~$85-87/mo** |
+| Secrets Manager + ECR + CloudWatch | Supporting services | ~$4 |
+| **Total (recurring)** | | **~$150/mo** |
+
+> **Note:** All infrastructure costs are self-funded. The Bedrock Claude line varies with usage — $50/mo reflects active development and evaluation. Light demo traffic alone would be ~$5-10/mo.
 
 **One-time costs (February 2026):**
 
@@ -679,7 +680,7 @@ After reviewing the production-grade architecture in Sections 2 and 5, a cost-op
 
 > **Why 250GB RDS storage?** IVFFlat index build for 7.7M vectors (1024-dim) peaks at ~161GB disk usage during construction. RDS storage can only increase, never decrease. The migration to a smaller instance was attempted via pg_dump/pg_restore but abandoned — pg_restore replays `CREATE INDEX` DDL, requiring the same peak disk on the target. The extra storage cost (~$10/mo over 120GB) was accepted as the pragmatic choice.
 
-**Savings: ~$100-140/mo compared to the original estimate ($185-225/mo).**
+**Savings: ~$35-75/mo compared to the original production-grade estimate ($185-225/mo).** Actual February 2026 spend was ~$149 (including one-time embedding and evaluation costs).
 
 ### Production Upgrade Path
 

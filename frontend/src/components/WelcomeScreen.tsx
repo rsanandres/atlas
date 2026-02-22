@@ -17,7 +17,7 @@ const STATS = [
   { label: '91K patients', key: 'patients' },
   { label: '7.7M vectors', key: 'vectors' },
   { label: '20+ medical tools', key: 'tools' },
-  { label: '~$120/mo on AWS', key: 'cost' },
+  { label: '~$150/mo on AWS', key: 'cost' },
 ];
 
 const TECH_STACK = ['Python', 'LangGraph', 'pgvector', 'AWS ECS', 'Claude 3.5', 'Next.js', 'Go'];
