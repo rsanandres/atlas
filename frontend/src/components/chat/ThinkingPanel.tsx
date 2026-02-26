@@ -207,22 +207,41 @@ function StepCard({ step, idx }: { step: AgentStep; idx: number }) {
                     </Typography>
                 )}
 
-                {/* Long content collapsible */}
+                {/* Long content: show truncated preview when collapsed, full content when expanded */}
+                {isLong && !expanded && (
+                    <Typography
+                        variant="body2"
+                        sx={{
+                            color: 'text.secondary',
+                            fontSize: '0.8rem',
+                            mt: 0.5,
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                        }}
+                    >
+                        {step.type === 'tool_call'
+                            ? formatToolInput(step.toolName, step.output)
+                            : step.output.split('\n')[0]}
+                    </Typography>
+                )}
                 {isLong && (
                     <Collapse in={expanded} timeout={200}>
                         <Typography
                             variant="body2"
+                            component="div"
                             sx={{
                                 color: 'text.secondary',
                                 fontSize: '0.75rem',
                                 mt: 0.5,
                                 whiteSpace: 'pre-wrap',
-                                maxHeight: '300px',
+                                maxHeight: '500px',
                                 overflow: 'auto',
                                 fontFamily: step.type === 'tool_result' ? 'monospace' : 'inherit',
+                                wordBreak: 'break-word',
                             }}
                         >
-                            {displayContent}
+                            {step.output}
                         </Typography>
                     </Collapse>
                 )}
