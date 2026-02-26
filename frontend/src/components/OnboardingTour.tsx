@@ -79,12 +79,12 @@ export function OnboardingTour({ forceShow, onDismiss }: OnboardingTourProps) {
   const theme = useTheme();
   const isDesktop = useMediaQuery(theme.breakpoints.up('lg'));
 
-  // TEMP: Disabled auto-show for demo recording — re-enable after
+  // Show tour on first visit, then respect dismissal
   useEffect(() => {
     if (forceShow) return;
-    // if (localStorage.getItem(STORAGE_KEY)) return;
-    // const timer = setTimeout(() => setVisible(true), 1000);
-    // return () => clearTimeout(timer);
+    if (localStorage.getItem(STORAGE_KEY)) return;
+    const timer = setTimeout(() => setVisible(true), 1000);
+    return () => clearTimeout(timer);
   }, [forceShow]);
 
   // React to forceShow changes (e.g., help button clicked)
